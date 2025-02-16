@@ -9,7 +9,12 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=[
+    "https://imded.fun",
+    "https://www.imded.fun",
+    # Include localhost for development
+    "http://localhost:3000"
+])
 
 def process_pairs_data(data):
     try:
