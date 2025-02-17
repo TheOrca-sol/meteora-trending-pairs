@@ -10,22 +10,15 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# More detailed CORS configuration
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Type"],
-        "max_age": 600
-    }
-})
+# Basic CORS configuration
+CORS(app)
 
+# Add CORS headers to all responses
 @app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
     return response
 
 def process_pairs_data(data):
