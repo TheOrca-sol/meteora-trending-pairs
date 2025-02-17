@@ -65,12 +65,15 @@ function App() {
       const response = await axios.get('https://api.imded.fun/api/pairs', {
         headers: {
           'Content-Type': 'application/json',
-        }
+          'Accept': 'application/json',
+        },
+        withCredentials: true
       });
       setPairs(response.data.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
+      console.error('Error:', err);
       setError('Error fetching pairs data');
     } finally {
       setLoading(false);
