@@ -62,7 +62,11 @@ function App() {
       if (isManualRefresh) {
         setRefreshing(true);
       }
-      const response = await axios.get('https://api.imded.fun/api/pairs');
+      const response = await axios.get('https://api.imded.fun/api/pairs', {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       setPairs(response.data.data);
       setLastUpdated(new Date());
       setError(null);
