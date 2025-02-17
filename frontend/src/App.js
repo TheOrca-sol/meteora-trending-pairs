@@ -62,12 +62,26 @@ function App() {
       if (isManualRefresh) {
         setRefreshing(true);
       }
-      const response = await axios.get('https://api.imded.fun/api/pairs');
+      
+      const response = await axios.get('https://api.imded.fun/api/pairs', {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        timeout: 5000,
+        retries: 3,
+        retryDelay: 1000
+      });
+      
       setPairs(response.data.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      console.error('Error:', err);
+      console.error('Fetch error:', {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data
+      });
       setError('Error fetching pairs data');
     } finally {
       setLoading(false);
