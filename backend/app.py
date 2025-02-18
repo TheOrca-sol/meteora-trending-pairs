@@ -10,20 +10,31 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Basic CORS configuration
-CORS(app)
+# More detailed CORS configuration
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
+        "expose_headers": ["Content-Type"],
+        "max_age": 600
+    }
+})
 
-# Add CORS headers to all responses
 @app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
     return response
 
 def process_pairs_data(data):
     try:
         logger.info(f"Processing {len(data)} pairs")
+        
+        # Log sample of raw data to see the actual field names
+        if data:
+            logger.info(f"Sample raw pair data fields: {list(data[0].keys())}")
         
         df = pd.DataFrame(data)
         
@@ -33,19 +44,23 @@ def process_pairs_data(data):
             'current_price',
             'volume',
             'fees_24h',
+            'fees',
             'apr',
             'liquidity',
             'cumulative_trade_volume',
             'fee_tvl_ratio',
             'bin_step',
             'base_fee_percentage',
-            'is_blacklisted'
+            'is_blacklisted',
+            'mint_x',  # Changed from tokenX to mint_x
+            'mint_y'   # Changed from tokenY to mint_y
         ]
         
         df_selected = df[selected_columns]
         
-        # Get 30-minute volume and fee/TVL ratio
+        # Get 30-minute volume and fees
         df_selected['volume_30min'] = df_selected['volume'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
+        df_selected['fees_30min'] = df_selected['fees'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
         df_selected['fee_tvl_30min'] = df_selected['fee_tvl_ratio'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
         
         df_selected = df_selected.rename(columns={
@@ -53,6 +68,7 @@ def process_pairs_data(data):
             'name': 'pairName',
             'current_price': 'price',
             'volume_30min': 'volume30min',
+            'fees_30min': 'fees30min',
             'fees_24h': 'fees24h',
             'apr': 'apr',
             'liquidity': 'totalLiquidity',
@@ -60,15 +76,18 @@ def process_pairs_data(data):
             'fee_tvl_30min': 'feeTvlRatio30min',
             'bin_step': 'binStep',
             'base_fee_percentage': 'baseFee',
-            'is_blacklisted': 'isBlacklisted'
+            'is_blacklisted': 'is_blacklisted',
+            'mint_x': 'tokenX',  # Rename mint_x to tokenX
+            'mint_y': 'tokenY'   # Rename mint_y to tokenY
         })
         
         # Drop unnecessary columns
-        df_selected = df_selected.drop(['volume', 'fee_tvl_ratio'], axis=1)
+        df_selected = df_selected.drop(['volume', 'fee_tvl_ratio', 'fees'], axis=1)
         
         # Format numeric columns
         df_selected['price'] = df_selected['price'].round(6)
         df_selected['volume30min'] = df_selected['volume30min'].round(2)
+        df_selected['fees30min'] = df_selected['fees30min'].round(2)
         df_selected['fees24h'] = df_selected['fees24h'].round(2)
         df_selected['apr'] = df_selected['apr'].round(2)
         df_selected['totalLiquidity'] = df_selected['totalLiquidity'].round(2)
@@ -77,7 +96,11 @@ def process_pairs_data(data):
         df_selected['baseFee'] = df_selected['baseFee'].round(2)
         
         processed_data = df_selected.to_dict('records')
-        logger.info(f"Successfully processed {len(processed_data)} pairs")
+        
+        # Log a sample of processed data to verify token addresses
+        if processed_data:
+            logger.info(f"Sample processed pair with token addresses: {processed_data[0]}")
+            
         return processed_data
     except Exception as e:
         logger.error(f"Error processing data: {str(e)}")
