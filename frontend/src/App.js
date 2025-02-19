@@ -19,6 +19,7 @@ import Footer from './components/Footer/Footer';
 import { initGA, logPageView, trackUserInteraction } from './utils/analytics';
 import { lightTheme, darkTheme } from './utils/theme';
 import ThemeToggle from './components/ThemeToggle/ThemeToggle';
+import { Analytics } from '@vercel/analytics/react';
 
 function App() {
   const [pairs, setPairs] = useState([]);
@@ -308,6 +309,7 @@ function App() {
         </Container>
         <Footer />
       </Box>
+      <Analytics />
     </ThemeProvider>
   );
 }
