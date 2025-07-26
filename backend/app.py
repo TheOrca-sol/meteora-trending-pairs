@@ -16,9 +16,9 @@ CORS(app, origins=["*"], methods=["GET", "POST", "OPTIONS"], allow_headers=["Con
 
 @app.after_request
 def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     return response
 
 def process_pairs_data(data):
@@ -215,6 +215,13 @@ def health_check():
     return jsonify({
         'status': 'healthy',
         'timestamp': pd.Timestamp.now().isoformat()
+    })
+
+@app.route('/api/test', methods=['GET'])
+def test_endpoint():
+    return jsonify({
+        'message': 'API is working!',
+        'cors_test': 'CORS headers should be present'
     })
 
 if __name__ == '__main__':
