@@ -11,16 +11,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# More detailed CORS configuration
-CORS(app, resources={
-    r"/api/*": {
-        "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"],
-        "expose_headers": ["Content-Type"],
-        "max_age": 600
-    }
-})
+# Enable CORS for all origins (for development/production)
+CORS(app, origins=["*"], methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
 
 @app.after_request
 def after_request(response):
