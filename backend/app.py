@@ -3,6 +3,7 @@ from flask_cors import CORS
 import requests
 import pandas as pd
 import logging
+import os 
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -52,18 +53,39 @@ def process_pairs_data(data):
             'bin_step',
             'base_fee_percentage',
             'is_blacklisted',
-            'mint_x',  # Changed from tokenX to mint_x
-            'mint_y'   # Changed from tokenY to mint_y
+            'mint_x',
+            'mint_y'
         ]
         
-        df_selected = df[selected_columns]
+        # Filter only columns that exist
+        existing_columns = [col for col in selected_columns if col in df.columns]
+        df_selected = df[existing_columns]
         
-        # Get 30-minute volume and fees
-        df_selected['volume_30min'] = df_selected['volume'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
-        df_selected['fees_30min'] = df_selected['fees'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
-        df_selected['fee_tvl_30min'] = df_selected['fee_tvl_ratio'].apply(lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0)
+        # Handle missing columns with defaults
+        for col in selected_columns:
+            if col not in df_selected.columns:
+                if col in ['current_price', 'apr', 'liquidity', 'cumulative_trade_volume', 'base_fee_percentage']:
+                    df_selected[col] = 0.0
+                elif col in ['bin_step']:
+                    df_selected[col] = 0
+                elif col in ['is_blacklisted']:
+                    df_selected[col] = False
+                else:
+                    df_selected[col] = ''
         
-        df_selected = df_selected.rename(columns={
+        # Get 30-minute volume and fees with safe handling
+        df_selected['volume_30min'] = df_selected['volume'].apply(
+            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
+        )
+        df_selected['fees_30min'] = df_selected['fees'].apply(
+            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
+        )
+        df_selected['fee_tvl_30min'] = df_selected['fee_tvl_ratio'].apply(
+            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
+        )
+        
+        # Rename columns
+        column_mapping = {
             'address': 'address',
             'name': 'pairName',
             'current_price': 'price',
@@ -77,33 +99,33 @@ def process_pairs_data(data):
             'bin_step': 'binStep',
             'base_fee_percentage': 'baseFee',
             'is_blacklisted': 'is_blacklisted',
-            'mint_x': 'tokenX',  # Rename mint_x to tokenX
-            'mint_y': 'tokenY'   # Rename mint_y to tokenY
-        })
+            'mint_x': 'tokenX',
+            'mint_y': 'tokenY'
+        }
         
-        # Drop unnecessary columns
-        df_selected = df_selected.drop(['volume', 'fee_tvl_ratio', 'fees'], axis=1)
+        # Only rename columns that exist
+        existing_mapping = {k: v for k, v in column_mapping.items() if k in df_selected.columns}
+        df_selected = df_selected.rename(columns=existing_mapping)
+        
+        # Convert numeric columns safely
+        numeric_columns = ['price', 'volume30min', 'fees30min', 'fees24h', 'apr', 'totalLiquidity', 'totalVolume', 'feeTvlRatio30min', 'baseFee']
+        for col in numeric_columns:
+            if col in df_selected.columns:
+                df_selected[col] = pd.to_numeric(df_selected[col], errors='coerce').fillna(0)
         
         # Format numeric columns
-        df_selected['price'] = df_selected['price'].round(6)
-        df_selected['volume30min'] = df_selected['volume30min'].round(2)
-        df_selected['fees30min'] = df_selected['fees30min'].round(2)
-        df_selected['fees24h'] = df_selected['fees24h'].round(2)
-        df_selected['apr'] = df_selected['apr'].round(2)
-        df_selected['totalLiquidity'] = df_selected['totalLiquidity'].round(2)
-        df_selected['totalVolume'] = df_selected['totalVolume'].round(2)
-        df_selected['feeTvlRatio30min'] = df_selected['feeTvlRatio30min'].round(6)
-        df_selected['baseFee'] = df_selected['baseFee'].round(2)
+        for col in ['price', 'volume30min', 'fees30min', 'fees24h', 'apr', 'totalLiquidity', 'totalVolume', 'feeTvlRatio30min', 'baseFee']:
+            if col in df_selected.columns:
+                df_selected[col] = df_selected[col].round(6)
         
         processed_data = df_selected.to_dict('records')
         
-        # Log a sample of processed data to verify token addresses
-        if processed_data:
-            logger.info(f"Sample processed pair with token addresses: {processed_data[0]}")
-            
+        logger.info(f"Successfully processed {len(processed_data)} pairs")
         return processed_data
+        
     except Exception as e:
         logger.error(f"Error processing data: {str(e)}")
+        logger.error(f"Data sample: {data[:2] if data else 'No data'}")
         raise
 
 @app.route('/api/pairs', methods=['GET'])
@@ -204,4 +226,5 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
