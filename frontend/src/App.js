@@ -76,7 +76,7 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'http://localhost:5000/api/pairs',
+        url: 'https://meteora-analytics.vercel.app/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         },
