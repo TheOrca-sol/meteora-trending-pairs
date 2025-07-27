@@ -23,13 +23,34 @@ def after_request(response):
 
 def process_pairs_data(data):
     try:
+        # Clear memory before processing
+        gc.collect()
+        
         logger.info(f"Processing {len(data)} pairs")
+        
+        # Limit data size if too large
+        max_pairs = 1000
+        if len(data) > max_pairs:
+            logger.info(f"Limiting data to {max_pairs} pairs")
+            data = data[:max_pairs]
         
         # Log sample of raw data to see the actual field names
         if data:
             logger.info(f"Sample raw pair data fields: {list(data[0].keys())}")
         
+        # Optimize DataFrame memory usage
         df = pd.DataFrame(data)
+        
+        # Convert object columns to categories where possible
+        for col in df.select_dtypes(include=['object']).columns:
+            if df[col].nunique() / len(df) < 0.5:  # If less than 50% unique values
+                df[col] = df[col].astype('category')
+        
+        # Convert numeric columns to smaller dtypes where possible
+        for col in df.select_dtypes(include=['float64']).columns:
+            df[col] = pd.to_numeric(df[col], downcast='float')
+        for col in df.select_dtypes(include=['int64']).columns:
+            df[col] = pd.to_numeric(df[col], downcast='integer')
         
         selected_columns = [
             'address',
@@ -225,5 +246,20 @@ def test_endpoint():
     })
 
 if __name__ == '__main__':
+    # Get port from environment variable or default to 5000
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    
+    # Configure Pandas to optimize memory usage
+    pd.options.mode.chained_assignment = None
+    pd.options.memory_usage = 'deep'
+    
+    # Clear any existing data in memory
+    import gc
+    gc.collect()
+    
+    # Run the Flask app with optimized settings
+    app.run(host='0.0.0.0', 
+           port=port, 
+           debug=False,
+           threaded=True,
+           processes=1)
