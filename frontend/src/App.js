@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   Container,
@@ -26,6 +26,7 @@ function App() {
   const [pairs, setPairs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [paginationLoading, setPaginationLoading] = useState(false); // Add pagination loading state
   const [error, setError] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
@@ -50,9 +51,10 @@ function App() {
 
   // Add theme state
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedMode = localStorage.getItem('darkMode');
-    return savedMode ? JSON.parse(savedMode) : false;
+    const saved = localStorage.getItem('darkMode');
+    return saved !== null ? JSON.parse(saved) : false;
   });
+  const isInitialLoad = useRef(true); // Track if this is the initial load
 
   // Save theme preference
   useEffect(() => {
@@ -64,15 +66,17 @@ function App() {
     trackUserInteraction.themeChange(!isDarkMode ? 'dark' : 'light');
   };
 
-  const fetchPairs = useCallback(async (isManualRefresh = false) => {
+  const fetchPairs = useCallback(async (isManualRefresh = false, isPagination = false) => {
     try {
       if (isManualRefresh) {
         setRefreshing(true);
+      } else if (isPagination) {
+        setPaginationLoading(true);
       }
       
       const response = await axios({
         method: 'get',
-        url: 'http://localhost:5000/api/pairs',
+        url: 'https://meteora-trending-pairs-production.up.railway.app/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -87,20 +91,31 @@ function App() {
       
       console.log('API Response:', response.data);
       setPairs(response.data.data);
-      setPagination(response.data.pagination); // This line was not in the new_code, so it's removed.
-      setLastUpdated(new Date());
+      setPagination(response.data.pagination);
       setError(null);
+      setLastUpdated(new Date());
     } catch (err) {
       console.error('Fetch error:', err);
-      setError('Error fetching pairs data');
+      setError({
+        message: err.response?.data?.message || err.message || 'Unknown error',
+        status: err.response?.status,
+        data: err.response?.data,
+        stack: err.stack
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
+      setPaginationLoading(false); // Always clear pagination loading
     }
-  }, [page, rowsPerPage, filters.search, filters.minTotalLiquidity, orderBy]); // Added dependencies
+  }, [page, rowsPerPage, filters, orderBy]);
 
   useEffect(() => {
-    fetchPairs();
+    const isPagination = !isInitialLoad.current && !loading && !refreshing;
+    fetchPairs(false, isPagination);
+    
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+    }
   }, [fetchPairs]);
 
   useEffect(() => {
@@ -179,14 +194,14 @@ function App() {
   }, [pairs]);
 
   const handleChangePage = (event, newPage) => {
+    setPaginationLoading(true); // Set loading before changing page
     setPage(newPage);
-    // fetchPairs will be called automatically due to useEffect dependency
   };
 
   const handleChangeRowsPerPage = (event) => {
+    setPaginationLoading(true); // Set loading before changing rowsPerPage
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
-    // fetchPairs will be called automatically due to useEffect dependency
   };
 
   const handleManualRefresh = async () => {
@@ -407,6 +422,7 @@ function App() {
                 handleChangePage={handleChangePage}
                 handleChangeRowsPerPage={handleChangeRowsPerPage}
                 totalCount={pagination?.total || pairs.length}
+                paginationLoading={paginationLoading}
               />
             </Paper>
           )}

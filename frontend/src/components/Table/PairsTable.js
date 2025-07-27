@@ -14,7 +14,9 @@ import {
   Box,
   Avatar,
   Typography,
-  StepIcon
+  StepIcon,
+  CircularProgress,
+  Backdrop
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -467,7 +469,7 @@ const Row = ({ pair, periodData }) => {
   );
 };
 
-const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort, handleChangePage, handleChangeRowsPerPage, totalCount }) => {
+const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort, handleChangePage, handleChangeRowsPerPage, totalCount, paginationLoading }) => {
   // Calculate the current page's data - since backend handles pagination, just use all pairs
   const displayedPairs = pairs;
 
@@ -478,7 +480,7 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
   console.log('Pairs being displayed:', displayedPairs.length);
 
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
       <TableContainer
         sx={{
           bgcolor: '#0A1929',
@@ -545,6 +547,33 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* Pagination Loading Overlay */}
+      {paginationLoading && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 2,
+            zIndex: 1
+          }}
+        >
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+            <CircularProgress size={40} sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" sx={{ color: 'white' }}>
+              Loading page {page + 1}...
+            </Typography>
+          </Box>
+        </Box>
+      )}
+      
       <TablePagination
         component="div"
         count={totalCount}
@@ -553,6 +582,7 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleChangeRowsPerPage}
         rowsPerPageOptions={[5, 10, 25, 50, 100]}
+        disabled={paginationLoading} // Disable during loading
         sx={{
           color: 'text.secondary',
           '.MuiTablePagination-select': {
@@ -560,6 +590,10 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
           },
           '.MuiTablePagination-selectIcon': {
             color: 'text.secondary',
+          },
+          '.MuiTablePagination-actions button': {
+            opacity: paginationLoading ? 0.5 : 1,
+            pointerEvents: paginationLoading ? 'none' : 'auto',
           },
         }}
       />
