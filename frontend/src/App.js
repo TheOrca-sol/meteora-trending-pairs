@@ -76,7 +76,7 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'meteora-trending-pairs-production.up.railway.app',
+        url: 'meteora-trending-pairs-production.up.railway.app/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         },
