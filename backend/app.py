@@ -63,19 +63,24 @@ def process_pairs_data(data):
         if data:
             logger.info(f"Sample raw pair data fields: {list(data[0].keys())}")
         
-        # Optimize DataFrame memory usage
-        df = pd.DataFrame(data)
+        # Define dtypes for better memory usage
+        dtypes = {
+            'address': 'category',
+            'name': 'category',
+            'current_price': 'float32',
+            'fees_24h': 'float32',
+            'apr': 'float32',
+            'liquidity': 'float32',
+            'cumulative_trade_volume': 'float32',
+            'bin_step': 'int16',
+            'base_fee_percentage': 'float32',
+            'is_blacklisted': 'bool',
+            'mint_x': 'category',
+            'mint_y': 'category'
+        }
         
-        # Convert object columns to categories where possible
-        for col in df.select_dtypes(include=['object']).columns:
-            if df[col].nunique() / len(df) < 0.5:  # If less than 50% unique values
-                df[col] = df[col].astype('category')
-        
-        # Convert numeric columns to smaller dtypes where possible
-        for col in df.select_dtypes(include=['float64']).columns:
-            df[col] = pd.to_numeric(df[col], downcast='float')
-        for col in df.select_dtypes(include=['int64']).columns:
-            df[col] = pd.to_numeric(df[col], downcast='integer')
+        # Create DataFrame with optimized dtypes
+        df = pd.DataFrame(data).astype(dtypes, errors='ignore')
         
         selected_columns = [
             'address',
@@ -279,7 +284,11 @@ if __name__ == '__main__':
     
     # Configure Pandas to optimize memory usage
     pd.options.mode.chained_assignment = None
-    pd.options.memory_usage = 'deep'
+    
+    # Set display options to minimize memory usage
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
     
     # Clear any existing data in memory
     import gc
