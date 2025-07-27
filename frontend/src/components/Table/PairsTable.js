@@ -97,13 +97,21 @@ const Row = ({ pair, periodData }) => {
   useEffect(() => {
     const fetchPairData = async () => {
       try {
+        console.log('Fetching pair data for:', pair.address, 'pairXToken:', pairXToken);
+        
         const [dexScreenerResponse, jupiterResponse] = await Promise.all([
           axios.get(`https://api.dexscreener.com/latest/dex/pairs/solana/${pair.address}`),
           axios.get(`https://lite-api.jup.ag/tokens/v2/search?query=${pairXToken?.address}`)
         ]);
 
+        console.log('DexScreener response:', dexScreenerResponse.data);
+        console.log('Jupiter response:', jupiterResponse.data);
+
         const dexScreenerData = dexScreenerResponse.data.pairs?.[0];
         const jupiterData = jupiterResponse.data?.[0]; // v2 returns an array
+
+        console.log('Processed DexScreener data:', dexScreenerData);
+        console.log('Processed Jupiter data:', jupiterData);
 
         if (dexScreenerData) {
           setPairData(dexScreenerData);
@@ -112,12 +120,19 @@ const Row = ({ pair, periodData }) => {
           setTokenInfo(jupiterData);
         }
       } catch (err) {
-        console.error('Error fetching data:', err);
+        console.error('Error fetching data for pair:', pair.address, 'Error:', err);
       }
     };
 
     if (pair.address && pairXToken?.address) {
       fetchPairData();
+    } else {
+      console.log('Skipping fetch - missing data:', { 
+        address: pair.address, 
+        pairXToken: pairXToken,
+        mint_x: pair.mint_x,
+        mint_y: pair.mint_y
+      });
     }
   }, [pair.address, pairXToken?.address]);
 

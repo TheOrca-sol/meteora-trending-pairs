@@ -76,7 +76,7 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'https://meteora-trending-pairs-production.up.railway.app/api/pairs',
+        url: 'http://localhost:5000/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -239,7 +239,7 @@ function App() {
   if (error) {
     return (
       <Container>
-        <Typography color="error" sx={{ mt: 4 }}>{error}</Typography>
+        <Typography color="error" sx={{ mt: 4 }}>{error.message || error}</Typography>
       </Container>
     );
   }
@@ -402,7 +402,7 @@ function App() {
                 color: 'error.dark'
               }}
             >
-              <Typography>{error}</Typography>
+              <Typography>{error.message || error}</Typography>
             </Paper>
           ) : (
             <Paper 

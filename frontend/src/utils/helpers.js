@@ -9,20 +9,21 @@ export const formatCurrency = (value) => {
 };
 
 export const getPairXToken = (pair) => {
-  if (!pair.tokenX || !pair.tokenY) return null;
+  // Use mint_x and mint_y from backend instead of tokenX and tokenY
+  if (!pair.mint_x || !pair.mint_y) return null;
 
-  // If tokenX is not SOL or USDC, it's the pairX token
-  if (![COMMON_TOKENS.SOL, COMMON_TOKENS.USDC].includes(pair.tokenX)) {
+  // If mint_x is not SOL or USDC, it's the pairX token
+  if (![COMMON_TOKENS.SOL, COMMON_TOKENS.USDC].includes(pair.mint_x)) {
     return {
-      address: pair.tokenX,
+      address: pair.mint_x,
       isTokenX: true
     };
   }
   
-  // If tokenY is not SOL or USDC, it's the pairX token
-  if (![COMMON_TOKENS.SOL, COMMON_TOKENS.USDC].includes(pair.tokenY)) {
+  // If mint_y is not SOL or USDC, it's the pairX token
+  if (![COMMON_TOKENS.SOL, COMMON_TOKENS.USDC].includes(pair.mint_y)) {
     return {
-      address: pair.tokenY,
+      address: pair.mint_y,
       isTokenX: false
     };
   }
