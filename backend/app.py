@@ -5,6 +5,8 @@ import pandas as pd
 import logging
 import os
 import gc
+import json
+from itertools import islice
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -27,24 +29,23 @@ def process_pairs_data(data):
         # Clear memory before processing
         gc.collect()
         
-        logger.info(f"Processing {len(data)} pairs")
+        logger.info(f"Initial data length: {len(data)}")
         
-        # Limit data size to reduce memory usage
-        max_pairs = 100  # Reduced from 1000 to 100 for memory constraints
-        if len(data) > max_pairs:
-            logger.info(f"Limiting data to {max_pairs} pairs")
-            data = data[:max_pairs]
+        # Limit data BEFORE creating DataFrame
+        max_pairs = 50  # Further reduced to stay well within memory limits
+        limited_data = list(islice(data, max_pairs))
+        logger.info(f"Limited to {len(limited_data)} pairs")
         
         # Define memory-efficient dtypes
         dtypes = {
-            'address': 'category',  # Use category for strings that repeat
+            'address': 'category',
             'name': 'category',
-            'current_price': 'float32',  # Use float32 instead of float64
+            'current_price': 'float32',
             'fees_24h': 'float32',
             'apr': 'float32',
             'liquidity': 'float32',
             'cumulative_trade_volume': 'float32',
-            'bin_step': 'int16',  # Use smaller integer type
+            'bin_step': 'int16',
             'base_fee_percentage': 'float32',
             'is_blacklisted': 'bool',
             'mint_x': 'category',
@@ -52,7 +53,8 @@ def process_pairs_data(data):
         }
         
         # Create DataFrame with optimized dtypes
-        df = pd.DataFrame(data).astype(dtypes, errors='ignore')
+        df = pd.DataFrame(limited_data).astype(dtypes, errors='ignore')
+        logger.info(f"Created DataFrame with shape: {df.shape}")
         
         selected_columns = [
             'address',
@@ -72,7 +74,7 @@ def process_pairs_data(data):
             'mint_y'
         ]
         
-        # Filter only columns that exist
+        # Filter columns
         existing_columns = [col for col in selected_columns if col in df.columns]
         df_selected = df[existing_columns]
         
@@ -127,9 +129,10 @@ def process_pairs_data(data):
         existing_mapping = {k: v for k, v in column_mapping.items() if k in df_selected.columns}
         df_selected = df_selected.rename(columns=existing_mapping)
         
-        # Convert to records and clear DataFrame from memory
+        # Convert to records and clear memory
         processed_data = df_selected.to_dict('records')
         del df_selected
+        del df
         gc.collect()
         
         logger.info(f"Successfully processed {len(processed_data)} pairs")
@@ -157,13 +160,14 @@ def get_pairs():
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         
+        # Stream response to avoid loading entire JSON into memory
         data = response.json()
-        logger.info(f"Received {len(data)} pairs from API")
+        logger.info(f"Received response from API")
         
         # Process the data
         processed_data = process_pairs_data(data)
         
-        # Clear response data from memory
+        # Clear memory
         del data
         gc.collect()
         
@@ -200,5 +204,11 @@ if __name__ == '__main__':
     # Get port from environment variable
     port = int(os.environ.get('PORT', 5000))
     
-    # Run with optimized settings
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True, processes=1)
+    # Run with optimized settings for Railway's free tier
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=False,
+        threaded=True,
+        processes=1
+    )
