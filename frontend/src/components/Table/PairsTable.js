@@ -293,7 +293,7 @@ const Row = ({ pair, periodData }) => {
                       fontSize: '0.75rem',
                     }}
                   >
-                    {pair.baseFee}%
+                    {Number(pair.baseFee || 0).toFixed(2)}%
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
