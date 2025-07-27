@@ -100,11 +100,15 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
 @app.route('/api/pairs', methods=['GET'])
 def get_pairs():
     try:
-        # Get pagination and filter parameters
+        # Get pagination and filter parameters with proper defaults
         page = int(request.args.get('page', 1))
         limit = min(int(request.args.get('limit', 50)), 100)  # Max 100 per page
-        search_term = request.args.get('search', '')
-        min_liquidity = float(request.args.get('min_liquidity', 0))
+        search_term = request.args.get('search', '').strip()
+        
+        # Handle empty string for min_liquidity
+        min_liquidity_param = request.args.get('min_liquidity', '').strip()
+        min_liquidity = float(min_liquidity_param) if min_liquidity_param else 0.0
+        
         sort_by = request.args.get('sort_by', 'fees_24h')
         
         logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}")
