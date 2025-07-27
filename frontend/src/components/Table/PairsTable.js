@@ -467,11 +467,12 @@ const Row = ({ pair, periodData }) => {
   );
 };
 
-const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort, handleChangePage, handleChangeRowsPerPage }) => {
-  // Calculate the current page's data
-  const displayedPairs = pairs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort, handleChangePage, handleChangeRowsPerPage, totalCount }) => {
+  // Calculate the current page's data - since backend handles pagination, just use all pairs
+  const displayedPairs = pairs;
 
   console.log('PairsTable received pairs:', pairs.length);
+  console.log('Total count from backend:', totalCount);
   console.log('Current page:', page);
   console.log('Rows per page:', rowsPerPage);
   console.log('Pairs being displayed:', displayedPairs.length);
@@ -546,7 +547,7 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
       </TableContainer>
       <TablePagination
         component="div"
-        count={pairs.length}
+        count={totalCount}
         page={page}
         onPageChange={handleChangePage}
         rowsPerPage={rowsPerPage}

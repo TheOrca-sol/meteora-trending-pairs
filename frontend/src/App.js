@@ -72,7 +72,7 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'https://meteora-trending-pairs-production.up.railway.app/api/pairs',
+        url: 'http://localhost:5000/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -146,45 +146,47 @@ function App() {
     trackUserInteraction.filterChange(filterName, value);
   };
 
-  const filteredPairs = React.useMemo(() => {
-    return pairs.filter(pair => {
-      const matchesSearch = pair.pairName.toLowerCase().includes(filters.search.toLowerCase());
-      const matchesVolume = !filters.minVolume30min || pair.volume30min >= Number(filters.minVolume30min);
-      const matchesFees30min = !filters.minFees30min || pair.fees30min >= Number(filters.minFees30min);
-      const matchesFees24h = !filters.minFees24h || pair.fees24h >= Number(filters.minFees24h);
-      const matchesApr = !filters.minApr || pair.apr >= Number(filters.minApr);
-      const matchesBinStep = !filters.binStep || pair.binStep === Number(filters.binStep);
-      const matchesBaseFee = !filters.baseFee || pair.baseFee === Number(filters.baseFee);
-      const matchesLiquidity = !filters.minTotalLiquidity || pair.totalLiquidity >= Number(filters.minTotalLiquidity);
-      const matchesBlacklist = !filters.hideBlacklisted || !pair.is_blacklisted;
+  // Remove frontend filtering since backend handles it
+  // const filteredPairs = React.useMemo(() => {
+  //   return pairs.filter(pair => {
+  //     const matchesSearch = pair.pairName.toLowerCase().includes(filters.search.toLowerCase());
+  //     const matchesVolume = !filters.minVolume30min || pair.volume30min >= Number(filters.minVolume30min);
+  //     const matchesFees30min = !filters.minFees30min || pair.fees30min >= Number(filters.minFees30min);
+  //     const matchesFees24h = !filters.minFees24h || pair.fees24h >= Number(filters.minFees24h);
+  //     const matchesApr = !filters.minApr || pair.apr >= Number(filters.minApr);
+  //     const matchesBinStep = !filters.binStep || pair.binStep === Number(filters.binStep);
+  //     const matchesBaseFee = !filters.baseFee || pair.baseFee === Number(filters.baseFee);
+  //     const matchesLiquidity = !filters.minTotalLiquidity || pair.totalLiquidity >= Number(filters.minTotalLiquidity);
+  //     const matchesBlacklist = !filters.hideBlacklisted || !pair.is_blacklisted;
       
-      return matchesSearch && matchesVolume && matchesFees30min && matchesFees24h && 
-             matchesApr && matchesBinStep && matchesBaseFee && matchesBlacklist && 
-             matchesLiquidity;
-    });
-  }, [pairs, filters]);
+  //     return matchesSearch && matchesVolume && matchesFees30min && matchesFees24h && 
+  //            matchesApr && matchesBinStep && matchesBaseFee && matchesBlacklist && 
+  //            matchesLiquidity;
+  //   });
+  // }, [pairs, filters]);
+
+  // Backend handles filtering, so just use pairs directly
+  const filteredPairs = pairs;
 
   const sortedPairs = React.useMemo(() => {
-    return [...filteredPairs].sort((a, b) => {
-      if (order === 'asc') {
-        return a[orderBy] > b[orderBy] ? 1 : -1;
-      } else {
-        return b[orderBy] > a[orderBy] ? 1 : -1;
-      }
-    });
-  }, [filteredPairs, order, orderBy]);
+    // Backend handles sorting too, so just return the pairs as-is
+    return pairs;
+  }, [pairs]);
 
   const paginatedPairs = React.useMemo(() => {
-    return sortedPairs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
-  }, [sortedPairs, page, rowsPerPage]);
+    // Backend handles pagination, so just return all pairs from current page
+    return pairs;
+  }, [pairs]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
+    // fetchPairs will be called automatically due to useEffect dependency
   };
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+    // fetchPairs will be called automatically due to useEffect dependency
   };
 
   const handleManualRefresh = async () => {
@@ -396,7 +398,7 @@ function App() {
               }}
             >
               <PairsTable
-                pairs={sortedPairs}
+                pairs={paginatedPairs}
                 orderBy={orderBy}
                 order={order}
                 page={page}
@@ -404,7 +406,7 @@ function App() {
                 handleSort={handleSort}
                 handleChangePage={handleChangePage}
                 handleChangeRowsPerPage={handleChangeRowsPerPage}
-                totalCount={filteredPairs.length}
+                totalCount={pagination?.total || pairs.length}
               />
             </Paper>
           )}
