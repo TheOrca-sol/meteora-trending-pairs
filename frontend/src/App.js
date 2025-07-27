@@ -11,6 +11,7 @@ import {
   Tooltip,
   ThemeProvider,
   CssBaseline,
+  Paper,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PairsTable from './components/Table/PairsTable';
@@ -34,16 +35,16 @@ function App() {
   const [order, setOrder] = useState('desc');
   const [filters, setFilters] = useState({
     search: '',
-    minVolume30min: '1000',
-    minFees30min: '10',
+    minVolume30min: '',
+    minFees30min: '',
     minFees24h: '',
-    minApr: '10',
+    minApr: '',
     binStep: '',
     baseFee: '',
-    hideBlacklisted: true,
-    minTotalLiquidity: '1000',
-    sortBy: 'volume30min',
-    sortDirection: 'desc',
+    hideBlacklisted: false,
+    minTotalLiquidity: '',
+    sortBy: '',
+    sortDirection: '',
   });
 
   // Add theme state
@@ -70,22 +71,18 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'https://api.imded.fun/api/pairs',
+        url: 'http://localhost:5000/api/pairs',
         headers: {
           'Content-Type': 'application/json'
         }
       });
       
+      console.log('API Response:', response.data);
       setPairs(response.data.data);
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      console.error('Fetch error:', {
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        stack: err.stack
-      });
+      console.error('Fetch error:', err);
       setError('Error fetching pairs data');
     } finally {
       setLoading(false);
@@ -200,6 +197,11 @@ function App() {
     }
   }, [pairs]);
 
+  // Add console logs to track data flow
+  console.log('Filtered pairs:', filteredPairs.length);
+  console.log('Sorted pairs:', sortedPairs.length);
+  console.log('Sample pair:', sortedPairs[0]);
+
   if (loading) {
     return (
       <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
@@ -228,83 +230,174 @@ function App() {
           color: 'text.primary'
         }}
       >
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 4, flex: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h4">
-              Meteora Trending Pairs
+        <Container 
+          maxWidth={false} 
+          sx={{ 
+            mt: { xs: 2, md: 4 }, 
+            mb: 4, 
+            flex: 1,
+            px: { xs: 1, sm: 2, md: 3 },
+            maxWidth: '2000px !important',
+          }}
+        >
+          {/* Header Section */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between', 
+              alignItems: { xs: 'flex-start', md: 'center' },
+              mb: 4,
+              gap: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
+              pb: 3
+            }}
+          >
+            <Typography 
+              variant="h4" 
+              sx={{ 
+                fontWeight: 700,
+                background: theme => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                color: 'transparent',
+              }}
+            >
+              Meteora Analytics
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 3,
+              flexWrap: 'wrap'
+            }}>
               {lastUpdated && (
-                <Typography variant="body2" color="text.secondary">
-                  Last updated: {lastUpdated.toLocaleTimeString()}
-                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 1,
+                  bgcolor: 'background.paper',
+                  p: 1,
+                  borderRadius: 1,
+                  boxShadow: 1
+                }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Last updated:
+                  </Typography>
+                  <Typography variant="body2" color="primary">
+                    {lastUpdated.toLocaleTimeString()}
+                  </Typography>
+                </Box>
               )}
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={autoRefresh}
-                    onChange={handleAutoRefreshToggle}
-                    color="primary"
-                  />
-                }
-                label="Auto-refresh"
-              />
-              <ThemeToggle 
-                isDarkMode={isDarkMode} 
-                onToggle={handleThemeToggle}
-              />
-              <Tooltip title="Refresh data">
-                <IconButton 
-                  onClick={handleManualRefresh}
-                  disabled={refreshing}
-                  sx={{ 
-                    animation: refreshing ? 'spin 1s linear infinite' : 'none',
-                    '@keyframes spin': {
-                      '0%': { transform: 'rotate(0deg)' },
-                      '100%': { transform: 'rotate(360deg)' }
-                    }
-                  }}
-                >
-                  <RefreshIcon />
-                </IconButton>
-              </Tooltip>
+              
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 2,
+                bgcolor: 'background.paper',
+                p: 1,
+                borderRadius: 1,
+                boxShadow: 1
+              }}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={autoRefresh}
+                      onChange={handleAutoRefreshToggle}
+                      color="primary"
+                      size="small"
+                    />
+                  }
+                  label={
+                    <Typography variant="body2">Auto-refresh</Typography>
+                  }
+                />
+                <ThemeToggle isDarkMode={isDarkMode} onToggle={handleThemeToggle} />
+                <Tooltip title="Refresh data">
+                  <IconButton 
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                    size="small"
+                    sx={{ 
+                      animation: refreshing ? 'spin 1s linear infinite' : 'none',
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'primary.dark',
+                      },
+                      '@keyframes spin': {
+                        '0%': { transform: 'rotate(0deg)' },
+                        '100%': { transform: 'rotate(360deg)' }
+                      }
+                    }}
+                  >
+                    <RefreshIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
           </Box>
 
-          <PairsFilters 
-            filters={filters}
-            handleFilterChange={handleFilterChange}
-          />
+          {/* Filters Section */}
+          <Paper 
+            elevation={2}
+            sx={{ 
+              mb: 4,
+              p: { xs: 2, md: 3 },
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+            }}
+          >
+            <PairsFilters 
+              filters={filters}
+              handleFilterChange={handleFilterChange}
+            />
+          </Paper>
 
+          {/* Table Section */}
           {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              minHeight: 400
+            }}>
               <CircularProgress />
             </Box>
           ) : error ? (
-            <Typography color="error" sx={{ mt: 4 }}>{error}</Typography>
+            <Paper 
+              sx={{ 
+                p: 3, 
+                textAlign: 'center',
+                borderRadius: 2,
+                bgcolor: 'error.light',
+                color: 'error.dark'
+              }}
+            >
+              <Typography>{error}</Typography>
+            </Paper>
           ) : (
-            <PairsTable
-              pairs={paginatedPairs}
-              orderBy={orderBy}
-              order={order}
-              page={page}
-              rowsPerPage={rowsPerPage}
-              handleSort={handleSort}
-              handleChangePage={handleChangePage}
-              handleChangeRowsPerPage={handleChangeRowsPerPage}
-              totalCount={filteredPairs.length}
-            />
-          )}
-
-          {refreshing && (
-            <Box sx={{ 
-              position: 'fixed', 
-              top: '1rem', 
-              right: '1rem',
-              zIndex: 1500 
-            }}>
-              <CircularProgress size={20} />
-            </Box>
+            <Paper 
+              elevation={2}
+              sx={{ 
+                borderRadius: 2,
+                overflow: 'hidden'
+              }}
+            >
+              <PairsTable
+                pairs={sortedPairs}
+                orderBy={orderBy}
+                order={order}
+                page={page}
+                rowsPerPage={rowsPerPage}
+                handleSort={handleSort}
+                handleChangePage={handleChangePage}
+                handleChangeRowsPerPage={handleChangeRowsPerPage}
+                totalCount={filteredPairs.length}
+              />
+            </Paper>
           )}
         </Container>
         <Footer />

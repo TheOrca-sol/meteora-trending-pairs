@@ -1,82 +1,118 @@
 import { Box, Link } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { getMeteoraLink } from '../../utils/helpers';
-
-// Helper function to format numbers
-const formatNumber = (value) => {
-  const num = Number(value);
-  return `$${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-};
-
-// Helper function to format percentages
-const formatPercentage = (value) => {
-  const num = Number(value);
-  return `${num.toLocaleString(undefined, { maximumFractionDigits: 0 })}%`;
-};
+import { getMeteoraLink, formatCurrency } from '../../utils/helpers';
 
 export const getColumns = () => [
-  { 
-    id: 'pairName', 
-    label: 'Pair Name', 
-    numeric: false,
-    render: (row) => (
-      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-        <Link
-          href={getMeteoraLink(row)}
-          target="_blank"
-          rel="noopener noreferrer"
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            textDecoration: 'none',
-            color: 'primary.main',
-            '&:hover': {
-              textDecoration: 'underline'
-            }
-          }}
-        >
-          {row.pairName}
-          <OpenInNewIcon sx={{ ml: 0.5, fontSize: '0.9rem' }} />
-        </Link>
-      </Box>
-    )
-  },
-  { id: 'binStep', label: 'Bin Step', numeric: true },
-  { id: 'baseFee', label: 'Base Fee %', numeric: true },
   {
-    id: 'volume30min',
-    label: '30min Volume',
-    numeric: true,
-    render: (row) => formatNumber(row.volume30min)
+    id: 'pair',
+    label: 'PAIR',
+    render: (pair) => ({
+      symbol: pair.symbol,
+      version: pair.version,
+      logoURI: pair.logoURI,
+      bin: pair.bin,  // e.g., "BIN 100"
+      timeSinceListing: pair.timeSinceListing, // e.g., "11h"
+    })
   },
   {
-    id: 'fees30min',
-    label: '30min Fees',
+    id: 'price',
+    label: 'PRICE $',
     numeric: true,
-    render: (row) => formatNumber(row.fees30min)
   },
   {
-    id: 'fees24h',
-    label: '24h Fees',
+    id: 'todayFees',
+    label: 'TODAY FEES ↗',
     numeric: true,
-    render: (row) => formatNumber(row.fees24h)
+  },
+  {
+    id: 'tvl',
+    label: 'TVL',
+    numeric: true,
   },
   {
     id: 'apr',
-    label: '24h Fee/TVL (APR)',
+    label: 'APR 24h',
     numeric: true,
-    render: (row) => formatPercentage(row.apr)
+  },
+  // Transaction counts
+  {
+    id: '5mTx',
+    label: '5m Tx',
+    numeric: true,
+    transactions: true,
   },
   {
-    id: 'totalLiquidity',
-    label: 'Total Liquidity',
+    id: '1hTx',
+    label: '1h Tx',
     numeric: true,
-    render: (row) => formatNumber(row.totalLiquidity)
+    transactions: true,
   },
   {
-    id: 'totalVolume',
-    label: 'Total Volume',
+    id: '6hTx',
+    label: '6h Tx',
     numeric: true,
-    render: (row) => formatNumber(row.totalVolume)
+    transactions: true,
+  },
+  {
+    id: '24hTx',
+    label: '24h Tx',
+    numeric: true,
+    transactions: true,
+  },
+  // Price changes
+  {
+    id: '5mChange',
+    label: '5m %',
+    numeric: true,
+    priceChange: true,
+  },
+  {
+    id: '1hChange',
+    label: '1h %',
+    numeric: true,
+    priceChange: true,
+  },
+  {
+    id: '6hChange',
+    label: '6h %',
+    numeric: true,
+    priceChange: true,
+  },
+  {
+    id: '24hChange',
+    label: '24h %',
+    numeric: true,
+    priceChange: true,
+  },
+  // Volume
+  {
+    id: '5mVolume',
+    label: '5m Vol',
+    numeric: true,
+  },
+  {
+    id: '1hVolume',
+    label: '1h Vol',
+    numeric: true,
+  },
+  {
+    id: '6hVolume',
+    label: '6h Vol',
+    numeric: true,
+  },
+  {
+    id: '24hVolume',
+    label: '24h Vol',
+    numeric: true,
+  },
+  
+  {
+    id: 'dex',
+    label: 'DEX',
+    numeric: true,
+    render: (pair) => ({
+      logo: pair.dexLogo,
+      name: pair.dex
+    })
   }
 ]; 

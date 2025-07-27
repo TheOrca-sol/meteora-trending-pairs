@@ -20,6 +20,7 @@
     "react-dom": "^18.3.1",
     "react-ga4": "^2.1.0",
     "react-scripts": "5.0.1",
+    "react-virtuoso": "^4.12.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {

@@ -9,151 +9,236 @@ import {
   FormControlLabel,
   Switch,
   InputAdornment,
+  Box,
+  Typography,
+  Divider,
+  Paper,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import TuneIcon from '@mui/icons-material/Tune';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import TimelineIcon from '@mui/icons-material/Timeline';
+
+const FilterSection = ({ title, children }) => (
+  <Box sx={{ mb: 3 }}>
+    <Box sx={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: 1,
+      mb: 2 
+    }}>
+      <Typography 
+        variant="subtitle2" 
+        color="primary"
+        sx={{ 
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
+        <FilterListIcon fontSize="small" />
+        {title}
+      </Typography>
+      <Divider sx={{ flex: 1 }} />
+    </Box>
+    {children}
+  </Box>
+);
 
 const PairsFilters = ({ filters, handleFilterChange }) => {
   return (
-    <Grid container spacing={2} sx={{ mb: 3 }}>
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Search Pairs"
-          variant="outlined"
-          value={filters.search}
-          onChange={handleFilterChange('search')}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          }}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Min 30min Volume ($)"
-          variant="outlined"
-          type="number"
-          value={filters.minVolume30min}
-          onChange={handleFilterChange('minVolume30min')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Min 30min Fees ($)"
-          variant="outlined"
-          type="number"
-          value={filters.minFees30min}
-          onChange={handleFilterChange('minFees30min')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Min 24h Fees ($)"
-          variant="outlined"
-          type="number"
-          value={filters.minFees24h}
-          onChange={handleFilterChange('minFees24h')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Min APR (%)"
-          variant="outlined"
-          type="number"
-          value={filters.minApr}
-          onChange={handleFilterChange('minApr')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Bin Step"
-          variant="outlined"
-          type="number"
-          value={filters.binStep}
-          onChange={handleFilterChange('binStep')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Base Fee (%)"
-          variant="outlined"
-          type="number"
-          value={filters.baseFee}
-          onChange={handleFilterChange('baseFee')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <TextField
-          fullWidth
-          label="Min Total Liquidity ($)"
-          variant="outlined"
-          type="number"
-          value={filters.minTotalLiquidity}
-          onChange={handleFilterChange('minTotalLiquidity')}
-        />
-      </Grid>
-
-      <Grid item xs={12} md={3}>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={filters.hideBlacklisted}
-              onChange={handleFilterChange('hideBlacklisted')}
-              color="primary"
+    <Box>
+      {/* Search and Quick Filters */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={4}>
+          <TextField
+            fullWidth
+            placeholder="Search by pair name or address..."
+            size="small"
+            value={filters.search}
+            onChange={handleFilterChange('search')}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                bgcolor: 'background.default',
+                '&:hover': {
+                  '& > fieldset': {
+                    borderColor: 'primary.main',
+                  }
+                }
+              }
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} md={8}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 2,
+            alignItems: 'center',
+            height: '100%'
+          }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={filters.hideBlacklisted}
+                  onChange={handleFilterChange('hideBlacklisted')}
+                  color="primary"
+                  size="small"
+                />
+              }
+              label={
+                <Typography variant="body2">Hide Blacklisted</Typography>
+              }
             />
-          }
-          label="Hide Blacklisted Pairs"
-        />
+            <Divider orientation="vertical" flexItem />
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 1,
+              alignItems: 'center'
+            }}>
+              <Typography variant="body2" color="text.secondary">
+                Quick Sort:
+              </Typography>
+              <Tooltip title="Sort by Volume">
+                <IconButton 
+                  size="small"
+                  onClick={() => handleFilterChange('sortBy')({ target: { value: 'volume30min' } })}
+                  color={filters.sortBy === 'volume30min' ? 'primary' : 'default'}
+                >
+                  <MonetizationOnIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Sort by APR">
+                <IconButton 
+                  size="small"
+                  onClick={() => handleFilterChange('sortBy')({ target: { value: 'apr' } })}
+                  color={filters.sortBy === 'apr' ? 'primary' : 'default'}
+                >
+                  <TimelineIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
+        </Grid>
       </Grid>
 
-      <Grid item xs={12} md={6}>
-        <FormControl fullWidth>
-          <InputLabel>Sort By</InputLabel>
-          <Select
-            value={filters.sortBy}
-            label="Sort By"
-            onChange={handleFilterChange('sortBy')}
-          >
-            <MenuItem value="volume30min">30min Volume</MenuItem>
-            <MenuItem value="fees30min">30min Fees</MenuItem>
-            <MenuItem value="fees24h">24h Fees</MenuItem>
-            <MenuItem value="apr">APR</MenuItem>
-            <MenuItem value="totalLiquidity">Total Liquidity</MenuItem>
-            <MenuItem value="totalVolume">Total Volume</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
+      {/* Advanced Filters */}
+      <Paper 
+        variant="outlined" 
+        sx={{ 
+          p: 2,
+          bgcolor: 'background.default'
+        }}
+      >
+        <FilterSection title="Volume & Fees">
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Min 30min Volume"
+                size="small"
+                type="number"
+                value={filters.minVolume30min}
+                onChange={handleFilterChange('minVolume30min')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Min 30min Fees"
+                size="small"
+                type="number"
+                value={filters.minFees30min}
+                onChange={handleFilterChange('minFees30min')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Min 24h Fees"
+                size="small"
+                type="number"
+                value={filters.minFees24h}
+                onChange={handleFilterChange('minFees24h')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <TextField
+                fullWidth
+                label="Min Total Liquidity"
+                size="small"
+                type="number"
+                value={filters.minTotalLiquidity}
+                onChange={handleFilterChange('minTotalLiquidity')}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>
+                }}
+              />
+            </Grid>
+          </Grid>
+        </FilterSection>
 
-      <Grid item xs={12} md={3}>
-        <FormControl fullWidth>
-          <InputLabel>Sort Direction</InputLabel>
-          <Select
-            value={filters.sortDirection}
-            label="Sort Direction"
-            onChange={handleFilterChange('sortDirection')}
-          >
-            <MenuItem value="desc">Descending</MenuItem>
-            <MenuItem value="asc">Ascending</MenuItem>
-          </Select>
-        </FormControl>
-      </Grid>
-    </Grid>
+        <FilterSection title="Pool Parameters">
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                label="Min APR (%)"
+                size="small"
+                type="number"
+                value={filters.minApr}
+                onChange={handleFilterChange('minApr')}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">%</InputAdornment>
+                }}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                label="Bin Step"
+                size="small"
+                type="number"
+                value={filters.binStep}
+                onChange={handleFilterChange('binStep')}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <TextField
+                fullWidth
+                label="Base Fee"
+                size="small"
+                type="number"
+                value={filters.baseFee}
+                onChange={handleFilterChange('baseFee')}
+                InputProps={{
+                  endAdornment: <InputAdornment position="end">%</InputAdornment>
+                }}
+              />
+            </Grid>
+          </Grid>
+        </FilterSection>
+      </Paper>
+    </Box>
   );
 };
 
