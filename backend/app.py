@@ -11,33 +11,29 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Enable CORS with more permissive settings
+# Enable CORS for specific origins
 CORS(app, 
      resources={
          r"/*": {
-             "origins": "*",
+             "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
              "methods": ["GET", "POST", "OPTIONS"],
              "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin"],
              "expose_headers": ["Content-Type"],
-             "max_age": 600,
-             "send_wildcard": True
+             "max_age": 600
          }
-     },
-     supports_credentials=True)
+     })
 
 @app.after_request
 def after_request(response):
     # CORS headers
     origin = request.headers.get('Origin')
-    if origin:
-        response.headers['Access-Control-Allow-Origin'] = origin
-    else:
-        response.headers['Access-Control-Allow-Origin'] = '*'
+    allowed_origins = ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"]
     
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin'
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Max-Age'] = '600'
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin'
+        response.headers['Access-Control-Max-Age'] = '600'
     
     # Security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -176,11 +172,17 @@ def process_pairs_data(data):
 @app.route('/api/pairs', methods=['GET', 'OPTIONS'])
 def get_pairs():
     if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-        return response
+        origin = request.headers.get('Origin')
+        allowed_origins = ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"]
+        
+        if origin in allowed_origins:
+            response = make_response()
+            response.headers.add('Access-Control-Allow-Origin', origin)
+            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Origin')
+            response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            response.headers.add('Access-Control-Max-Age', '600')
+            return response
+        return '', 204
         
     try:
         url = "https://dlmm-api.meteora.ag/pair/all"
