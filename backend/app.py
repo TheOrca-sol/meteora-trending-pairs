@@ -11,31 +11,33 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Enable CORS for specific origins
+# Enable CORS with more permissive settings
 CORS(app, 
      resources={
          r"/*": {
-             "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
+             "origins": "*",
              "methods": ["GET", "POST", "OPTIONS"],
-             "allow_headers": ["Content-Type", "Authorization"],
+             "allow_headers": ["Content-Type", "Authorization", "Accept", "Origin"],
              "expose_headers": ["Content-Type"],
-             "supports_credentials": True,
-             "max_age": 600
+             "max_age": 600,
+             "send_wildcard": True
          }
-     })
+     },
+     supports_credentials=True)
 
 @app.after_request
 def after_request(response):
-    # Get the origin from the request
-    origin = request.headers.get('Origin')
-    allowed_origins = ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"]
-    
     # CORS headers
-    if origin in allowed_origins:
+    origin = request.headers.get('Origin')
+    if origin:
         response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Accept, Origin'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Max-Age'] = '600'
     
     # Security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -174,13 +176,18 @@ def process_pairs_data(data):
 @app.route('/api/pairs', methods=['GET', 'OPTIONS'])
 def get_pairs():
     if request.method == 'OPTIONS':
-        return '', 200
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+        return response
         
     try:
         url = "https://dlmm-api.meteora.ag/pair/all"
         headers = {
             "accept": "application/json",
-            "Cache-Control": "no-cache"  # Prevent caching
+            "Cache-Control": "no-cache",  # Prevent caching
+            "User-Agent": "Meteora-Analytics/1.0"  # Add user agent
         }
         
         logger.info(f"Fetching data from {url}")
