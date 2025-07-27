@@ -11,15 +11,31 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Enable CORS for all origins (for development/production)
-CORS(app, origins=["*"], methods=["GET", "POST", "OPTIONS"], allow_headers=["Content-Type", "Authorization"])
+# Enable CORS for specific origins
+CORS(app, 
+     resources={
+         r"/*": {
+             "origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"],
+             "methods": ["GET", "POST", "OPTIONS"],
+             "allow_headers": ["Content-Type", "Authorization"],
+             "expose_headers": ["Content-Type"],
+             "supports_credentials": True,
+             "max_age": 600
+         }
+     })
 
 @app.after_request
 def after_request(response):
+    # Get the origin from the request
+    origin = request.headers.get('Origin')
+    allowed_origins = ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"]
+    
     # CORS headers
-    response.headers['Access-Control-Allow-Origin'] = '*'
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     
     # Security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -150,8 +166,11 @@ def process_pairs_data(data):
         logger.error(f"Data sample: {data[:2] if data else 'No data'}")
         raise
 
-@app.route('/api/pairs', methods=['GET'])
+@app.route('/api/pairs', methods=['GET', 'OPTIONS'])
 def get_pairs():
+    if request.method == 'OPTIONS':
+        return '', 200
+        
     try:
         url = "https://dlmm-api.meteora.ag/pair/all"
         headers = {
