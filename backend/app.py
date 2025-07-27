@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import logging
 import os
+import gc
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -23,13 +24,35 @@ def after_request(response):
 
 def process_pairs_data(data):
     try:
+        # Clear memory before processing
+        gc.collect()
+        
         logger.info(f"Processing {len(data)} pairs")
         
-        # Log sample of raw data to see the actual field names
-        if data:
-            logger.info(f"Sample raw pair data fields: {list(data[0].keys())}")
+        # Limit data size to reduce memory usage
+        max_pairs = 100  # Reduced from 1000 to 100 for memory constraints
+        if len(data) > max_pairs:
+            logger.info(f"Limiting data to {max_pairs} pairs")
+            data = data[:max_pairs]
         
-        df = pd.DataFrame(data)
+        # Define memory-efficient dtypes
+        dtypes = {
+            'address': 'category',  # Use category for strings that repeat
+            'name': 'category',
+            'current_price': 'float32',  # Use float32 instead of float64
+            'fees_24h': 'float32',
+            'apr': 'float32',
+            'liquidity': 'float32',
+            'cumulative_trade_volume': 'float32',
+            'bin_step': 'int16',  # Use smaller integer type
+            'base_fee_percentage': 'float32',
+            'is_blacklisted': 'bool',
+            'mint_x': 'category',
+            'mint_y': 'category'
+        }
+        
+        # Create DataFrame with optimized dtypes
+        df = pd.DataFrame(data).astype(dtypes, errors='ignore')
         
         selected_columns = [
             'address',
@@ -65,16 +88,21 @@ def process_pairs_data(data):
                 else:
                     df_selected[col] = ''
         
-        # Get 30-minute volume and fees with safe handling
+        # Process volume and fees data efficiently
         df_selected['volume_30min'] = df_selected['volume'].apply(
-            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
-        )
+            lambda x: float(x.get('min_30', 0)) if isinstance(x, dict) else 0.0
+        ).astype('float32')
+        
         df_selected['fees_30min'] = df_selected['fees'].apply(
-            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
-        )
+            lambda x: float(x.get('min_30', 0)) if isinstance(x, dict) else 0.0
+        ).astype('float32')
+        
         df_selected['fee_tvl_30min'] = df_selected['fee_tvl_ratio'].apply(
-            lambda x: x.get('min_30', 0) if isinstance(x, dict) else 0
-        )
+            lambda x: float(x.get('min_30', 0)) if isinstance(x, dict) else 0.0
+        ).astype('float32')
+        
+        # Drop original columns to save memory
+        df_selected = df_selected.drop(['volume', 'fees', 'fee_tvl_ratio'], axis=1, errors='ignore')
         
         # Rename columns
         column_mapping = {
@@ -99,7 +127,10 @@ def process_pairs_data(data):
         existing_mapping = {k: v for k, v in column_mapping.items() if k in df_selected.columns}
         df_selected = df_selected.rename(columns=existing_mapping)
         
+        # Convert to records and clear DataFrame from memory
         processed_data = df_selected.to_dict('records')
+        del df_selected
+        gc.collect()
         
         logger.info(f"Successfully processed {len(processed_data)} pairs")
         return processed_data
@@ -132,6 +163,10 @@ def get_pairs():
         # Process the data
         processed_data = process_pairs_data(data)
         
+        # Clear response data from memory
+        del data
+        gc.collect()
+        
         return jsonify({
             'status': 'success',
             'data': processed_data,
@@ -159,5 +194,11 @@ def health_check():
     })
 
 if __name__ == '__main__':
+    # Configure pandas to use less memory
+    pd.options.mode.chained_assignment = None
+    
+    # Get port from environment variable
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    
+    # Run with optimized settings
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True, processes=1)
