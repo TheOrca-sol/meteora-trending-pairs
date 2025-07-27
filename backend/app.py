@@ -12,17 +12,54 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000"]}})
 
-def process_pairs_data(data):
+def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0, sort_by='fees_24h'):
     try:
         # Clear memory
         gc.collect()
         
-        # Take only first 10 pairs to minimize memory usage
-        limited_data = data[:10]
+        logger.info(f"Processing {len(data)} pairs with filters: page={page}, limit={limit}, search={search_term}, min_liquidity={min_liquidity}")
         
-        # Process data without pandas
+        # Apply search filter first (most efficient)
+        filtered_data = data
+        if search_term:
+            search_term = search_term.upper()
+            filtered_data = [
+                pair for pair in filtered_data 
+                if search_term in str(pair.get('name', '')).upper()
+            ]
+            logger.info(f"After search filter: {len(filtered_data)} pairs")
+        
+        # Apply liquidity filter
+        if min_liquidity > 0:
+            filtered_data = [
+                pair for pair in filtered_data 
+                if float(pair.get('liquidity', 0) or 0) >= min_liquidity
+            ]
+            logger.info(f"After liquidity filter: {len(filtered_data)} pairs")
+        
+        # Sort data
+        sort_key = {
+            'fees_24h': lambda x: float(x.get('fees_24h', 0) or 0),
+            'liquidity': lambda x: float(x.get('liquidity', 0) or 0),
+            'apr': lambda x: float(x.get('apr', 0) or 0),
+            'volume': lambda x: float(x.get('cumulative_trade_volume', 0) or 0),
+            'name': lambda x: str(x.get('name', ''))
+        }.get(sort_by, lambda x: float(x.get('fees_24h', 0) or 0))
+        
+        sorted_data = sorted(filtered_data, key=sort_key, reverse=True)
+        
+        # Calculate pagination
+        total_pairs = len(sorted_data)
+        start_idx = (page - 1) * limit
+        end_idx = start_idx + limit
+        
+        # Get the page slice
+        page_data = sorted_data[start_idx:end_idx]
+        logger.info(f"Page {page}: showing {len(page_data)} pairs (total: {total_pairs})")
+        
+        # Process only the page data
         processed_pairs = []
-        for pair in limited_data:
+        for pair in page_data:
             try:
                 processed_pair = {
                     'address': pair.get('address', ''),
@@ -45,7 +82,17 @@ def process_pairs_data(data):
         # Clear memory
         gc.collect()
         
-        return processed_pairs
+        return {
+            'data': processed_pairs,
+            'pagination': {
+                'page': page,
+                'limit': limit,
+                'total': total_pairs,
+                'total_pages': (total_pairs + limit - 1) // limit,
+                'has_next': end_idx < total_pairs,
+                'has_prev': page > 1
+            }
+        }
     except Exception as e:
         logger.error(f"Error processing data: {str(e)}")
         raise
@@ -53,7 +100,17 @@ def process_pairs_data(data):
 @app.route('/api/pairs', methods=['GET'])
 def get_pairs():
     try:
-        # Fetch data with minimal timeout
+        # Get pagination and filter parameters
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 50)), 100)  # Max 100 per page
+        search_term = request.args.get('search', '')
+        min_liquidity = float(request.args.get('min_liquidity', 0))
+        sort_by = request.args.get('sort_by', 'fees_24h')
+        
+        logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}")
+        
+        # Fetch data
+        logger.info("Fetching data from Meteora API...")
         response = requests.get(
             "https://dlmm-api.meteora.ag/pair/all",
             headers={"accept": "application/json"},
@@ -61,11 +118,13 @@ def get_pairs():
         )
         response.raise_for_status()
         
-        # Get data and immediately limit it
-        data = response.json()[:10]  # Limit before processing
+        # Get full data and process with pagination
+        data = response.json()
+        logger.info(f"Received {len(data)} pairs from Meteora API")
         
-        # Process data
-        processed_data = process_pairs_data(data)
+        # Process data with pagination and filtering
+        result = process_pairs_data(data, page, limit, search_term, min_liquidity, sort_by)
+        logger.info(f"Successfully processed page {page} with {len(result['data'])} pairs")
         
         # Clear memory
         del data
@@ -73,8 +132,7 @@ def get_pairs():
         
         return jsonify({
             'status': 'success',
-            'data': processed_data,
-            'count': len(processed_data)
+            **result
         })
     except Exception as e:
         logger.error(f"Error: {str(e)}")

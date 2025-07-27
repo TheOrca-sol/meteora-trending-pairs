@@ -30,9 +30,10 @@ function App() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [orderBy, setOrderBy] = useState('volume30min');
+  const [rowsPerPage, setRowsPerPage] = useState(50); // Increase default to 50
+  const [orderBy, setOrderBy] = useState('fees_24h'); // Use backend field name
   const [order, setOrder] = useState('desc');
+  const [pagination, setPagination] = useState(null); // Add pagination state
   const [filters, setFilters] = useState({
     search: '',
     minVolume30min: '',
@@ -74,11 +75,19 @@ function App() {
         url: 'https://meteora-trending-pairs-production.up.railway.app/api/pairs',
         headers: {
           'Content-Type': 'application/json'
+        },
+        params: {
+          page: page + 1, // Convert 0-based to 1-based
+          limit: rowsPerPage,
+          search: filters.search, // Use filters.search for searchTerm
+          min_liquidity: filters.minTotalLiquidity, // Use filters.minTotalLiquidity for minLiquidity
+          sort_by: orderBy // Use orderBy for sortBy
         }
       });
       
       console.log('API Response:', response.data);
       setPairs(response.data.data);
+      setPagination(response.data.pagination); // This line was not in the new_code, so it's removed.
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
@@ -88,7 +97,7 @@ function App() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [page, rowsPerPage, filters.search, filters.minTotalLiquidity, orderBy]); // Added dependencies
 
   useEffect(() => {
     fetchPairs();
