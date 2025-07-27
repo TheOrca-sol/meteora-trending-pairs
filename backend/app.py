@@ -16,9 +16,18 @@ CORS(app, origins=["*"], methods=["GET", "POST", "OPTIONS"], allow_headers=["Con
 
 @app.after_request
 def after_request(response):
+    # CORS headers
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    
+    # Security headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    response.headers['Server'] = 'Meteora Analytics'
+    
     return response
 
 def process_pairs_data(data):
