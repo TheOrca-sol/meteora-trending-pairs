@@ -147,50 +147,70 @@ const Row = ({ pair, periodData }) => {
     return `${days}d`;
   };
 
-  if (!pairData) return null;
-
-  // Calculate fees for different periods
-  const volume24h = pairData.volume?.h24 || 0;
-  const volume30m = pairData.volume?.m30 || 0;
-  const feePercentage = pair.fee || 0.3; // Default to 0.3% if not specified
+  // Calculate fees for different periods using DexScreener data if available, or Jupiter data
+  const volume24h = pairData?.volume?.h24 || (tokenInfo?.stats24h?.buyVolume + tokenInfo?.stats24h?.sellVolume) || 0;
+  const volume30m = pairData?.volume?.m30 || 0;
+  const feePercentage = pair.baseFee || 0.3; // Use backend baseFee
   const dailyFees = volume24h * (feePercentage / 100);
   const thirtyMinFees = volume30m * (feePercentage / 100);
   
-  // Calculate APR using daily fees
-  const tvl = pairData.liquidity?.usd || 0;
-  const apr = tvl > 0 ? ((dailyFees * 365 * 100) / tvl) : 0;
+  // Calculate APR using daily fees from DexScreener/Jupiter or fallback to backend APR
+  const tvl = pairData?.liquidity?.usd || tokenInfo?.liquidity || pair.totalLiquidity || 0;
+  const calculatedApr = tvl > 0 ? ((dailyFees * 365 * 100) / tvl) : 0;
+  const finalApr = calculatedApr || pair.apr || 0;
 
-  // Get stats for each timeframe
+  // Get stats for each timeframe from DexScreener or Jupiter fallback
   const timeframes = {
     '5m': {
-      txns: pairData.txns?.m5,
-      volume: pairData.volume?.m5,
-      priceChange: pairData.priceChange?.m5
+      txns: pairData?.txns?.m5 || { 
+        buys: tokenInfo?.stats5m?.numBuys || 0, 
+        sells: tokenInfo?.stats5m?.numSells || 0 
+      },
+      volume: pairData?.volume?.m5 || (tokenInfo?.stats5m?.buyVolume + tokenInfo?.stats5m?.sellVolume) || 0,
+      priceChange: pairData?.priceChange?.m5 || tokenInfo?.stats5m?.priceChange || 0
     },
     '1h': {
-      txns: pairData.txns?.h1,
-      volume: pairData.volume?.h1,
-      priceChange: pairData.priceChange?.h1
+      txns: pairData?.txns?.h1 || { 
+        buys: tokenInfo?.stats1h?.numBuys || 0, 
+        sells: tokenInfo?.stats1h?.numSells || 0 
+      },
+      volume: pairData?.volume?.h1 || (tokenInfo?.stats1h?.buyVolume + tokenInfo?.stats1h?.sellVolume) || 0,
+      priceChange: pairData?.priceChange?.h1 || tokenInfo?.stats1h?.priceChange || 0
     },
     '6h': {
-      txns: pairData.txns?.h6,
-      volume: pairData.volume?.h6,
-      priceChange: pairData.priceChange?.h6
+      txns: pairData?.txns?.h6 || { 
+        buys: tokenInfo?.stats6h?.numBuys || 0, 
+        sells: tokenInfo?.stats6h?.numSells || 0 
+      },
+      volume: pairData?.volume?.h6 || (tokenInfo?.stats6h?.buyVolume + tokenInfo?.stats6h?.sellVolume) || 0,
+      priceChange: pairData?.priceChange?.h6 || tokenInfo?.stats6h?.priceChange || 0
     },
     '24h': {
-      txns: pairData.txns?.h24,
-      volume: pairData.volume?.h24,
-      priceChange: pairData.priceChange?.h24
+      txns: pairData?.txns?.h24 || { 
+        buys: tokenInfo?.stats24h?.numBuys || 0, 
+        sells: tokenInfo?.stats24h?.numSells || 0 
+      },
+      volume: pairData?.volume?.h24 || (tokenInfo?.stats24h?.buyVolume + tokenInfo?.stats24h?.sellVolume) || 0,
+      priceChange: pairData?.priceChange?.h24 || tokenInfo?.stats24h?.priceChange || 0
     }
   };
 
   // Add debug logging
-  console.log('Row received pair data:', {
-    price: pair?.price,
-    fees24h: pair?.fees24h,
-    fees30min: pair?.fees30min,
-    totalLiquidity: pair?.totalLiquidity
+  console.log('Row data sources:', {
+    pairName: pair?.pairName,
+    dexScreener: pairData ? 'Available' : 'Not loaded',
+    jupiterToken: tokenInfo ? 'Available' : 'Not loaded',
+    dexVolume24h: pairData?.volume?.h24,
+    jupiterVolume24h: tokenInfo?.stats24h ? (tokenInfo.stats24h.buyVolume + tokenInfo.stats24h.sellVolume) : 'N/A',
+    dexLiquidity: pairData?.liquidity?.usd,
+    jupiterLiquidity: tokenInfo?.liquidity,
+    backendPrice: pair?.price,
+    finalVolume24h: volume24h,
+    finalTvl: tvl
   });
+
+  // Don't return null - always show the row, even if DexScreener data is loading
+  // if (!pairData) return null;
 
   return (
     <>
@@ -252,7 +272,7 @@ const Row = ({ pair, periodData }) => {
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Typography sx={{ fontWeight: 500, color: 'text.primary' }}>
-                  {pairData?.baseToken?.symbol || pairXToken?.symbol}-{pairData?.quoteToken?.symbol}
+                  {pairData?.baseToken?.symbol || pair.pairName?.split('-')[0] || 'Unknown'}-{pairData?.quoteToken?.symbol || pair.pairName?.split('-')[1] || 'SOL'}
                 </Typography>
                 <Typography 
                   sx={{ 
@@ -264,7 +284,7 @@ const Row = ({ pair, periodData }) => {
                     fontSize: '0.75rem',
                   }}
                 >
-                  {pair.version}
+                  DLMM
                 </Typography>
               </Box>
               <Box sx={{ display: 'flex', gap: 1 }}>
@@ -310,7 +330,7 @@ const Row = ({ pair, periodData }) => {
         {/* Price */}
         <TableCell align="right">
           <Typography sx={{ fontFamily: 'monospace', fontWeight: 500 }}>
-            ${formatPrice(pair?.price)}
+            ${formatPrice(pairData?.priceUsd || tokenInfo?.usdPrice || pair?.price || 0)}
           </Typography>
         </TableCell>
 
@@ -318,10 +338,10 @@ const Row = ({ pair, periodData }) => {
         <TableCell align="right">
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
             <Typography sx={{ fontWeight: 500, color: 'success.main' }}>
-              ${formatNumber(pair?.fees24h)}
+              ${formatNumber(dailyFees || pair?.fees24h || 0)}
             </Typography>
             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-              30m: ${formatNumber(pair?.fees30min)}
+              30m: ${formatNumber(thirtyMinFees)}
             </Typography>
           </Box>
         </TableCell>
@@ -329,7 +349,7 @@ const Row = ({ pair, periodData }) => {
         {/* TVL */}
         <TableCell align="right">
           <Typography sx={{ fontWeight: 500 }}>
-            ${formatNumber(pair?.totalLiquidity)}
+            ${formatNumber(pairData?.liquidity?.usd || tokenInfo?.liquidity || pair?.totalLiquidity || 0)}
           </Typography>
         </TableCell>
 
@@ -339,7 +359,7 @@ const Row = ({ pair, periodData }) => {
             fontWeight: 500,
             color: 'success.main'
           }}>
-            {Number(pair.apr).toLocaleString()}%
+            {Number(finalApr).toLocaleString()}%
           </Typography>
         </TableCell>
 
