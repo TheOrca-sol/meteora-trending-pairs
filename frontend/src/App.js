@@ -76,7 +76,7 @@ function App() {
       
       const response = await axios({
         method: 'get',
-        url: 'https://meteora-analytics.vercel.app/api/pairs',
+        url: 'meteora-trending-pairs-production.up.railway.app',
         headers: {
           'Content-Type': 'application/json'
         },
