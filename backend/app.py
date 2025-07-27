@@ -1,7 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
-import pandas as pd
 import logging
 import os
 import gc
@@ -18,29 +17,35 @@ def process_pairs_data(data):
         # Clear memory
         gc.collect()
         
-        # Take only first 25 pairs to ensure we stay within memory limits
-        limited_data = data[:25]
+        # Take only first 10 pairs to minimize memory usage
+        limited_data = data[:10]
         
-        # Convert to DataFrame with minimal columns
-        df = pd.DataFrame(limited_data)[['address', 'name', 'current_price', 'fees_24h', 'apr', 'liquidity', 'bin_step', 'base_fee_percentage', 'is_blacklisted', 'mint_x', 'mint_y']]
-        
-        # Rename columns
-        df = df.rename(columns={
-            'name': 'pairName',
-            'current_price': 'price',
-            'liquidity': 'totalLiquidity',
-            'bin_step': 'binStep',
-            'base_fee_percentage': 'baseFee'
-        })
-        
-        # Convert to records
-        result = df.to_dict('records')
+        # Process data without pandas
+        processed_pairs = []
+        for pair in limited_data:
+            try:
+                processed_pair = {
+                    'address': pair.get('address', ''),
+                    'pairName': pair.get('name', ''),
+                    'price': float(pair.get('current_price', 0) or 0),
+                    'fees24h': float(pair.get('fees_24h', 0) or 0),
+                    'apr': float(pair.get('apr', 0) or 0),
+                    'totalLiquidity': float(pair.get('liquidity', 0) or 0),
+                    'binStep': int(pair.get('bin_step', 0) or 0),
+                    'baseFee': float(pair.get('base_fee_percentage', 0) or 0),
+                    'is_blacklisted': bool(pair.get('is_blacklisted', False)),
+                    'mint_x': pair.get('mint_x', ''),
+                    'mint_y': pair.get('mint_y', '')
+                }
+                processed_pairs.append(processed_pair)
+            except Exception as e:
+                logger.error(f"Error processing pair: {e}")
+                continue
         
         # Clear memory
-        del df
         gc.collect()
         
-        return result
+        return processed_pairs
     except Exception as e:
         logger.error(f"Error processing data: {str(e)}")
         raise
@@ -48,16 +53,18 @@ def process_pairs_data(data):
 @app.route('/api/pairs', methods=['GET'])
 def get_pairs():
     try:
-        # Fetch data
+        # Fetch data with minimal timeout
         response = requests.get(
             "https://dlmm-api.meteora.ag/pair/all",
             headers={"accept": "application/json"},
-            timeout=30
+            timeout=15
         )
         response.raise_for_status()
         
+        # Get data and immediately limit it
+        data = response.json()[:10]  # Limit before processing
+        
         # Process data
-        data = response.json()
         processed_data = process_pairs_data(data)
         
         # Clear memory
