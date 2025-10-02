@@ -37,6 +37,8 @@ export const config = {
 
   // Bot Configuration
   bot: {
+    paperTrading: process.env.PAPER_TRADING === 'true',
+    paperTradingStartingCapital: parseFloat(process.env.PAPER_TRADING_STARTING_CAPITAL || '1000'),
     minTvl: parseFloat(process.env.MIN_TVL || '100000'),
     minApr: parseFloat(process.env.MIN_APR || '50'),
     maxPositionPercent: parseFloat(process.env.MAX_POSITION_PERCENT || '20'),

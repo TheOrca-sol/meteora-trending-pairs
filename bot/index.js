@@ -8,6 +8,7 @@ import scoringService from './services/scoring.service.js';
 import strategyService from './services/strategy.service.js';
 import riskManager from './services/risk-manager.service.js';
 import executionService from './services/execution.service.js';
+import notificationService from './services/notification.service.js';
 
 class MeteoraBot {
   constructor() {
@@ -42,6 +43,9 @@ class MeteoraBot {
       // Initialize Solana connection and wallet
       await solanaService.initialize();
       logger.info('✓ Solana service initialized');
+
+      // Initialize notifications (pass bot instance for commands)
+      notificationService.initialize(this);
 
       // Perform initial data fetch
       logger.info('Fetching initial pool data...');
@@ -99,6 +103,9 @@ class MeteoraBot {
 
       // Run initial scan
       await this.scanOpportunities();
+
+      // Send start notification
+      await notificationService.notifyBotStarted();
 
       logger.info('✓ Bot started successfully');
       logger.info(`Monitoring interval: ${config.bot.rebalanceIntervalMinutes} minutes`);
@@ -161,7 +168,11 @@ class MeteoraBot {
       const exitCheck = await riskManager.shouldExitPosition(position);
       if (exitCheck.shouldExit) {
         logger.warn(`Exiting position ${position.id}: ${exitCheck.reason}`);
-        await executionService.exitPosition(position, exitCheck.reason);
+        const pnl = await riskManager.calculatePositionPnL(position, pool);
+        const result = await executionService.exitPosition(position, exitCheck.reason);
+        if (result.success) {
+          await notificationService.notifyPositionExited(position, exitCheck.reason, pnl);
+        }
         this.stats.totalPositionsExited++;
         return;
       }
@@ -172,11 +183,14 @@ class MeteoraBot {
       const claimCheck = await riskManager.shouldClaimRewards(position, estimatedRewards);
       if (claimCheck.shouldClaim) {
         logger.info(`Claiming rewards from position ${position.id}`);
-        await executionService.claimPositionRewards(
+        const result = await executionService.claimPositionRewards(
           position,
           position.pool_address,
           position.position_pubkey
         );
+        if (result.success && result.signatures) {
+          await notificationService.notifyRewardsClaimed(position, result.signatures);
+        }
         this.stats.totalRewardsClaimed++;
       }
 
@@ -250,9 +264,17 @@ class MeteoraBot {
 
       if (result.success) {
         logger.info(`✓ Position entered successfully in ${result.poolName}`);
+        await notificationService.notifyPositionEntered({
+          ...result,
+          positionValue: params.positionValue,
+          strategy: params.strategy,
+          strategyReason: params.strategyReason,
+          entryApr: params.entryApr,
+        });
         this.stats.totalPositionsEntered++;
       } else {
         logger.error(`✗ Failed to enter position: ${result.error}`);
+        await notificationService.notifyError('Position Entry Failed', result.error);
         this.stats.errors++;
       }
     } catch (error) {
@@ -266,12 +288,18 @@ class MeteoraBot {
    */
   async getAvailableCapital() {
     try {
-      // Get wallet balance
-      const solBalance = await solanaService.getBalance();
+      let totalCapitalUsd;
 
-      // Convert SOL to USD (rough estimate, TODO: get actual SOL price)
-      const solPriceUsd = 100; // Placeholder
-      const totalCapitalUsd = solBalance * solPriceUsd;
+      if (config.bot.paperTrading) {
+        // Paper trading: Use simulated starting capital
+        totalCapitalUsd = config.bot.paperTradingStartingCapital;
+      } else {
+        // Live trading: Get wallet balance
+        const solBalance = await solanaService.getBalance();
+        // Convert SOL to USD (rough estimate, TODO: get actual SOL price)
+        const solPriceUsd = 100; // Placeholder
+        totalCapitalUsd = solBalance * solPriceUsd;
+      }
 
       // Get active positions value
       const activePositions = await database.getActivePositions();
@@ -283,7 +311,8 @@ class MeteoraBot {
       const reserveAmount = totalCapitalUsd * (config.bot.minReservePercent / 100);
       const availableCapital = totalCapitalUsd - allocatedCapital - reserveAmount;
 
-      logger.debug(`Capital - Total: $${totalCapitalUsd.toFixed(2)}, Allocated: $${allocatedCapital.toFixed(2)}, Available: $${availableCapital.toFixed(2)}`);
+      const mode = config.bot.paperTrading ? '[PAPER]' : '[LIVE]';
+      logger.debug(`${mode} Capital - Total: $${totalCapitalUsd.toFixed(2)}, Allocated: $${allocatedCapital.toFixed(2)}, Available: $${availableCapital.toFixed(2)}`);
 
       return Math.max(0, availableCapital);
     } catch (error) {
@@ -321,6 +350,7 @@ class MeteoraBot {
     this.isPaused = true;
 
     await database.setBotState('status', 'stopped');
+    await notificationService.notifyBotStopped();
 
     logger.info('Bot stopped');
   }
@@ -335,6 +365,8 @@ class MeteoraBot {
 
     const result = await executionService.emergencyExitAll();
     logger.info(`Emergency exit: ${result.exitedCount}/${result.totalCount} positions closed`);
+
+    await notificationService.notifyEmergencyStop(result.exitedCount, result.totalCount);
 
     await this.stop();
   }
