@@ -60,12 +60,23 @@ class RiskManagerService {
   /**
    * Check strategy-specific exit conditions
    * Based on LP Army battle-tested strategies
+   * Supports both legacy and modular strategies
    */
   async checkStrategySpecificExit(position, pool) {
     try {
       const strategy = position.strategy;
       const dex = pool.dexScreener;
       if (!dex) return { shouldExit: false };
+
+      // Check if this is a modular strategy
+      const strategyRegistry = (await import('./strategies/index.js')).default;
+      const modularStrategy = strategyRegistry.getStrategy(strategy);
+      if (modularStrategy) {
+        // Use the strategy's own exit logic
+        return await modularStrategy.shouldExitPosition(position, pool);
+      }
+
+      // Fall through to legacy strategy exit checks
 
       // Get position age
       const positionAge = Date.now() - new Date(position.created_at).getTime();

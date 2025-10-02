@@ -2,8 +2,24 @@ import config from '../config/config.js';
 import logger from '../utils/logger.js';
 import { calculateBinRange, safeDivide } from '../utils/helpers.js';
 import dataAggregator from './data-aggregator.service.js';
+import { strategyRegistry, initializeStrategies } from './strategies/index.js';
 
 class StrategyService {
+  constructor() {
+    // Initialize modular strategies on first load
+    this.strategiesInitialized = false;
+  }
+
+  /**
+   * Ensure strategies are initialized
+   */
+  ensureStrategiesInitialized() {
+    if (!this.strategiesInitialized) {
+      initializeStrategies();
+      this.strategiesInitialized = true;
+      logger.info(`Strategy system initialized with ${strategyRegistry.getStrategyCount()} modular strategies`);
+    }
+  }
   /**
    * Calculate volume metrics for strategy selection
    */
@@ -29,10 +45,29 @@ class StrategyService {
 
   /**
    * Determine optimal strategy based on pool characteristics
-   * Enhanced with LP Army battle-tested strategies
+   * Enhanced with LP Army battle-tested strategies and modular registry
    */
   async determineStrategy(pool) {
     try {
+      // Ensure strategies are loaded
+      this.ensureStrategiesInitialized();
+
+      // Try modular strategies first (8 new strategies)
+      const modularStrategy = await strategyRegistry.evaluateStrategies(pool);
+      if (modularStrategy && modularStrategy.name !== 'spot') {
+        const strategyConfig = modularStrategy.config;
+        return {
+          type: modularStrategy.name,
+          reason: modularStrategy.reason,
+          timeframe: strategyConfig.timeframe,
+          binTightness: strategyConfig.binTightness,
+          riskLevel: strategyConfig.riskLevel,
+          exitCondition: modularStrategy.metadata.exitCondition,
+          metadata: modularStrategy.metadata,
+        };
+      }
+
+      // Fall back to legacy inline strategies if modular didn't match
       const dex = pool.dexScreener;
       if (!dex) {
         // Default to spot if no DexScreener data
@@ -109,10 +144,11 @@ class StrategyService {
 
       // SLOW COOK STRATEGY: Multi-day, lower stress, wider ranges
       // For stable tokens with good fundamentals
+      const slowCookVolume = dex.volume24h || 0;
       if (
         priceChange24h < 8 &&
-        volume24h > 1000000 && // Good liquidity
-        pool.tvl > 500000 && // Established pool
+        slowCookVolume > 1000000 && // Good liquidity
+        (pool.tvl || 0) > 500000 && // Established pool
         buyPercent >= 45 && buyPercent <= 55 // Balanced trading
       ) {
         return {
