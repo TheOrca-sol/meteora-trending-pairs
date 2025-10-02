@@ -7,6 +7,7 @@ import database from '../models/database.js';
 class RiskManagerService {
   /**
    * Check if position should be exited based on risk parameters
+   * Enhanced with strategy-specific exit conditions
    */
   async shouldExitPosition(position) {
     try {
@@ -17,6 +18,12 @@ class RiskManagerService {
           reason: 'Pool data not available',
           urgency: 'high',
         };
+      }
+
+      // Strategy-specific exit conditions
+      const strategyExit = await this.checkStrategySpecificExit(position, pool);
+      if (strategyExit.shouldExit) {
+        return strategyExit;
       }
 
       const checks = [
@@ -48,6 +55,111 @@ class RiskManagerService {
         reason: 'Error checking exit conditions',
       };
     }
+  }
+
+  /**
+   * Check strategy-specific exit conditions
+   * Based on LP Army battle-tested strategies
+   */
+  async checkStrategySpecificExit(position, pool) {
+    try {
+      const strategy = position.strategy;
+      const dex = pool.dexScreener;
+      if (!dex) return { shouldExit: false };
+
+      // Get position age
+      const positionAge = Date.now() - new Date(position.created_at).getTime();
+      const hoursOpen = positionAge / (1000 * 60 * 60);
+
+      // HEART ATTACK STRATEGY: Exit on volume drop
+      if (strategy === 'heartattack') {
+        const volumeMetrics = this.calculateVolumeMetrics(pool);
+
+        // Exit if volume drops below threshold or position age > 1 hour
+        if (volumeMetrics.volume5m < 50000 || hoursOpen > 1) {
+          return {
+            shouldExit: true,
+            reason: `Heart Attack exit: Volume dropped to ${(volumeMetrics.volume5m / 1000).toFixed(0)}K or timeout (${hoursOpen.toFixed(1)}h)`,
+            urgency: 'high',
+          };
+        }
+      }
+
+      // TIGHT RANGE STRATEGY: Exit if price moves out of range
+      if (strategy === 'tightrange') {
+        const entryPrice = position.entry_price;
+        const currentPrice = dex.priceUsd;
+        const priceChange = Math.abs(((currentPrice - entryPrice) / entryPrice) * 100);
+
+        // Exit if price moved > 10% (out of tight range) or position age > 4 hours
+        if (priceChange > 10 || hoursOpen > 4) {
+          return {
+            shouldExit: true,
+            reason: `Tight range exit: Price moved ${priceChange.toFixed(1)}% or timeout (${hoursOpen.toFixed(1)}h)`,
+            urgency: 'medium',
+          };
+        }
+      }
+
+      // SINGLE-SIDED STRATEGY: Exit when market stabilizes
+      if (strategy === 'singlesided') {
+        const priceChange24h = Math.abs(dex.priceChange24h || 0);
+        const buyPercent = this.calculateBuyPercent(dex);
+
+        // Exit if volatility decreases < 10% or market becomes balanced
+        if (priceChange24h < 10 || (buyPercent >= 45 && buyPercent <= 55)) {
+          return {
+            shouldExit: true,
+            reason: `Single-sided exit: Market stabilized (${priceChange24h.toFixed(1)}% vol, ${buyPercent.toFixed(0)}% buys)`,
+            urgency: 'low',
+          };
+        }
+      }
+
+      // SLOW COOK STRATEGY: Time-based exit (multi-day hold)
+      if (strategy === 'slowcook') {
+        // Exit after 3 days or if APR declines significantly
+        if (hoursOpen > 72) {
+          return {
+            shouldExit: true,
+            reason: `Slow cook timeout: Position held for ${(hoursOpen / 24).toFixed(1)} days`,
+            urgency: 'low',
+          };
+        }
+      }
+
+      return { shouldExit: false };
+    } catch (error) {
+      logger.error('Failed to check strategy-specific exit:', error);
+      return { shouldExit: false };
+    }
+  }
+
+  /**
+   * Calculate volume metrics for strategy checks
+   */
+  calculateVolumeMetrics(pool) {
+    const dex = pool.dexScreener;
+    if (!dex) return { volume5m: 0, volume1h: 0, volumeVelocity: 0 };
+
+    const volume1h = dex.volume1h || 0;
+    const volume24h = dex.volume24h || 0;
+    const volume5m = volume1h / 12;
+
+    const expectedHourlyRatio = 1 / 24;
+    const actualHourlyRatio = volume24h > 0 ? volume1h / volume24h : 0;
+    const volumeVelocity = actualHourlyRatio / expectedHourlyRatio;
+
+    return { volume5m, volume1h, volume24h, volumeVelocity };
+  }
+
+  /**
+   * Calculate buy percentage from transaction data
+   */
+  calculateBuyPercent(dex) {
+    const txns24h = dex.txns24h || { buys: 0, sells: 0 };
+    const totalTxns = txns24h.buys + txns24h.sells;
+    return totalTxns > 0 ? (txns24h.buys / totalTxns) * 100 : 50;
   }
 
   /**

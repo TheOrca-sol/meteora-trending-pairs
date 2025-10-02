@@ -5,7 +5,31 @@ import dataAggregator from './data-aggregator.service.js';
 
 class StrategyService {
   /**
+   * Calculate volume metrics for strategy selection
+   */
+  calculateVolumeMetrics(pool) {
+    const dex = pool.dexScreener;
+    if (!dex) return { volume5m: 0, volume1h: 0, volumeVelocity: 0 };
+
+    // Estimate 5-minute volume from hourly data
+    const volume1h = dex.volume1h || 0;
+    const volume24h = dex.volume24h || 0;
+
+    // Approximate 5-minute volume (1h / 12)
+    const volume5m = volume1h / 12;
+
+    // Volume velocity: how much volume is accelerating
+    // If 1h volume is higher proportion of 24h, volume is accelerating
+    const expectedHourlyRatio = 1 / 24;
+    const actualHourlyRatio = volume24h > 0 ? volume1h / volume24h : 0;
+    const volumeVelocity = actualHourlyRatio / expectedHourlyRatio;
+
+    return { volume5m, volume1h, volume24h, volumeVelocity };
+  }
+
+  /**
    * Determine optimal strategy based on pool characteristics
+   * Enhanced with LP Army battle-tested strategies
    */
   async determineStrategy(pool) {
     try {
@@ -15,15 +39,93 @@ class StrategyService {
         return {
           type: 'spot',
           reason: 'No market data available - using balanced spot strategy',
+          timeframe: 'medium',
+          binTightness: 'medium',
         };
       }
 
       const priceChange24h = Math.abs(dex.priceChange24h || 0);
+      const priceChange1h = Math.abs(dex.priceChange1h || 0);
       const txns24h = dex.txns24h || { buys: 0, sells: 0 };
       const totalTxns = txns24h.buys + txns24h.sells;
       const buyPercent = totalTxns > 0 ? (txns24h.buys / totalTxns) * 100 : 50;
 
-      // Curve Strategy: Low volatility, balanced trading
+      // Calculate volume metrics
+      const volumeMetrics = this.calculateVolumeMetrics(pool);
+      const { volume5m, volume1h, volumeVelocity } = volumeMetrics;
+
+      // HEART ATTACK STRATEGY: High-volume spikes with aggressive first leg
+      // Quick in/out for rapid fee generation
+      if (
+        volume5m > 100000 && // Volume > 100K per 5 minutes
+        volumeVelocity > 3 && // Volume accelerating rapidly
+        priceChange1h > 10 && // Strong 1h movement
+        buyPercent > 55 // Bullish sentiment
+      ) {
+        return {
+          type: 'heartattack',
+          reason: `Volume spike detected (${(volume5m / 1000).toFixed(0)}K/5min, ${priceChange1h.toFixed(1)}% 1h move) - aggressive entry`,
+          timeframe: 'ultrafast',
+          binTightness: 'tight',
+          riskLevel: 'high',
+          exitCondition: 'volumeDrop',
+        };
+      }
+
+      // TIGHT RANGE QUICK ROTATION: High momentum, extremely tight bins
+      // For established trending tokens with consistent volume
+      if (
+        volume1h > 500000 && // Strong sustained volume
+        priceChange1h > 5 &&
+        priceChange1h < 15 && // Moderate but consistent movement
+        totalTxns > 100 // Active trading
+      ) {
+        return {
+          type: 'tightrange',
+          reason: `High momentum (${(volume1h / 1000).toFixed(0)}K/1h, ${priceChange1h.toFixed(1)}% 1h) - tight range for quick fees`,
+          timeframe: 'fast',
+          binTightness: 'verytight',
+          riskLevel: 'high',
+          exitCondition: 'priceOutOfRange',
+        };
+      }
+
+      // SINGLE-SIDED SOL SPOT: For volatile/dumping markets
+      // Provide only SOL side to capture fees while accumulating base token
+      if (
+        priceChange24h > 15 &&
+        buyPercent < 40 && // Bearish/dump scenario
+        dex.priceChange24h < -10 // Actual dump, not just volatility
+      ) {
+        return {
+          type: 'singlesided',
+          reason: `Bearish volatility (${priceChange24h.toFixed(1)}%, ${buyPercent.toFixed(0)}% buys) - single-sided SOL strategy`,
+          timeframe: 'medium',
+          binTightness: 'wide',
+          riskLevel: 'medium',
+          sidePreference: 'sol',
+        };
+      }
+
+      // SLOW COOK STRATEGY: Multi-day, lower stress, wider ranges
+      // For stable tokens with good fundamentals
+      if (
+        priceChange24h < 8 &&
+        volume24h > 1000000 && // Good liquidity
+        pool.tvl > 500000 && // Established pool
+        buyPercent >= 45 && buyPercent <= 55 // Balanced trading
+      ) {
+        return {
+          type: 'slowcook',
+          reason: `Stable fundamentals (${priceChange24h.toFixed(1)}% vol, $${(pool.tvl / 1000).toFixed(0)}K TVL) - long-term position`,
+          timeframe: 'slow',
+          binTightness: 'wide',
+          riskLevel: 'low',
+          exitCondition: 'timeOrAprDecline',
+        };
+      }
+
+      // CURVE STRATEGY: Low volatility, concentrated liquidity
       if (
         priceChange24h <= config.strategy.curveMaxPriceChange24h &&
         buyPercent >= config.strategy.curveBuyRatioMin &&
@@ -32,33 +134,46 @@ class StrategyService {
         return {
           type: 'curve',
           reason: `Low volatility (${priceChange24h.toFixed(2)}%), balanced trading (${buyPercent.toFixed(0)}% buys)`,
+          timeframe: 'medium',
+          binTightness: 'tight',
+          riskLevel: 'low',
         };
       }
 
-      // Bid-Ask Strategy: High volatility
+      // WIDE BID-ASK STRATEGY: High volatility, wide spreads
       if (priceChange24h >= config.strategy.bidAskMinPriceChange24h) {
         return {
           type: 'bidask',
-          reason: `High volatility (${priceChange24h.toFixed(2)}%) - using wide bid-ask spread`,
+          reason: `High volatility (${priceChange24h.toFixed(2)}%) - wide bid-ask spread`,
+          timeframe: 'medium',
+          binTightness: 'wide',
+          riskLevel: 'medium',
         };
       }
 
-      // Spot Strategy: Moderate conditions (default)
+      // SPOT STRATEGY: Moderate conditions (default)
       return {
         type: 'spot',
-        reason: `Moderate volatility (${priceChange24h.toFixed(2)}%) - using balanced spot strategy`,
+        reason: `Moderate volatility (${priceChange24h.toFixed(2)}%) - balanced spot strategy`,
+        timeframe: 'medium',
+        binTightness: 'medium',
+        riskLevel: 'medium',
       };
     } catch (error) {
       logger.error('Failed to determine strategy:', error);
       return {
         type: 'spot',
         reason: 'Error determining strategy - using default spot',
+        timeframe: 'medium',
+        binTightness: 'medium',
+        riskLevel: 'medium',
       };
     }
   }
 
   /**
    * Calculate optimal bin range for strategy
+   * Enhanced with dynamic bin tightness based on LP Army strategies
    */
   async calculateBinParameters(pool, strategy) {
     try {
@@ -70,19 +185,57 @@ class StrategyService {
         ? dataAggregator.calculateVolatility(history)
         : Math.abs(pool.dexScreener?.priceChange24h || 10);
 
-      // Calculate bin range based on strategy and volatility
-      const binRange = calculateBinRange(binStep, volatility, strategy.type);
+      // Calculate base bin range
+      let binRange = calculateBinRange(binStep, volatility, strategy.type);
+
+      // Adjust bin range based on strategy tightness
+      switch (strategy.binTightness) {
+        case 'verytight':
+          // Extremely tight for quick rotation (50% of normal)
+          binRange = Math.max(2, Math.floor(binRange * 0.5));
+          break;
+        case 'tight':
+          // Tight for concentrated liquidity (70% of normal)
+          binRange = Math.max(3, Math.floor(binRange * 0.7));
+          break;
+        case 'medium':
+          // Normal range (100%)
+          break;
+        case 'wide':
+          // Wide for slow cook and volatile markets (150% of normal)
+          binRange = Math.floor(binRange * 1.5);
+          break;
+      }
+
+      // Special handling for single-sided strategy
+      if (strategy.type === 'singlesided') {
+        // Very wide range (-95% for SOL side)
+        binRange = Math.floor(binRange * 2.5);
+      }
 
       // Get current active bin (we'll estimate from price)
       // In production, we'd fetch this from DLMM
       const estimatedActiveBin = 8388608; // 2^23, typical middle bin
 
+      // For single-sided, adjust to provide liquidity on one side only
+      let lowerBinId, upperBinId;
+      if (strategy.type === 'singlesided' && strategy.sidePreference === 'sol') {
+        // Provide liquidity below current price (buying side)
+        lowerBinId = estimatedActiveBin - binRange;
+        upperBinId = estimatedActiveBin;
+      } else {
+        // Symmetric range
+        lowerBinId = estimatedActiveBin - binRange;
+        upperBinId = estimatedActiveBin + binRange;
+      }
+
       return {
-        lowerBinId: estimatedActiveBin - binRange,
-        upperBinId: estimatedActiveBin + binRange,
+        lowerBinId,
+        upperBinId,
         binRange,
         volatility,
         activeBinEstimate: estimatedActiveBin,
+        tightness: strategy.binTightness,
       };
     } catch (error) {
       logger.error('Failed to calculate bin parameters:', error);
@@ -93,6 +246,7 @@ class StrategyService {
         binRange: 10,
         volatility: 10,
         activeBinEstimate: 8388608,
+        tightness: 'medium',
       };
     }
   }
@@ -129,6 +283,7 @@ class StrategyService {
 
   /**
    * Calculate token amounts for liquidity provision
+   * Enhanced with single-sided support and dynamic allocation
    */
   calculateTokenAmounts(positionValue, pool, strategy) {
     try {
@@ -141,11 +296,37 @@ class StrategyService {
       // Strategy-based allocation
       let tokenXPercent = 0.5; // Default 50/50
 
-      if (strategy.type === 'curve') {
-        // Curve: More balanced, concentrated in middle
+      // SINGLE-SIDED STRATEGY: Provide only one token
+      if (strategy.type === 'singlesided') {
+        if (strategy.sidePreference === 'sol') {
+          // Only SOL (tokenY)
+          tokenXPercent = 0;
+        } else {
+          // Only base token (tokenX)
+          tokenXPercent = 1.0;
+        }
+      }
+      // HEART ATTACK & TIGHT RANGE: Aggressive positioning based on momentum
+      else if (strategy.type === 'heartattack' || strategy.type === 'tightrange') {
+        const priceChange1h = pool.dexScreener?.priceChange1h || 0;
+        if (priceChange1h > 0) {
+          // Strong uptrend: More Y token (SOL) to sell into rallies
+          tokenXPercent = 0.2;
+        } else {
+          // Downtrend: More X token (base) to buy dips
+          tokenXPercent = 0.8;
+        }
+      }
+      // SLOW COOK: Conservative balanced approach
+      else if (strategy.type === 'slowcook') {
+        tokenXPercent = 0.5; // Balanced
+      }
+      // CURVE: Concentrated in middle
+      else if (strategy.type === 'curve') {
         tokenXPercent = 0.5;
-      } else if (strategy.type === 'bidask') {
-        // Bid-Ask: More extreme, depends on price trend
+      }
+      // BID-ASK: Depends on trend
+      else if (strategy.type === 'bidask') {
         const priceChange24h = pool.dexScreener?.priceChange24h || 0;
         if (priceChange24h > 0) {
           // Uptrend: More Y token (quote) to sell into
@@ -154,8 +335,9 @@ class StrategyService {
           // Downtrend: More X token (base) to buy
           tokenXPercent = 0.7;
         }
-      } else {
-        // Spot: Balanced
+      }
+      // SPOT: Balanced
+      else {
         tokenXPercent = 0.5;
       }
 
@@ -172,6 +354,8 @@ class StrategyService {
         tokenXValue,
         tokenYValue,
         ratio: tokenXPercent,
+        isSingleSided: strategy.type === 'singlesided',
+        sidePreference: strategy.sidePreference,
       };
     } catch (error) {
       logger.error('Failed to calculate token amounts:', error);
