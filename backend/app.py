@@ -31,20 +31,38 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
         
         # Apply liquidity filter
         if min_liquidity > 0:
+            def safe_float(value, default=0.0):
+                """Safely convert value to float, handling empty strings and None"""
+                if value is None or value == '':
+                    return default
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    return default
+            
             filtered_data = [
                 pair for pair in filtered_data 
-                if float(pair.get('liquidity', 0) or 0) >= min_liquidity
+                if safe_float(pair.get('liquidity', 0)) >= min_liquidity
             ]
             logger.info(f"After liquidity filter: {len(filtered_data)} pairs")
         
         # Sort data
+        def safe_float(value, default=0.0):
+            """Safely convert value to float, handling empty strings and None"""
+            if value is None or value == '':
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        
         sort_key = {
-            'fees_24h': lambda x: float(x.get('fees_24h', 0) or 0),
-            'liquidity': lambda x: float(x.get('liquidity', 0) or 0),
-            'apr': lambda x: float(x.get('apr', 0) or 0),
-            'volume': lambda x: float(x.get('cumulative_trade_volume', 0) or 0),
+            'fees_24h': lambda x: safe_float(x.get('fees_24h', 0)),
+            'liquidity': lambda x: safe_float(x.get('liquidity', 0)),
+            'apr': lambda x: safe_float(x.get('apr', 0)),
+            'volume': lambda x: safe_float(x.get('cumulative_trade_volume', 0)),
             'name': lambda x: str(x.get('name', ''))
-        }.get(sort_by, lambda x: float(x.get('fees_24h', 0) or 0))
+        }.get(sort_by, lambda x: safe_float(x.get('fees_24h', 0)))
         
         sorted_data = sorted(filtered_data, key=sort_key, reverse=True)
         
@@ -58,18 +76,36 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
         logger.info(f"Page {page}: showing {len(page_data)} pairs (total: {total_pairs})")
         
         # Process only the page data
+        def safe_float(value, default=0.0):
+            """Safely convert value to float, handling empty strings and None"""
+            if value is None or value == '':
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+
+        def safe_int(value, default=0):
+            """Safely convert value to int, handling empty strings and None"""
+            if value is None or value == '':
+                return default
+            try:
+                return int(float(value))  # Convert to float first to handle "1.0" strings
+            except (ValueError, TypeError):
+                return default
+
         processed_pairs = []
         for pair in page_data:
             try:
                 processed_pair = {
                     'address': pair.get('address', ''),
                     'pairName': pair.get('name', ''),
-                    'price': float(pair.get('current_price', 0) or 0),
-                    'fees24h': float(pair.get('fees_24h', 0) or 0),
-                    'apr': float(pair.get('apr', 0) or 0),
-                    'totalLiquidity': float(pair.get('liquidity', 0) or 0),
-                    'binStep': int(pair.get('bin_step', 0) or 0),
-                    'baseFee': float(pair.get('base_fee_percentage', 0) or 0),
+                    'price': safe_float(pair.get('current_price', 0)),
+                    'fees24h': safe_float(pair.get('fees_24h', 0)),
+                    'apr': safe_float(pair.get('apr', 0)),
+                    'totalLiquidity': safe_float(pair.get('liquidity', 0)),
+                    'binStep': safe_int(pair.get('bin_step', 0)),
+                    'baseFee': safe_float(pair.get('base_fee_percentage', 0)),
                     'is_blacklisted': bool(pair.get('is_blacklisted', False)),
                     'mint_x': pair.get('mint_x', ''),
                     'mint_y': pair.get('mint_y', '')

@@ -23,40 +23,52 @@ This project provides a powerful analytics platform for monitoring and analyzing
 - **Blacklist Toggle**: Option to hide blacklisted pairs
 
 ### 📈 Comprehensive Metrics
-- **Price Information**: Current price with precision formatting
+- **Price Information**: Current price with precision formatting from multiple sources
 - **Fee Analytics**: 30-minute and 24-hour fee generation
 - **TVL Tracking**: Total Value Locked in USD
 - **APR Calculation**: Annual Percentage Rate based on daily fees
-- **Transaction Analysis**: Buy/sell transaction counts with visual indicators
+- **Transaction Analysis**: Buy/sell transaction counts with visual percentage bars
 - **Volume Tracking**: Trading volume across multiple timeframes (5m, 1h, 6h, 24h)
-- **Price Changes**: Percentage changes across different time periods
+- **Price Changes**: Percentage changes across different time periods with trend indicators
+- **Token Security**: Comprehensive security analysis with RugCheck integration
+- **Holder Analysis**: Top token holders and distribution data
+- **Distribution Maps**: Interactive BubbleMaps visualization
 
 ### 🎨 User Experience
 - **Dark/Light Theme**: Toggle between dark and light themes
 - **Responsive Design**: Optimized for desktop and mobile devices
 - **Interactive Tables**: Expandable rows with detailed pair information
 - **Sorting**: Sort by any metric in ascending or descending order
-- **Pagination**: Navigate through large datasets efficiently
+- **Server-Side Pagination**: Efficient navigation through large datasets
+- **Loading States**: Visual feedback during data fetching and pagination
+- **Copy to Clipboard**: Easy copying of addresses and contract details
+- **External Links**: Quick access to Solscan, Meteora app, and social media
 
 ### 🔗 External Integrations
 - **DexScreener API**: Enhanced market data and transaction analytics
 - **Jupiter API**: Token information and metadata
+- **RugCheck API**: Comprehensive token security analysis
+- **Helius RPC**: On-chain token holder data
+- **BubbleMaps**: Interactive token distribution visualization
 - **Meteora App**: Direct links to trade on Meteora platform
+- **Solscan Explorer**: Blockchain transaction and account explorer
 
 ## 🏗️ Architecture
 
 ### Backend (Flask)
 - **API Endpoints**: RESTful API for fetching and filtering pair data
-- **Data Processing**: Pandas-based data transformation and aggregation
+- **Data Processing**: Server-side pagination, filtering, and sorting
 - **CORS Support**: Cross-origin resource sharing for frontend integration
 - **Error Handling**: Comprehensive error handling and logging
+- **Memory Management**: Efficient garbage collection for large datasets
 
 ### Frontend (React)
 - **Component Architecture**: Modular, reusable components
 - **State Management**: React hooks for efficient state management
 - **Material-UI**: Professional UI components and theming
 - **Analytics Integration**: Google Analytics and Vercel Analytics
-- **Real-time Updates**: WebSocket-like experience with polling
+- **Real-time Updates**: Automatic data refresh with configurable intervals
+- **Multi-Source Data Aggregation**: Combines data from 6+ APIs for comprehensive analytics
 
 ## 🛠️ Technology Stack
 
@@ -64,20 +76,22 @@ This project provides a powerful analytics platform for monitoring and analyzing
 - **Python 3.x**
 - **Flask**: Web framework
 - **Flask-CORS**: Cross-origin resource sharing
-- **Pandas**: Data manipulation and analysis
 - **Requests**: HTTP library for API calls
 
 ### Frontend
 - **React 18**: UI library
 - **Material-UI (MUI)**: Component library
 - **Axios**: HTTP client
-- **React Virtuoso**: Virtual scrolling for large datasets
 - **Vercel Analytics**: Performance monitoring
 
-### APIs
-- **Meteora DLMM API**: Primary data source
-- **DexScreener API**: Market data enrichment
-- **Jupiter API**: Token information
+### Data Sources & APIs
+- **Meteora DLMM API**: Primary liquidity pool data
+- **DexScreener API**: Real-time market data and trading activity
+- **Jupiter API**: Token metadata and information
+- **RugCheck API**: Token security analysis and risk assessment
+- **Helius RPC**: Solana blockchain data and token holders
+- **BubbleMaps**: Token distribution visualization
+- **Solscan**: Blockchain explorer integration
 
 ## 📦 Installation & Setup
 
@@ -116,57 +130,122 @@ FLASK_DEBUG=True
 ```
 
 ### API Endpoints
-- `GET /api/pairs`: Fetch all pairs data
-- `GET /api/pairs/search`: Search and filter pairs
+- `GET /api/pairs`: Fetch paginated pairs data with filtering and sorting
+  - Query params: `page`, `limit`, `search`, `min_liquidity`, `sort_by`
 - `GET /api/health`: Health check endpoint
 
 ## 📊 Data Sources
 
-### Meteora DLMM API
+### 1. Meteora DLMM API (Backend - Primary Data)
 - **Endpoint**: `https://dlmm-api.meteora.ag/pair/all`
-- **Data**: Pair addresses, names, prices, volumes, fees, APR, liquidity
+- **Data Provided**:
+  - Pool addresses and names
+  - Current prices
+  - 24h fees and APR
+  - Total liquidity (TVL)
+  - Bin step and base fee percentage
+  - Blacklist status
+  - Token mint addresses (mint_x, mint_y)
 
-### DexScreener API
+### 2. DexScreener API (Frontend - Real-time Market Data)
 - **Endpoint**: `https://api.dexscreener.com/latest/dex/pairs/solana/{address}`
-- **Data**: Transaction counts, price changes, volume breakdowns
+- **Data Provided**:
+  - Real-time price and USD value
+  - Price changes (5m, 1h, 6h, 24h)
+  - Trading volume across timeframes
+  - Buy/sell transaction counts
+  - Liquidity in USD
+  - Token logos and symbols
+  - Pair creation timestamp
 
-### Jupiter API
-- **Endpoint**: `https://api.jup.ag/tokens/v1/token/{address}`
-- **Data**: Token metadata, logos, symbols
+### 3. Jupiter API (Frontend - Token Information)
+- **Endpoint**: `https://lite-api.jup.ag/tokens/v2/search?query={address}`
+- **Data Provided**:
+  - Token metadata (name, symbol, logo)
+  - Decimals and creation date
+  - Security info (mint/freeze authority)
+  - Trading statistics by timeframe
+  - Token tags and categories
+  - USD price (fallback)
+
+### 4. RugCheck API (Security Analysis)
+- **Endpoint**: `https://api.rugcheck.xyz/v1/tokens/{address}/report/summary`
+- **Data Provided**:
+  - Comprehensive security risk scores
+  - Vulnerability detection
+  - Risk severity levels
+  - Security recommendations
+  - Rug pull indicators
+
+### 5. Helius RPC (Blockchain Data)
+- **Endpoint**: `https://mainnet.helius-rpc.com/`
+- **Method**: `getTokenLargestAccounts`
+- **Data Provided**:
+  - Largest token holder addresses
+  - Token balance distribution
+  - Holder account information
+  - On-chain ownership data
+
+### 6. BubbleMaps (Visualization)
+- **Endpoint**: `https://app.bubblemaps.io/sol/token/{address}`
+- **Data Provided**:
+  - Interactive token distribution map
+  - Whale and cluster visualization
+  - Holder relationship network
+  - Concentration analysis
+
+### 7. Solscan Explorer (Integration)
+- **Endpoint**: `https://solscan.io/`
+- **Usage**: Direct links to blockchain explorer for detailed transaction and account information
 
 ## 🎯 Use Cases
 
 ### For Traders
-- Identify trending pairs with high volume
-- Track price movements across timeframes
+- Identify trending pairs with high volume and activity
+- Track price movements across multiple timeframes (5m, 1h, 6h, 24h)
 - Monitor fee generation for arbitrage opportunities
-- Analyze buy/sell transaction ratios
+- Analyze buy/sell transaction ratios with visual indicators
+- Assess token security before trading with RugCheck integration
 
 ### For Liquidity Providers
 - Find high-APR pools for yield farming
-- Monitor TVL changes and liquidity depth
+- Monitor TVL changes and liquidity depth in real-time
 - Track fee generation relative to liquidity
-- Identify pools with optimal bin steps
+- Identify pools with optimal bin steps and fee structures
+- Analyze holder concentration to assess risk
 
-### For Researchers
-- Analyze market trends and patterns
+### For Security-Conscious Investors
+- Comprehensive token security analysis with RugCheck
+- View mint and freeze authority status
+- Check top holder distribution and concentration
+- Visualize token distribution with BubbleMaps
+- Identify blacklisted or risky pairs
+
+### For Researchers & Analysts
+- Analyze market trends and trading patterns
 - Study liquidity pool performance metrics
-- Monitor blacklisted pairs and security concerns
-- Track cumulative trading volumes
+- Track cumulative trading volumes across timeframes
+- Research token holder behavior and distribution
+- Export data for further analysis
 
 ## 🔒 Security Features
 
-- **Blacklist Detection**: Identifies and flags blacklisted pairs
+- **Blacklist Detection**: Identifies and flags blacklisted pairs from Meteora
+- **Token Security Analysis**: Integration with RugCheck for comprehensive risk assessment
+- **Authority Checks**: Displays mint and freeze authority status for tokens
+- **Holder Transparency**: Shows token holder distribution to identify concentration risks
 - **Data Validation**: Comprehensive input validation and sanitization
 - **Error Handling**: Graceful error handling without exposing sensitive data
 - **CORS Protection**: Proper CORS configuration for security
 
 ## 📈 Performance Optimizations
 
-- **Data Caching**: Efficient data processing and caching strategies
-- **Virtual Scrolling**: Handles large datasets without performance degradation
-- **Lazy Loading**: Components load data on-demand
-- **Debounced Search**: Optimized search with debouncing
+- **Server-Side Processing**: Backend handles pagination, filtering, and sorting
+- **Memory Management**: Garbage collection strategies for handling large datasets
+- **Lazy Data Loading**: Frontend components fetch additional data on-demand (DexScreener, Jupiter, etc.)
+- **Parallel API Calls**: Multiple data sources fetched concurrently using Promise.all
+- **Optimized Rendering**: Only displays current page data to minimize DOM operations
+- **Smart Fallbacks**: Uses Jupiter data when DexScreener is unavailable
 
 ## 🤝 Contributing
 
@@ -183,9 +262,14 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - **Meteora Team**: For providing the DLMM API and protocol
-- **DexScreener**: For comprehensive market data
-- **Jupiter**: For token information and metadata
+- **DexScreener**: For comprehensive real-time market data
+- **Jupiter Aggregator**: For token information and metadata
+- **RugCheck**: For token security analysis
+- **Helius**: For Solana RPC infrastructure
+- **BubbleMaps**: For token distribution visualization
+- **Solscan**: For blockchain explorer integration
 - **Material-UI**: For the excellent component library
+- **Solana Foundation**: For the blockchain infrastructure
 
 ## 📞 Support
 
