@@ -78,6 +78,7 @@ Welcome! Available commands:
 /settvl [amount] - Set minimum TVL (e.g., /settvl 50000)
 /setapr [percent] - Set minimum APR (e.g., /setapr 40)
 /resetsettings - Reset all to defaults
+/clearsignals - Clear signal cache (allow re-sending)
 
 <b>Strategies & Performance:</b>
 /strategies - List all available strategies
@@ -851,6 +852,36 @@ MIN_APR: ${oldApr}% → ${config.bot.minApr}%
       } catch (error) {
         logger.error('Error handling /resetsettings command:', error);
         await this.bot.sendMessage(msg.chat.id, '❌ Error resetting settings');
+      }
+    });
+
+    // /clearsignals - Clear signal cache to allow re-sending signals
+    this.bot.onText(/\/clearsignals/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        if (!this.meteoraBot) {
+          await this.bot.sendMessage(msg.chat.id, '❌ Bot instance not available');
+          return;
+        }
+
+        const count = this.meteoraBot.clearSignalCache();
+
+        const message = `
+✅ <b>Signal Cache Cleared</b>
+
+Cleared ${count} cached signals.
+
+All pools will be eligible for new signals on the next scan.
+
+<i>Use this if you want to re-receive signals for existing opportunities.</i>
+        `.trim();
+
+        await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
+        logger.info(`Signal cache cleared via Telegram (${count} signals)`);
+      } catch (error) {
+        logger.error('Error handling /clearsignals command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error clearing signal cache');
       }
     });
 

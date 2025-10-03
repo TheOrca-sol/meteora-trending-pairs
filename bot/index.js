@@ -24,6 +24,10 @@ class MeteoraBot {
       totalRewardsClaimed: 0,
       errors: 0,
     };
+
+    // Signal tracking cache to prevent duplicates
+    this.signalCache = new Map(); // poolAddress -> { timestamp, apr, tvl, score }
+    this.lastTopPools = new Set(); // Pool addresses from last scan
   }
 
   /**
@@ -286,11 +290,39 @@ class MeteoraBot {
         return;
       }
 
-      // SIGNAL MODE: Send signals for all top pools (not just one)
+      // Track current top pools
+      const currentTopPools = new Set(topPools.map(p => p.address));
+
+      // Clean up old signals (older than 24 hours)
+      const now = Date.now();
+      const SIGNAL_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+      for (const [poolAddress, data] of this.signalCache.entries()) {
+        if (now - data.timestamp > SIGNAL_CACHE_TTL) {
+          this.signalCache.delete(poolAddress);
+          logger.debug(`Removed stale signal cache for ${poolAddress}`);
+        }
+      }
+
+      // SIGNAL MODE: Send signals for new/changed pools only
       let signalsSent = 0;
+      let skippedDuplicates = 0;
+
       for (const pool of topPools) {
         try {
-          logger.info(`Evaluating pool: ${pool.pairName} (Score: ${pool.scores.totalScore})`);
+          const tvl = pool.tvl || pool.totalLiquidity || 0;
+          const apr = pool.apr || 0;
+          const score = pool.scores?.overall || 0;
+
+          // Check if we should send signal for this pool
+          const shouldSignal = this.shouldSendSignal(pool.address, tvl, apr, score, currentTopPools);
+
+          if (!shouldSignal.send) {
+            logger.debug(`Skipping ${pool.pairName}: ${shouldSignal.reason}`);
+            skippedDuplicates++;
+            continue;
+          }
+
+          logger.info(`Evaluating pool: ${pool.pairName} (Score: ${score}) - ${shouldSignal.reason}`);
 
           // Calculate base position size (20% of reference capital)
           const basePositionSize = referenceCapital * 0.2;
@@ -314,6 +346,14 @@ class MeteoraBot {
           await this.sendManualEntrySignal(pool, params);
           signalsSent++;
 
+          // Cache this signal
+          this.signalCache.set(pool.address, {
+            timestamp: now,
+            apr,
+            tvl,
+            score,
+          });
+
           logger.info(`📊 Signal #${signalsSent} sent for ${pool.pairName}`);
 
           // Add small delay between signals to avoid rate limiting
@@ -325,7 +365,10 @@ class MeteoraBot {
         }
       }
 
-      logger.info(`✓ Sent ${signalsSent} opportunity signals`);
+      // Update last top pools for next scan
+      this.lastTopPools = currentTopPools;
+
+      logger.info(`✓ Sent ${signalsSent} new signals, skipped ${skippedDuplicates} duplicates`);
       return;
 
       // COMMENTED OUT - Will be re-enabled when DLMM SDK is implemented
@@ -419,6 +462,59 @@ class MeteoraBot {
   }
 
   /**
+   * Check if signal should be sent for a pool
+   */
+  shouldSendSignal(poolAddress, currentTvl, currentApr, currentScore, currentTopPools) {
+    const cached = this.signalCache.get(poolAddress);
+
+    // Case 1: Never signaled before - SEND
+    if (!cached) {
+      return { send: true, reason: 'New opportunity detected' };
+    }
+
+    // Case 2: Was NOT in top 10 last scan, but is NOW - SEND (re-entered top 10)
+    if (!this.lastTopPools.has(poolAddress) && currentTopPools.has(poolAddress)) {
+      return { send: true, reason: 'Re-entered top 10' };
+    }
+
+    // Case 3: Significant APR increase (>20%) - SEND
+    const aprChange = ((currentApr - cached.apr) / cached.apr) * 100;
+    if (aprChange > 20) {
+      return { send: true, reason: `APR increased ${aprChange.toFixed(1)}%` };
+    }
+
+    // Case 4: Significant TVL increase (>50%) - SEND
+    const tvlChange = ((currentTvl - cached.tvl) / cached.tvl) * 100;
+    if (tvlChange > 50) {
+      return { send: true, reason: `TVL increased ${tvlChange.toFixed(1)}%` };
+    }
+
+    // Case 5: Score improved significantly (>10 points) - SEND
+    const scoreChange = currentScore - cached.score;
+    if (scoreChange > 10) {
+      return { send: true, reason: `Score improved by ${scoreChange} points` };
+    }
+
+    // Otherwise: Already signaled recently with no significant changes - SKIP
+    const hoursSinceSignal = (Date.now() - cached.timestamp) / (1000 * 60 * 60);
+    return {
+      send: false,
+      reason: `Already signaled ${hoursSinceSignal.toFixed(1)}h ago, no significant changes`
+    };
+  }
+
+  /**
+   * Clear signal cache (for manual reset)
+   */
+  clearSignalCache() {
+    const count = this.signalCache.size;
+    this.signalCache.clear();
+    this.lastTopPools.clear();
+    logger.info(`Cleared ${count} cached signals`);
+    return count;
+  }
+
+  /**
    * Pause bot operations
    */
   async pause() {
@@ -472,28 +568,36 @@ class MeteoraBot {
    * Send manual entry signal to Telegram
    */
   async sendManualEntrySignal(pool, params) {
+    // Extract data with fallbacks from multiple sources
+    const tvl = pool.tvl || pool.totalLiquidity || pool.dexScreener?.liquidity || 0;
+    const volume24h = pool.volume24h || pool.dexScreener?.volume24h || 0;
+    const priceChange24h = pool.priceChange24h || pool.dexScreener?.priceChange24h || 0;
+    const score = pool.scores?.overall || pool.scores?.totalScore || 0;
+    const fee = pool.fee || pool.baseFee || 0;
+    const trade5m = pool.trade5m || (pool.dexScreener?.txns1h ? (pool.dexScreener.txns1h.buys + pool.dexScreener.txns1h.sells) : 0);
+
     // Calculate 24h Fee/TVL ratio
-    const feeToTvlRatio = pool.fees24h && pool.tvl
-      ? ((pool.fees24h / pool.tvl) * 100).toFixed(4)
+    const feeToTvlRatio = pool.fees24h && tvl
+      ? ((pool.fees24h / tvl) * 100).toFixed(4)
       : 'N/A';
 
     const message = `
 🎯 <b>ENTRY SIGNAL - Manual Action Required</b>
 
 <b>Pool:</b> ${pool.pairName}
-<b>Score:</b> ${pool.scores.totalScore} (Top Opportunity)
+<b>Score:</b> ${score} (Top Opportunity)
 
 <b>📊 Pool Details:</b>
 • Address: <code>${pool.address}</code>
-• TVL: $${pool.tvl?.toLocaleString() || 'N/A'}
+• TVL: $${tvl?.toLocaleString() || 'N/A'}
 • APR: ${pool.apr?.toFixed(2) || 'N/A'}%
 • Bin Step: ${pool.binStep || 'N/A'}
-• Fee: ${pool.fee ? (pool.fee / 100).toFixed(2) + '%' : 'N/A'}
-• 24h Volume: $${pool.volume24h?.toLocaleString() || 'N/A'}
+• Fee: ${fee ? (fee / 100).toFixed(2) + '%' : 'N/A'}
+• 24h Volume: $${volume24h?.toLocaleString() || 'N/A'}
 • 24h Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}
 • 24h Fee/TVL: ${feeToTvlRatio}%
-• 5m Transactions: ${pool.trade5m || 'N/A'}
-• Price Change: ${pool.priceChange24h?.toFixed(2) || 'N/A'}%
+• 5m Transactions: ${trade5m || 'N/A'}
+• Price Change: ${priceChange24h?.toFixed(2) || 'N/A'}%
 
 <b>💡 Strategy:</b> ${params.strategy?.toUpperCase()}
 ${params.strategyReason || 'Optimal strategy for current conditions'}
@@ -521,12 +625,12 @@ ${params.activeBinId ? `• Active Bin: ${params.activeBinId}` : ''}
     logger.info('\n' + '='.repeat(80));
     logger.info('📊 ENTRY SIGNAL GENERATED');
     logger.info('='.repeat(80));
-    logger.info(`Pool: ${pool.pairName} | Score: ${pool.scores.totalScore}`);
+    logger.info(`Pool: ${pool.pairName} | Score: ${score}`);
     logger.info(`Address: ${pool.address}`);
-    logger.info(`TVL: $${pool.tvl?.toLocaleString() || 'N/A'} | APR: ${pool.apr?.toFixed(2) || 'N/A'}%`);
-    logger.info(`Bin Step: ${pool.binStep || 'N/A'} | Fee: ${pool.fee ? (pool.fee / 100).toFixed(2) + '%' : 'N/A'}`);
-    logger.info(`24h Volume: $${pool.volume24h?.toLocaleString() || 'N/A'} | Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}`);
-    logger.info(`24h Fee/TVL: ${feeToTvlRatio}% | 5m Tx: ${pool.trade5m || 'N/A'} | Price Change: ${pool.priceChange24h?.toFixed(2) || 'N/A'}%`);
+    logger.info(`TVL: $${tvl?.toLocaleString() || 'N/A'} | APR: ${pool.apr?.toFixed(2) || 'N/A'}%`);
+    logger.info(`Bin Step: ${pool.binStep || 'N/A'} | Fee: ${fee ? (fee / 100).toFixed(2) + '%' : 'N/A'}`);
+    logger.info(`24h Volume: $${volume24h?.toLocaleString() || 'N/A'} | Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}`);
+    logger.info(`24h Fee/TVL: ${feeToTvlRatio}% | 5m Tx: ${trade5m || 'N/A'} | Price Change: ${priceChange24h?.toFixed(2) || 'N/A'}%`);
     logger.info(`Strategy: ${params.strategy?.toUpperCase()} | Size: $${params.positionValue?.toFixed(2) || 'N/A'}`);
     logger.info(`Meteora: https://app.meteora.ag/pools/${pool.address}`);
     logger.info('='.repeat(80) + '\n');
