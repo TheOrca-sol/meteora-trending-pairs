@@ -10,6 +10,7 @@ import riskManager from './services/risk-manager.service.js';
 import executionService from './services/execution.service.js';
 import notificationService from './services/notification.service.js';
 import performanceTracker from './services/performance-tracker.service.js';
+import strategyOptimizer from './services/strategy-optimizer.service.js';
 
 class MeteoraBot {
   constructor() {
@@ -193,6 +194,48 @@ class MeteoraBot {
           await notificationService.notifyRewardsClaimed(position, result.signatures);
         }
         this.stats.totalRewardsClaimed++;
+      }
+
+      // Check if should switch strategies (optimization)
+      const optimizationCheck = await strategyOptimizer.evaluatePositionOptimization(position, pool);
+      if (optimizationCheck.shouldSwitch && optimizationCheck.confidence >= 70) {
+        logger.info(`Strategy switch recommended for position ${position.id}:`);
+        logger.info(`  Current: ${optimizationCheck.currentStrategy} (score: ${optimizationCheck.currentScore})`);
+        logger.info(`  Suggested: ${optimizationCheck.suggestedStrategy} (score: ${optimizationCheck.suggestedScore})`);
+        logger.info(`  Confidence: ${optimizationCheck.confidence}% | Score diff: +${optimizationCheck.scoreDiff}`);
+        logger.info(`  Reason: ${optimizationCheck.reason}`);
+
+        // Record switch decision
+        await database.logEvent(
+          'strategy_switch_recommended',
+          position.id,
+          position.pool_address,
+          `Switch from ${optimizationCheck.currentStrategy} to ${optimizationCheck.suggestedStrategy}`,
+          {
+            ...optimizationCheck,
+            actionTaken: 'switch_executed',
+          }
+        );
+
+        // Exit old position
+        await executionService.exitPosition(position, `Strategy optimization: switching to ${optimizationCheck.suggestedStrategy}`);
+        this.stats.totalPositionsExited++;
+
+        // Record the switch
+        strategyOptimizer.recordStrategySwitch(position.id);
+
+        // Enter new position with optimized strategy
+        const scores = scoringService.calculatePoolScore(pool);
+        const availableCapital = await this.getAvailableCapital();
+        const params = await strategyService.createLiquidityParameters(pool, availableCapital, scores);
+        const result = await executionService.enterPosition(params);
+
+        if (result.success) {
+          await notificationService.notifyStrategySwitch(position, optimizationCheck);
+          this.stats.totalPositionsEntered++;
+        }
+
+        return; // Skip rebalancing check after strategy switch
       }
 
       // Check if needs rebalancing

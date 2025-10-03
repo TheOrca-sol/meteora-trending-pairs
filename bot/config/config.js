@@ -64,6 +64,15 @@ export const config = {
     marketConditionsWeight: 0.1,
   },
 
+  // Strategy Optimization
+  optimization: {
+    enabled: process.env.STRATEGY_OPTIMIZATION_ENABLED !== 'false', // Default: true
+    minHoldTimeMinutes: parseInt(process.env.MIN_HOLD_TIME_MINUTES || '30'),
+    switchThresholdScore: parseInt(process.env.SWITCH_THRESHOLD_SCORE || '20'),
+    minConfidencePercent: parseInt(process.env.MIN_CONFIDENCE_PERCENT || '70'),
+    switchCooldownHours: parseInt(process.env.SWITCH_COOLDOWN_HOURS || '1'),
+  },
+
   // Strategy Thresholds
   strategy: {
     // Curve strategy: low volatility

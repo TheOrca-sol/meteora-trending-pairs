@@ -76,6 +76,7 @@ Welcome! Available commands:
 /strategies - List all available strategies
 /leaderboard [timeframe] - Strategy leaderboard
 /report [timeframe] - Performance report
+/optimize - Show optimization opportunities
 
 <b>Control:</b>
 /pause - Pause bot operations
@@ -479,6 +480,43 @@ Note: PnL tracking coming soon
       }
     });
 
+    // /optimize - Show optimization opportunities
+    this.bot.onText(/\/optimize/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const strategyOptimizer = (await import('./strategy-optimizer.service.js')).default;
+        const report = await strategyOptimizer.generateOptimizationReport();
+
+        let message = `🔧 <b>Optimization Report</b>\n\n`;
+        message += `<b>Active Positions:</b> ${report.totalPositions}\n`;
+        message += `<b>Opportunities:</b> ${report.opportunitiesFound}\n\n`;
+
+        if (report.opportunities.length > 0) {
+          message += '<b>Top Opportunities:</b>\n\n';
+          report.opportunities.forEach((opp, i) => {
+            message += `${i + 1}. <b>${opp.pool.pairName || 'Unknown'}</b>\n`;
+            message += `   Current: ${opp.evaluation.currentStrategy} (${opp.evaluation.currentScore})\n`;
+            message += `   → ${opp.evaluation.suggestedStrategy} (${opp.evaluation.suggestedScore})\n`;
+            message += `   Gain: +${opp.evaluation.scoreDiff} | Confidence: ${opp.evaluation.confidence}%\n\n`;
+          });
+
+          if (report.opportunitiesFound > 5) {
+            message += `<i>...and ${report.opportunitiesFound - 5} more</i>\n\n`;
+          }
+
+          message += `<b>Total Potential:</b> +${report.totalPotentialGain} score points`;
+        } else {
+          message += '✅ All positions are using optimal strategies!';
+        }
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /optimize command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error generating optimization report');
+      }
+    });
+
     logger.info('Telegram command handlers registered');
   }
 
@@ -550,6 +588,33 @@ ${txLink}
 
 📊 Pool: <b>${position.pool_name || 'Unknown'}</b>
 ⚠️ Reason: ${reason}${pnlText}
+
+Position ID: #${position.id}
+    `.trim();
+
+    await this.send(message);
+  }
+
+  /**
+   * Notify strategy switch
+   */
+  async notifyStrategySwitch(position, optimizationCheck) {
+    const message = `
+🔄 <b>Strategy Optimization</b>
+
+📊 Pool: <b>${position.pool_name || 'Unknown'}</b>
+
+<b>Switch Details:</b>
+• From: ${optimizationCheck.currentStrategy?.toUpperCase()} (Score: ${optimizationCheck.currentScore})
+• To: ${optimizationCheck.suggestedStrategy?.toUpperCase()} (Score: ${optimizationCheck.suggestedScore})
+• Improvement: +${optimizationCheck.scoreDiff} points
+• Confidence: ${optimizationCheck.confidence}%
+
+💡 ${optimizationCheck.reason}
+
+${optimizationCheck.conditionsChanged?.changed
+  ? `📈 Market changed: ${optimizationCheck.conditionsChanged.metric} (${optimizationCheck.conditionsChanged.change.toFixed(1)}${optimizationCheck.conditionsChanged.metric === 'price' ? '%' : ' pts'})`
+  : ''}
 
 Position ID: #${position.id}
     `.trim();
