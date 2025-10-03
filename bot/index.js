@@ -611,7 +611,7 @@ ${params.upperBinId ? `• Upper Bin: ${params.upperBinId}` : ''}
 ${params.activeBinId ? `• Active Bin: ${params.activeBinId}` : ''}
 
 <b>🔗 Quick Links:</b>
-• <a href="https://app.meteora.ag/pools/${pool.address}">Open in Meteora</a>
+• <a href="https://app.meteora.ag/dlmm/${pool.address}">Open in Meteora</a>
 • <a href="https://solscan.io/account/${pool.address}">View on Solscan</a>
 
 ⏰ Found at: ${new Date().toLocaleString()}
@@ -632,7 +632,7 @@ ${params.activeBinId ? `• Active Bin: ${params.activeBinId}` : ''}
     logger.info(`24h Volume: $${volume24h?.toLocaleString() || 'N/A'} | Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}`);
     logger.info(`24h Fee/TVL: ${feeToTvlRatio}% | 5m Tx: ${trade5m || 'N/A'} | Price Change: ${priceChange24h?.toFixed(2) || 'N/A'}%`);
     logger.info(`Strategy: ${params.strategy?.toUpperCase()} | Size: $${params.positionValue?.toFixed(2) || 'N/A'}`);
-    logger.info(`Meteora: https://app.meteora.ag/pools/${pool.address}`);
+    logger.info(`Meteora: https://app.meteora.ag/dlmm/${pool.address}`);
     logger.info('='.repeat(80) + '\n');
   }
 
