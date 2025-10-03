@@ -87,11 +87,10 @@ class MeteoraBot {
 
       await database.setBotState('status', 'running');
 
-      // Schedule data updates + opportunity scanning every 1 minute
-      // Run sequentially to ensure scan has complete enriched data
+      // Schedule opportunity scanning every 1 minute
+      // DexScreener data is fetched on-demand for top pools
       cron.schedule('*/1 * * * *', async () => {
         if (!this.isPaused) {
-          await this.updateData();
           await this.scanOpportunities();
         }
       });
@@ -103,11 +102,7 @@ class MeteoraBot {
         }
       });
 
-      // Run initial data update to fetch DexScreener data before first scan
-      logger.info('Fetching initial pool data with DexScreener enrichment...');
-      await this.updateData();
-
-      // Run initial scan
+      // Run initial scan (DexScreener data fetched on-demand for top pools)
       await this.scanOpportunities();
 
       // Send start notification
@@ -322,6 +317,16 @@ class MeteoraBot {
           }
 
           logger.info(`Evaluating pool: ${pool.pairName} (Score: ${score}) - ${shouldSignal.reason}`);
+
+          // Fetch fresh DexScreener data for this specific pool (like frontend does)
+          logger.debug(`Fetching DexScreener data for ${pool.address}...`);
+          const dexData = await dataAggregator.fetchDexScreenerData(pool.address);
+          if (dexData) {
+            pool.dexScreener = dexData;
+            logger.debug(`DexScreener data fetched: 5m txns=${(dexData.txns5m?.buys || 0) + (dexData.txns5m?.sells || 0)}`);
+          } else {
+            logger.warn(`No DexScreener data available for ${pool.address}`);
+          }
 
           // Calculate base position size (20% of reference capital)
           const basePositionSize = referenceCapital * 0.2;
