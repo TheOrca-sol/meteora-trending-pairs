@@ -87,10 +87,12 @@ class MeteoraBot {
 
       await database.setBotState('status', 'running');
 
-      // Schedule data updates every 1 minute
+      // Schedule data updates + opportunity scanning every 1 minute
+      // Run sequentially to ensure scan has complete enriched data
       cron.schedule('*/1 * * * *', async () => {
         if (!this.isPaused) {
           await this.updateData();
+          await this.scanOpportunities();
         }
       });
 
@@ -98,13 +100,6 @@ class MeteoraBot {
       cron.schedule(`*/${config.bot.rebalanceIntervalMinutes} * * * *`, async () => {
         if (!this.isPaused) {
           await this.monitorPositions();
-        }
-      });
-
-      // Schedule opportunity scanning every 1 minute
-      cron.schedule('*/1 * * * *', async () => {
-        if (!this.isPaused) {
-          await this.scanOpportunities();
         }
       });
 
