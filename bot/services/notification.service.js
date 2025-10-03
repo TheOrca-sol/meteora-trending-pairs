@@ -62,7 +62,7 @@ class NotificationService {
       if (!isAuthorized(msg)) return;
 
       const message = `
-🤖 <b>Meteora DLMM Bot</b>
+🤖 <b>Meteora DLMM Bot - Signal Mode</b>
 
 Welcome! Available commands:
 
@@ -72,6 +72,12 @@ Welcome! Available commands:
 /stats - View performance statistics
 /config - View configuration
 /fees [position_id] - View fee statistics
+
+<b>Signal Settings:</b>
+/settings - View current filtering settings
+/settvl [amount] - Set minimum TVL (e.g., /settvl 50000)
+/setapr [percent] - Set minimum APR (e.g., /setapr 40)
+/resetsettings - Reset all to defaults
 
 <b>Strategies & Performance:</b>
 /strategies - List all available strategies
@@ -706,6 +712,145 @@ Note: PnL tracking coming soon
       } catch (error) {
         logger.error('Error handling /fees command:', error);
         await this.bot.sendMessage(msg.chat.id, '❌ Error retrieving fee statistics');
+      }
+    });
+
+    // /settings - View current filtering settings
+    this.bot.onText(/\/settings/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const message = `
+⚙️ <b>Current Signal Filtering Settings</b>
+
+<b>Basic Filters:</b>
+• MIN_TVL: $${config.bot.minTvl.toLocaleString()}
+• MIN_APR: ${config.bot.minApr}%
+
+<b>Position Limits:</b>
+• MAX_POSITIONS: ${config.bot.maxPositions}
+• MAX_POSITION_PERCENT: ${config.bot.maxPositionPercent}%
+• MIN_RESERVE_PERCENT: ${config.bot.minReservePercent}%
+
+<b>Risk Limits:</b>
+• MAX_IMPERMANENT_LOSS: ${config.risk.maxImpermanentLossPercent}%
+• MAX_APR_DECLINE: ${config.risk.maxAprDeclinePercent}%
+• MAX_PRICE_DROP: ${config.risk.maxPriceDropPercent}%
+• MAX_TVL_DROP: ${config.risk.maxTvlDropPercent}%
+• MAX_DRAWDOWN: ${config.risk.maxDrawdownPercent}%
+
+<b>Adjust Settings:</b>
+/settvl [amount] - Set minimum TVL (e.g., /settvl 50000)
+/setapr [percent] - Set minimum APR (e.g., /setapr 40)
+/resetsettings - Reset all to defaults
+        `.trim();
+
+        await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /settings command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error retrieving settings');
+      }
+    });
+
+    // /settvl - Set minimum TVL
+    this.bot.onText(/\/settvl (.+)/, async (msg, match) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const newTvl = parseFloat(match[1]);
+
+        if (isNaN(newTvl) || newTvl < 0) {
+          await this.bot.sendMessage(msg.chat.id, '❌ Invalid TVL value. Use: /settvl [amount]');
+          return;
+        }
+
+        if (newTvl < 1000) {
+          await this.bot.sendMessage(msg.chat.id, '⚠️ Warning: TVL below $1,000 may include very low liquidity pools');
+        }
+
+        const oldTvl = config.bot.minTvl;
+        config.bot.minTvl = newTvl;
+
+        const message = `
+✅ <b>MIN_TVL Updated</b>
+
+Old value: $${oldTvl.toLocaleString()}
+New value: $${newTvl.toLocaleString()}
+
+<i>This will affect the next opportunity scan.</i>
+        `.trim();
+
+        await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
+        logger.info(`MIN_TVL updated from ${oldTvl} to ${newTvl} via Telegram`);
+      } catch (error) {
+        logger.error('Error handling /settvl command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error updating TVL setting');
+      }
+    });
+
+    // /setapr - Set minimum APR
+    this.bot.onText(/\/setapr (.+)/, async (msg, match) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const newApr = parseFloat(match[1]);
+
+        if (isNaN(newApr) || newApr < 0) {
+          await this.bot.sendMessage(msg.chat.id, '❌ Invalid APR value. Use: /setapr [percent]');
+          return;
+        }
+
+        if (newApr < 10) {
+          await this.bot.sendMessage(msg.chat.id, '⚠️ Warning: APR below 10% may not be profitable after gas costs');
+        }
+
+        const oldApr = config.bot.minApr;
+        config.bot.minApr = newApr;
+
+        const message = `
+✅ <b>MIN_APR Updated</b>
+
+Old value: ${oldApr}%
+New value: ${newApr}%
+
+<i>This will affect the next opportunity scan.</i>
+        `.trim();
+
+        await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
+        logger.info(`MIN_APR updated from ${oldApr} to ${newApr} via Telegram`);
+      } catch (error) {
+        logger.error('Error handling /setapr command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error updating APR setting');
+      }
+    });
+
+    // /resetsettings - Reset settings to defaults
+    this.bot.onText(/\/resetsettings/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const oldTvl = config.bot.minTvl;
+        const oldApr = config.bot.minApr;
+
+        // Reset to .env defaults
+        config.bot.minTvl = parseFloat(process.env.MIN_TVL || '10000');
+        config.bot.minApr = parseFloat(process.env.MIN_APR || '30');
+
+        const message = `
+✅ <b>Settings Reset to Defaults</b>
+
+<b>Changes:</b>
+MIN_TVL: $${oldTvl.toLocaleString()} → $${config.bot.minTvl.toLocaleString()}
+MIN_APR: ${oldApr}% → ${config.bot.minApr}%
+
+<i>These are the values from your .env file.</i>
+        `.trim();
+
+        await this.bot.sendMessage(msg.chat.id, message, { parse_mode: 'HTML' });
+        logger.info(`Settings reset to defaults via Telegram`);
+      } catch (error) {
+        logger.error('Error handling /resetsettings command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error resetting settings');
       }
     });
 

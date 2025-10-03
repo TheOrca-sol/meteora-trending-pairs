@@ -97,8 +97,8 @@ class MeteoraBot {
         }
       });
 
-      // Schedule opportunity scanning every 10 minutes
-      cron.schedule('*/10 * * * *', async () => {
+      // Schedule opportunity scanning every 1 minute
+      cron.schedule('*/1 * * * *', async () => {
         if (!this.isPaused) {
           await this.scanOpportunities();
         }
@@ -111,6 +111,7 @@ class MeteoraBot {
       await notificationService.notifyBotStarted();
 
       logger.info('✓ Bot started successfully');
+      logger.warn('⚠️  SIGNAL MODE - Bot will send manual entry notifications (DLMM SDK not yet implemented)');
       logger.info(`Monitoring interval: ${config.bot.rebalanceIntervalMinutes} minutes`);
       logger.info(`Min TVL: $${config.bot.minTvl}`);
       logger.info(`Min APR: ${config.bot.minApr}%`);
@@ -272,15 +273,12 @@ class MeteoraBot {
     try {
       logger.info('Scanning for opportunities...');
 
-      // Check if we can enter new positions
-      const availableCapital = await this.getAvailableCapital();
-      if (availableCapital < 100) {
-        logger.info('Insufficient capital for new positions');
-        return;
-      }
+      // SIGNAL MODE: Get reference capital for position sizing (using simulated capital)
+      const referenceCapital = 1000; // Reference amount for position size calculations
+      logger.info(`Signal mode: Using $${referenceCapital} reference capital for recommendations`);
 
       // Get top pools by score
-      const topPools = await scoringService.getTopPools(5);
+      const topPools = await scoringService.getTopPools(10);
       logger.info(`Found ${topPools.length} top-rated pools`);
 
       if (topPools.length === 0) {
@@ -288,38 +286,50 @@ class MeteoraBot {
         return;
       }
 
-      // Try to enter position in top pool
-      const bestPool = topPools[0];
-      logger.info(`Best pool: ${bestPool.pairName} (Score: ${bestPool.scores.overall})`);
+      // SIGNAL MODE: Send signals for all top pools (not just one)
+      let signalsSent = 0;
+      for (const pool of topPools) {
+        try {
+          logger.info(`Evaluating pool: ${pool.pairName} (Score: ${pool.scores.totalScore})`);
 
-      // Calculate base position size (20% of available)
-      const basePositionSize = availableCapital * 0.2;
+          // Calculate base position size (20% of reference capital)
+          const basePositionSize = referenceCapital * 0.2;
 
-      // ADVANCED: Apply volatility-based sizing
-      const sizeAdjustment = riskManager.calculateVolatilityAdjustedSize(bestPool, basePositionSize);
-      const adjustedPositionSize = sizeAdjustment.adjustedSize || basePositionSize;
+          // Apply volatility-based sizing
+          const sizeAdjustment = riskManager.calculateVolatilityAdjustedSize(pool, basePositionSize);
+          const adjustedPositionSize = sizeAdjustment.adjustedSize || basePositionSize;
 
-      if (sizeAdjustment.volatility) {
-        logger.info(`Volatility adjustment: ${sizeAdjustment.volatility.toFixed(1)}% → ${(sizeAdjustment.multiplier * 100).toFixed(0)}% size ($${adjustedPositionSize.toFixed(2)})`);
-      }
+          if (sizeAdjustment.volatility) {
+            logger.info(`Volatility adjustment: ${sizeAdjustment.volatility.toFixed(1)}% → ${(sizeAdjustment.multiplier * 100).toFixed(0)}% size ($${adjustedPositionSize.toFixed(2)})`);
+          }
 
-      // Check if we can enter (with portfolio-level risk checks)
-      const entryCheck = await riskManager.canEnterNewPosition(adjustedPositionSize, bestPool.address);
-      if (!entryCheck.canEnter) {
-        logger.info(`Cannot enter new position: ${entryCheck.reason}`);
-        if (entryCheck.warnings && entryCheck.warnings.length > 0) {
-          logger.warn('Warnings:', entryCheck.warnings.join('; '));
+          // Create liquidity parameters
+          const params = await strategyService.createLiquidityParameters(
+            pool,
+            referenceCapital,
+            pool.scores
+          );
+
+          // Send manual entry signal to Telegram
+          await this.sendManualEntrySignal(pool, params);
+          signalsSent++;
+
+          logger.info(`📊 Signal #${signalsSent} sent for ${pool.pairName}`);
+
+          // Add small delay between signals to avoid rate limiting
+          if (signalsSent < topPools.length) {
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        } catch (error) {
+          logger.error(`Failed to process pool ${pool.pairName}:`, error);
         }
-        return;
       }
 
-      // Create liquidity parameters
-      const params = await strategyService.createLiquidityParameters(
-        bestPool,
-        availableCapital,
-        bestPool.scores
-      );
+      logger.info(`✓ Sent ${signalsSent} opportunity signals`);
+      return;
 
+      // COMMENTED OUT - Will be re-enabled when DLMM SDK is implemented
+      /*
       // Enter position
       logger.info(`Entering position in ${bestPool.pairName}...`);
       const result = await executionService.enterPosition(params);
@@ -362,6 +372,7 @@ class MeteoraBot {
         await notificationService.notifyError('Position Entry Failed', result.error);
         this.stats.errors++;
       }
+      */
     } catch (error) {
       logger.error('Failed to scan opportunities:', error);
       this.stats.errors++;
@@ -455,6 +466,70 @@ class MeteoraBot {
     await notificationService.notifyEmergencyStop(result.exitedCount, result.totalCount);
 
     await this.stop();
+  }
+
+  /**
+   * Send manual entry signal to Telegram
+   */
+  async sendManualEntrySignal(pool, params) {
+    // Calculate 24h Fee/TVL ratio
+    const feeToTvlRatio = pool.fees24h && pool.tvl
+      ? ((pool.fees24h / pool.tvl) * 100).toFixed(4)
+      : 'N/A';
+
+    const message = `
+🎯 <b>ENTRY SIGNAL - Manual Action Required</b>
+
+<b>Pool:</b> ${pool.pairName}
+<b>Score:</b> ${pool.scores.totalScore} (Top Opportunity)
+
+<b>📊 Pool Details:</b>
+• Address: <code>${pool.address}</code>
+• TVL: $${pool.tvl?.toLocaleString() || 'N/A'}
+• APR: ${pool.apr?.toFixed(2) || 'N/A'}%
+• Bin Step: ${pool.binStep || 'N/A'}
+• Fee: ${pool.fee ? (pool.fee / 100).toFixed(2) + '%' : 'N/A'}
+• 24h Volume: $${pool.volume24h?.toLocaleString() || 'N/A'}
+• 24h Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}
+• 24h Fee/TVL: ${feeToTvlRatio}%
+• 5m Transactions: ${pool.trade5m || 'N/A'}
+• Price Change: ${pool.priceChange24h?.toFixed(2) || 'N/A'}%
+
+<b>💡 Strategy:</b> ${params.strategy?.toUpperCase()}
+${params.strategyReason || 'Optimal strategy for current conditions'}
+
+<b>💰 Position Parameters:</b>
+• Recommended Size: $${params.positionValue?.toFixed(2) || 'N/A'}
+• Token X: ${params.tokenX || pool.mintX}
+• Token Y: ${params.tokenY || pool.mintY}
+${params.lowerBinId ? `• Lower Bin: ${params.lowerBinId}` : ''}
+${params.upperBinId ? `• Upper Bin: ${params.upperBinId}` : ''}
+${params.activeBinId ? `• Active Bin: ${params.activeBinId}` : ''}
+
+<b>🔗 Quick Links:</b>
+• <a href="https://app.meteora.ag/pools/${pool.address}">Open in Meteora</a>
+• <a href="https://solscan.io/account/${pool.address}">View on Solscan</a>
+
+⏰ Found at: ${new Date().toLocaleString()}
+
+<i>Enter this position manually on Meteora using the parameters above.</i>
+    `.trim();
+
+    await notificationService.send(message);
+
+    // Also log to terminal for easy viewing
+    logger.info('\n' + '='.repeat(80));
+    logger.info('📊 ENTRY SIGNAL GENERATED');
+    logger.info('='.repeat(80));
+    logger.info(`Pool: ${pool.pairName} | Score: ${pool.scores.totalScore}`);
+    logger.info(`Address: ${pool.address}`);
+    logger.info(`TVL: $${pool.tvl?.toLocaleString() || 'N/A'} | APR: ${pool.apr?.toFixed(2) || 'N/A'}%`);
+    logger.info(`Bin Step: ${pool.binStep || 'N/A'} | Fee: ${pool.fee ? (pool.fee / 100).toFixed(2) + '%' : 'N/A'}`);
+    logger.info(`24h Volume: $${pool.volume24h?.toLocaleString() || 'N/A'} | Fees: $${pool.fees24h?.toFixed(2) || 'N/A'}`);
+    logger.info(`24h Fee/TVL: ${feeToTvlRatio}% | 5m Tx: ${pool.trade5m || 'N/A'} | Price Change: ${pool.priceChange24h?.toFixed(2) || 'N/A'}%`);
+    logger.info(`Strategy: ${params.strategy?.toUpperCase()} | Size: $${params.positionValue?.toFixed(2) || 'N/A'}`);
+    logger.info(`Meteora: https://app.meteora.ag/pools/${pool.address}`);
+    logger.info('='.repeat(80) + '\n');
   }
 
   /**
