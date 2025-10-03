@@ -72,6 +72,11 @@ Welcome! Available commands:
 /stats - View performance statistics
 /config - View configuration
 
+<b>Strategies & Performance:</b>
+/strategies - List all available strategies
+/leaderboard [timeframe] - Strategy leaderboard
+/report [timeframe] - Performance report
+
 <b>Control:</b>
 /pause - Pause bot operations
 /resume - Resume bot operations
@@ -344,6 +349,133 @@ Note: PnL tracking coming soon
       } catch (error) {
         logger.error('Error handling /emergency command:', error);
         await this.bot.sendMessage(msg.chat.id, '❌ Error during emergency stop');
+      }
+    });
+
+    // /strategies - List all available strategies
+    this.bot.onText(/\/strategies/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const strategyRegistry = (await import('./strategies/index.js')).default;
+        const strategies = strategyRegistry.listStrategies();
+
+        if (strategies.length === 0) {
+          await this.bot.sendMessage(msg.chat.id, '❌ No strategies registered');
+          return;
+        }
+
+        let message = '📋 <b>Available Strategies</b>\n\n';
+        message += `Total: ${strategies.length} strategies\n\n`;
+
+        // Group by priority level
+        const highPrio = strategies.filter(s => s.priority >= 75);
+        const medPrio = strategies.filter(s => s.priority >= 40 && s.priority < 75);
+        const lowPrio = strategies.filter(s => s.priority < 40);
+
+        if (highPrio.length > 0) {
+          message += '<b>🔥 High Priority (75+)</b>\n';
+          highPrio.forEach(s => {
+            message += `• <b>${s.name}</b> (${s.priority}) - ${s.riskLevel} risk\n`;
+            message += `  ⏱ ${s.timeframe} | 📊 ${s.binTightness} bins\n`;
+          });
+          message += '\n';
+        }
+
+        if (medPrio.length > 0) {
+          message += '<b>⚡ Medium Priority (40-74)</b>\n';
+          medPrio.forEach(s => {
+            message += `• <b>${s.name}</b> (${s.priority}) - ${s.riskLevel} risk\n`;
+            message += `  ⏱ ${s.timeframe} | 📊 ${s.binTightness} bins\n`;
+          });
+          message += '\n';
+        }
+
+        if (lowPrio.length > 0) {
+          message += '<b>📌 Low Priority (<40)</b>\n';
+          lowPrio.forEach(s => {
+            message += `• <b>${s.name}</b> (${s.priority}) - ${s.riskLevel} risk\n`;
+            message += `  ⏱ ${s.timeframe} | 📊 ${s.binTightness} bins\n`;
+          });
+        }
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /strategies command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error retrieving strategies');
+      }
+    });
+
+    // /leaderboard - Strategy performance leaderboard
+    this.bot.onText(/\/leaderboard(?:\s+(\S+))?/, async (msg, match) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const performanceTracker = (await import('./performance-tracker.service.js')).default;
+        const timeframe = match[1] || '7d';
+        const leaderboard = await performanceTracker.getStrategyLeaderboard(timeframe, 10);
+
+        if (leaderboard.length === 0) {
+          await this.bot.sendMessage(msg.chat.id, '📭 No strategy data available yet');
+          return;
+        }
+
+        let message = `🏆 <b>Strategy Leaderboard</b>\nTimeframe: ${timeframe}\n\n`;
+
+        leaderboard.forEach((entry, index) => {
+          const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+          message += `${medal} <b>${entry.strategy}</b> (Score: ${entry.score})\n`;
+          message += `   📊 ${entry.totalPositions} pos | 🎯 ${entry.winRate}% win | 💰 ${entry.feeYield}% yield\n`;
+          message += `   ⏱ ${entry.avgHoldTimeHours}h avg | 💵 $${entry.totalFeesEarned}\n\n`;
+        });
+
+        message += '<i>Score = (positions×2) + (winRate×40) + (yield×40)</i>';
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /leaderboard command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error generating leaderboard');
+      }
+    });
+
+    // /report - Performance report
+    this.bot.onText(/\/report(?:\s+(\S+))?/, async (msg, match) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const performanceTracker = (await import('./performance-tracker.service.js')).default;
+        const timeframe = match[1] || '24h';
+        const report = await performanceTracker.generateReport(timeframe);
+
+        if (!report) {
+          await this.bot.sendMessage(msg.chat.id, '❌ Error generating report');
+          return;
+        }
+
+        let message = `📊 <b>Performance Report</b>\nTimeframe: ${report.timeframe}\n\n`;
+
+        message += '<b>Summary:</b>\n';
+        message += `• Total Strategies: ${report.totalStrategies}\n`;
+        message += `• Total Positions: ${report.summary.totalPositions}\n`;
+        message += `• Active Positions: ${report.summary.activePositions}\n`;
+        message += `• Capital Deployed: $${report.summary.totalCapital}\n`;
+        message += `• Total Fees: $${report.summary.totalFees}\n\n`;
+
+        if (report.topStrategies.length > 0) {
+          message += '<b>Top Performers:</b>\n';
+          report.topStrategies.forEach((s, i) => {
+            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+            message += `${medal} ${s.name} - Score: ${s.score}\n`;
+            message += `   ${s.positions} positions | ${s.winRate} win rate\n`;
+          });
+        }
+
+        message += `\n<i>Generated: ${new Date(report.generatedAt).toLocaleString()}</i>`;
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /report command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error generating report');
       }
     });
 

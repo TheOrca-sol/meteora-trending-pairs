@@ -61,7 +61,7 @@ class Database {
           id SERIAL PRIMARY KEY,
           pool_address VARCHAR(44) REFERENCES pools(address),
           position_pubkey VARCHAR(44) UNIQUE,
-          strategy VARCHAR(20),
+          strategy VARCHAR(50),
           entry_price DECIMAL(20, 8),
           entry_tvl DECIMAL(20, 2),
           entry_apr DECIMAL(10, 2),
@@ -72,11 +72,18 @@ class Database {
           entry_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           exit_timestamp TIMESTAMP,
           exit_reason VARCHAR(100),
-          realized_pnl DECIMAL(20, 8)
+          realized_pnl DECIMAL(20, 8),
+          metadata JSONB,
+          strategy_priority INTEGER DEFAULT 50,
+          strategy_risk_level VARCHAR(20) DEFAULT 'medium',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE INDEX IF NOT EXISTS idx_positions_status ON positions(status);
         CREATE INDEX IF NOT EXISTS idx_positions_pool_address ON positions(pool_address);
+        CREATE INDEX IF NOT EXISTS idx_positions_strategy ON positions(strategy);
+        CREATE INDEX IF NOT EXISTS idx_positions_created_at ON positions(created_at);
 
         CREATE TABLE IF NOT EXISTS rewards (
           id SERIAL PRIMARY KEY,

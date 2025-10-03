@@ -9,6 +9,7 @@ import strategyService from './services/strategy.service.js';
 import riskManager from './services/risk-manager.service.js';
 import executionService from './services/execution.service.js';
 import notificationService from './services/notification.service.js';
+import performanceTracker from './services/performance-tracker.service.js';
 
 class MeteoraBot {
   constructor() {
@@ -264,6 +265,29 @@ class MeteoraBot {
 
       if (result.success) {
         logger.info(`✓ Position entered successfully in ${result.poolName}`);
+
+        // Track position entry with performance tracker
+        if (result.positionId) {
+          await performanceTracker.trackPositionEntry(
+            { id: result.positionId },
+            {
+              type: params.strategy,
+              timeframe: params.strategyMetadata?.timeframe || 'medium',
+              binTightness: params.strategyMetadata?.binTightness || 'medium',
+              riskLevel: params.strategyMetadata?.riskLevel || 'medium',
+              reason: params.strategyReason,
+              metadata: params.strategyMetadata,
+            },
+            {
+              poolAddress: result.poolAddress,
+              entryPrice: params.entryPrice,
+              entryApr: params.entryApr,
+              entryTvl: bestPool.tvl,
+              scoresSnapshot: bestPool.scores,
+            }
+          );
+        }
+
         await notificationService.notifyPositionEntered({
           ...result,
           positionValue: params.positionValue,
