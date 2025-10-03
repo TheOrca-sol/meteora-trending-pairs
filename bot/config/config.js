@@ -63,6 +63,31 @@ export const config = {
     circuitBreakerCooldownMinutes: parseInt(process.env.CIRCUIT_BREAKER_COOLDOWN_MINUTES || '15'),
   },
 
+  // Safety Limits (for live trading protection)
+  safety: {
+    // Maximum capital limits
+    maxDailyCapitalDeployment: parseFloat(process.env.MAX_DAILY_CAPITAL_DEPLOYMENT || '100'), // Max $ per day
+    maxWeeklyCapitalDeployment: parseFloat(process.env.MAX_WEEKLY_CAPITAL_DEPLOYMENT || '500'), // Max $ per week
+    maxSinglePositionSize: parseFloat(process.env.MAX_SINGLE_POSITION_SIZE || '50'), // Max $ per position
+
+    // Loss limits
+    maxDailyLossUsd: parseFloat(process.env.MAX_DAILY_LOSS_USD || '20'), // Max $ loss per day
+    maxWeeklyLossUsd: parseFloat(process.env.MAX_WEEKLY_LOSS_USD || '50'), // Max $ loss per week
+
+    // Transaction limits
+    maxTxPerHour: parseInt(process.env.MAX_TX_PER_HOUR || '20'), // Rate limiting
+    maxFailedTxBeforePause: parseInt(process.env.MAX_FAILED_TX_BEFORE_PAUSE || '5'), // Auto-pause threshold
+
+    // Wallet protection
+    minWalletReserveSOL: parseFloat(process.env.MIN_WALLET_RESERVE_SOL || '0.1'), // Always keep reserve
+    maxWalletUsagePercent: parseFloat(process.env.MAX_WALLET_USAGE_PERCENT || '80'), // Max % of wallet to use
+
+    // Emergency controls
+    enableKillSwitch: process.env.ENABLE_KILL_SWITCH !== 'false', // Emergency stop all
+    requireConfirmationForLargeTx: process.env.REQUIRE_CONFIRMATION_LARGE_TX !== 'false', // Confirm large txs
+    largeTxThresholdUsd: parseFloat(process.env.LARGE_TX_THRESHOLD_USD || '100'),
+  },
+
   // Scoring Weights
   scoring: {
     profitabilityWeight: 0.4,
