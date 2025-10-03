@@ -108,6 +108,10 @@ class MeteoraBot {
         }
       });
 
+      // Run initial data update to fetch DexScreener data before first scan
+      logger.info('Fetching initial pool data with DexScreener enrichment...');
+      await this.updateData();
+
       // Run initial scan
       await this.scanOpportunities();
 
