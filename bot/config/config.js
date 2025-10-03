@@ -54,6 +54,13 @@ export const config = {
     maxAprDeclinePercent: parseFloat(process.env.MAX_APR_DECLINE_PERCENT || '50'),
     maxPriceDropPercent: parseFloat(process.env.MAX_PRICE_DROP_PERCENT || '30'),
     maxTvlDropPercent: parseFloat(process.env.MAX_TVL_DROP_PERCENT || '30'),
+    // Advanced Risk Management
+    maxDrawdownPercent: parseFloat(process.env.MAX_DRAWDOWN_PERCENT || '20'),
+    maxCorrelatedPositions: parseInt(process.env.MAX_CORRELATED_POSITIONS || '3'),
+    maxTotalExposure: parseFloat(process.env.MAX_TOTAL_EXPOSURE || '10000'),
+    circuitBreakerEnabled: process.env.CIRCUIT_BREAKER_ENABLED !== 'false', // Default: true
+    circuitBreakerVolatilityThreshold: parseFloat(process.env.CIRCUIT_BREAKER_VOLATILITY_THRESHOLD || '50'),
+    circuitBreakerCooldownMinutes: parseInt(process.env.CIRCUIT_BREAKER_COOLDOWN_MINUTES || '15'),
   },
 
   // Scoring Weights

@@ -5,6 +5,16 @@ import dataAggregator from './data-aggregator.service.js';
 import database from '../models/database.js';
 
 class RiskManagerService {
+  constructor() {
+    this.portfolioState = {
+      totalDrawdown: 0,
+      peakValue: 0,
+      circuitBreakerTriggered: false,
+      lastVolatilityCheck: null,
+      volatilityCache: new Map(),
+    };
+  }
+
   /**
    * Check if position should be exited based on risk parameters
    * Enhanced with strategy-specific exit conditions
@@ -351,8 +361,9 @@ class RiskManagerService {
 
   /**
    * Check if new position is within risk limits
+   * Enhanced with portfolio-level risk checks
    */
-  async canEnterNewPosition(positionValue) {
+  async canEnterNewPosition(positionValue, poolAddress = null) {
     try {
       // Get active positions
       const activePositions = await database.getActivePositions();
@@ -365,14 +376,50 @@ class RiskManagerService {
         };
       }
 
+      // Build pools map for advanced checks
+      let poolsMap = new Map();
+      if (poolAddress) {
+        for (const pos of activePositions) {
+          const pool = dataAggregator.getPool(pos.pool_address);
+          if (pool) poolsMap.set(pos.pool_address, pool);
+        }
+        const targetPool = dataAggregator.getPool(poolAddress);
+        if (targetPool) poolsMap.set(poolAddress, targetPool);
+      }
+
+      // ADVANCED: Portfolio risk checks
+      if (poolAddress && poolsMap.size > 0) {
+        const portfolioRisk = await this.checkPortfolioRisk(
+          poolAddress,
+          positionValue,
+          activePositions,
+          poolsMap
+        );
+
+        if (!portfolioRisk.canEnter) {
+          return {
+            canEnter: false,
+            reason: portfolioRisk.reasons.join('; '),
+            warnings: portfolioRisk.warnings,
+            riskLevel: 'HIGH',
+          };
+        }
+
+        // Return warnings even if can enter
+        if (portfolioRisk.warnings.length > 0) {
+          logger.warn('Position entry warnings:', portfolioRisk.warnings);
+        }
+      }
+
       // Calculate total exposure
       const totalExposure = activePositions.reduce((sum, pos) => {
         return sum + parseFloat(pos.liquidity_amount || 0);
       }, 0);
 
-      // Get available capital (this should come from wallet balance check)
-      // For now, we'll estimate based on config
-      const estimatedTotalCapital = 10000; // TODO: Get from actual wallet balance
+      // Get available capital
+      const estimatedTotalCapital = config.bot.paperTrading
+        ? config.bot.paperTradingStartingCapital
+        : 10000; // TODO: Get from actual wallet balance
       const newTotalExposure = totalExposure + positionValue;
       const exposurePercent = (newTotalExposure / estimatedTotalCapital) * 100;
 
@@ -530,6 +577,332 @@ class RiskManagerService {
       logger.error('Failed to calculate position PnL:', error);
       return { pnl: 0, pnlPercent: 0 };
     }
+  }
+
+  /**
+   * ADVANCED: Calculate portfolio-level maximum drawdown
+   */
+  async calculatePortfolioDrawdown(activePositions, poolsMap) {
+    try {
+      let totalCurrentValue = 0;
+      let totalEntryValue = 0;
+
+      for (const position of activePositions) {
+        const pool = poolsMap.get(position.pool_address);
+        if (!pool) continue;
+
+        const pnl = await this.calculatePositionPnL(position, pool);
+        totalCurrentValue += pnl.currentValue || 0;
+        totalEntryValue += pnl.entryValue || 0;
+      }
+
+      // Update peak value
+      if (totalCurrentValue > this.portfolioState.peakValue) {
+        this.portfolioState.peakValue = totalCurrentValue;
+      }
+
+      // Calculate drawdown from peak
+      const drawdown = this.portfolioState.peakValue > 0
+        ? ((this.portfolioState.peakValue - totalCurrentValue) / this.portfolioState.peakValue) * 100
+        : 0;
+
+      this.portfolioState.totalDrawdown = drawdown;
+
+      return {
+        currentValue: totalCurrentValue,
+        entryValue: totalEntryValue,
+        peakValue: this.portfolioState.peakValue,
+        drawdown: drawdown,
+        pnl: totalCurrentValue - totalEntryValue,
+        pnlPercent: totalEntryValue > 0 ? ((totalCurrentValue - totalEntryValue) / totalEntryValue) * 100 : 0,
+      };
+    } catch (error) {
+      logger.error('Failed to calculate portfolio drawdown:', error);
+      return { drawdown: 0, currentValue: 0, pnl: 0 };
+    }
+  }
+
+  /**
+   * ADVANCED: Check if maximum drawdown limit exceeded
+   */
+  async checkMaxDrawdown(activePositions, poolsMap) {
+    try {
+      const portfolio = await this.calculatePortfolioDrawdown(activePositions, poolsMap);
+      const maxDrawdownPercent = config.risk.maxDrawdownPercent || 20;
+
+      if (portfolio.drawdown > maxDrawdownPercent) {
+        return {
+          exceeded: true,
+          drawdown: portfolio.drawdown,
+          maxAllowed: maxDrawdownPercent,
+          recommendation: 'PAUSE_TRADING',
+        };
+      }
+
+      return {
+        exceeded: false,
+        drawdown: portfolio.drawdown,
+        maxAllowed: maxDrawdownPercent,
+      };
+    } catch (error) {
+      logger.error('Failed to check max drawdown:', error);
+      return { exceeded: false };
+    }
+  }
+
+  /**
+   * ADVANCED: Circuit breaker - detect extreme market conditions
+   */
+  async checkCircuitBreaker(poolsMap) {
+    try {
+      if (this.portfolioState.circuitBreakerTriggered) {
+        // Check if conditions normalized (allow 15 min cooldown)
+        const timeSinceTriggered = Date.now() - (this.portfolioState.lastVolatilityCheck || 0);
+        if (timeSinceTriggered < 15 * 60 * 1000) {
+          return {
+            triggered: true,
+            reason: 'Circuit breaker cooldown active',
+            timeRemaining: Math.ceil((15 * 60 * 1000 - timeSinceTriggered) / 60000) + ' minutes',
+          };
+        }
+      }
+
+      const pools = Array.from(poolsMap.values());
+      if (pools.length === 0) return { triggered: false };
+
+      // Calculate average volatility and volume changes
+      let extremeVolatilityCount = 0;
+      let volumeDrainCount = 0;
+
+      for (const pool of pools) {
+        const dex = pool.dexScreener;
+        if (!dex) continue;
+
+        // Check for extreme price movements (>50% in 1h)
+        const priceChange1h = Math.abs(dex.priceChange1h || 0);
+        if (priceChange1h > 50) {
+          extremeVolatilityCount++;
+        }
+
+        // Check for volume collapse (<10% of 24h avg in last 5 min)
+        const volume5m = (dex.volume24h || 0) / 288; // Estimate 5min volume
+        if (dex.volume24h > 0 && volume5m < dex.volume24h * 0.001) {
+          volumeDrainCount++;
+        }
+      }
+
+      const extremeVolatilityRatio = extremeVolatilityCount / pools.length;
+      const volumeDrainRatio = volumeDrainCount / pools.length;
+
+      // Trigger if >30% of pools show extreme conditions
+      if (extremeVolatilityRatio > 0.3 || volumeDrainRatio > 0.3) {
+        this.portfolioState.circuitBreakerTriggered = true;
+        this.portfolioState.lastVolatilityCheck = Date.now();
+
+        return {
+          triggered: true,
+          reason: extremeVolatilityRatio > 0.3
+            ? `${(extremeVolatilityRatio * 100).toFixed(0)}% of pools show extreme volatility`
+            : `${(volumeDrainRatio * 100).toFixed(0)}% of pools experiencing volume collapse`,
+          extremeVolatilityCount,
+          volumeDrainCount,
+          totalPools: pools.length,
+          recommendation: 'PAUSE_NEW_POSITIONS',
+        };
+      }
+
+      // Reset if conditions normalized
+      this.portfolioState.circuitBreakerTriggered = false;
+      return { triggered: false };
+    } catch (error) {
+      logger.error('Failed to check circuit breaker:', error);
+      return { triggered: false };
+    }
+  }
+
+  /**
+   * ADVANCED: Check token correlation to avoid concentration risk
+   */
+  async checkTokenCorrelation(newPoolAddress, activePositions, poolsMap) {
+    try {
+      const newPool = poolsMap.get(newPoolAddress);
+      if (!newPool) return { highCorrelation: false };
+
+      const newTokens = [newPool.tokenX, newPool.tokenY];
+      let correlatedPositions = 0;
+
+      for (const position of activePositions) {
+        const pool = poolsMap.get(position.pool_address);
+        if (!pool) continue;
+
+        // Check if any tokens overlap
+        const existingTokens = [pool.tokenX, pool.tokenY];
+        const overlap = newTokens.some(t => existingTokens.includes(t));
+
+        if (overlap) {
+          correlatedPositions++;
+        }
+      }
+
+      const maxCorrelatedPositions = config.risk.maxCorrelatedPositions || 3;
+
+      if (correlatedPositions >= maxCorrelatedPositions) {
+        return {
+          highCorrelation: true,
+          correlatedCount: correlatedPositions,
+          maxAllowed: maxCorrelatedPositions,
+          reason: `Already have ${correlatedPositions} positions with shared tokens`,
+        };
+      }
+
+      return {
+        highCorrelation: false,
+        correlatedCount: correlatedPositions,
+      };
+    } catch (error) {
+      logger.error('Failed to check token correlation:', error);
+      return { highCorrelation: false };
+    }
+  }
+
+  /**
+   * ADVANCED: Calculate volatility-adjusted position size
+   */
+  calculateVolatilityAdjustedSize(pool, baseSize) {
+    try {
+      const dex = pool.dexScreener;
+      if (!dex) return baseSize;
+
+      // Use price change as volatility proxy
+      const volatility24h = Math.abs(dex.priceChange24h || 0);
+
+      // Classify volatility
+      let volatilityMultiplier = 1.0;
+
+      if (volatility24h < 5) {
+        // Low volatility - can use full size
+        volatilityMultiplier = 1.0;
+      } else if (volatility24h < 15) {
+        // Medium volatility - reduce to 75%
+        volatilityMultiplier = 0.75;
+      } else if (volatility24h < 30) {
+        // High volatility - reduce to 50%
+        volatilityMultiplier = 0.50;
+      } else {
+        // Extreme volatility - reduce to 25%
+        volatilityMultiplier = 0.25;
+      }
+
+      const adjustedSize = baseSize * volatilityMultiplier;
+
+      logger.debug(`Volatility adjustment: ${volatility24h.toFixed(1)}% → ${(volatilityMultiplier * 100).toFixed(0)}% position size`);
+
+      return {
+        originalSize: baseSize,
+        adjustedSize,
+        volatility: volatility24h,
+        multiplier: volatilityMultiplier,
+      };
+    } catch (error) {
+      logger.error('Failed to calculate volatility-adjusted size:', error);
+      return { adjustedSize: baseSize, originalSize: baseSize };
+    }
+  }
+
+  /**
+   * ADVANCED: Portfolio-level risk check before entering new position
+   */
+  async checkPortfolioRisk(newPoolAddress, positionSize, activePositions, poolsMap) {
+    try {
+      const results = {
+        canEnter: true,
+        reasons: [],
+        warnings: [],
+      };
+
+      // 1. Check maximum drawdown
+      const drawdownCheck = await this.checkMaxDrawdown(activePositions, poolsMap);
+      if (drawdownCheck.exceeded) {
+        results.canEnter = false;
+        results.reasons.push(`Max drawdown exceeded: ${drawdownCheck.drawdown.toFixed(2)}% (limit: ${drawdownCheck.maxAllowed}%)`);
+      }
+
+      // 2. Check circuit breaker
+      const circuitCheck = await this.checkCircuitBreaker(poolsMap);
+      if (circuitCheck.triggered) {
+        results.canEnter = false;
+        results.reasons.push(`Circuit breaker active: ${circuitCheck.reason}`);
+      }
+
+      // 3. Check token correlation
+      const correlationCheck = await this.checkTokenCorrelation(newPoolAddress, activePositions, poolsMap);
+      if (correlationCheck.highCorrelation) {
+        results.warnings.push(correlationCheck.reason);
+        // Don't block, but warn
+      }
+
+      // 4. Check total exposure
+      const totalExposure = activePositions.reduce((sum, pos) => {
+        return sum + parseFloat(pos.liquidity_amount || 0);
+      }, 0);
+
+      const newTotalExposure = totalExposure + positionSize;
+      const maxExposure = config.risk.maxTotalExposure || 10000;
+
+      if (newTotalExposure > maxExposure) {
+        results.canEnter = false;
+        results.reasons.push(`Total exposure would exceed limit: $${newTotalExposure.toFixed(0)} > $${maxExposure}`);
+      }
+
+      return results;
+    } catch (error) {
+      logger.error('Failed to check portfolio risk:', error);
+      return {
+        canEnter: true,
+        reasons: [],
+        warnings: ['Error checking portfolio risk - proceeding with caution'],
+      };
+    }
+  }
+
+  /**
+   * Get portfolio risk report
+   */
+  async getPortfolioRiskReport(activePositions, poolsMap) {
+    try {
+      const drawdown = await this.calculatePortfolioDrawdown(activePositions, poolsMap);
+      const circuitBreaker = await this.checkCircuitBreaker(poolsMap);
+
+      return {
+        portfolio: {
+          positions: activePositions.length,
+          totalValue: drawdown.currentValue,
+          totalPnL: drawdown.pnl,
+          pnlPercent: drawdown.pnlPercent,
+          peakValue: drawdown.peakValue,
+          currentDrawdown: drawdown.drawdown,
+          maxDrawdownLimit: config.risk.maxDrawdownPercent || 20,
+        },
+        circuitBreaker: {
+          active: circuitBreaker.triggered,
+          reason: circuitBreaker.reason || 'N/A',
+        },
+        riskStatus: this.getRiskStatus(drawdown.drawdown, circuitBreaker.triggered),
+      };
+    } catch (error) {
+      logger.error('Failed to generate portfolio risk report:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Determine overall risk status
+   */
+  getRiskStatus(drawdown, circuitBreakerActive) {
+    if (circuitBreakerActive) return 'CRITICAL';
+    if (drawdown > 15) return 'HIGH';
+    if (drawdown > 8) return 'MEDIUM';
+    return 'LOW';
   }
 }
 

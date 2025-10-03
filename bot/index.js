@@ -288,10 +288,24 @@ class MeteoraBot {
       const bestPool = topPools[0];
       logger.info(`Best pool: ${bestPool.pairName} (Score: ${bestPool.scores.overall})`);
 
-      // Check if we can enter
-      const entryCheck = await riskManager.canEnterNewPosition(availableCapital * 0.2); // Use 20% of available
+      // Calculate base position size (20% of available)
+      const basePositionSize = availableCapital * 0.2;
+
+      // ADVANCED: Apply volatility-based sizing
+      const sizeAdjustment = riskManager.calculateVolatilityAdjustedSize(bestPool, basePositionSize);
+      const adjustedPositionSize = sizeAdjustment.adjustedSize || basePositionSize;
+
+      if (sizeAdjustment.volatility) {
+        logger.info(`Volatility adjustment: ${sizeAdjustment.volatility.toFixed(1)}% → ${(sizeAdjustment.multiplier * 100).toFixed(0)}% size ($${adjustedPositionSize.toFixed(2)})`);
+      }
+
+      // Check if we can enter (with portfolio-level risk checks)
+      const entryCheck = await riskManager.canEnterNewPosition(adjustedPositionSize, bestPool.address);
       if (!entryCheck.canEnter) {
         logger.info(`Cannot enter new position: ${entryCheck.reason}`);
+        if (entryCheck.warnings && entryCheck.warnings.length > 0) {
+          logger.warn('Warnings:', entryCheck.warnings.join('; '));
+        }
         return;
       }
 

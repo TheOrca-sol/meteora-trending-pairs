@@ -77,6 +77,7 @@ Welcome! Available commands:
 /leaderboard [timeframe] - Strategy leaderboard
 /report [timeframe] - Performance report
 /optimize - Show optimization opportunities
+/risk - Portfolio risk report
 
 <b>Control:</b>
 /pause - Pause bot operations
@@ -514,6 +515,62 @@ Note: PnL tracking coming soon
       } catch (error) {
         logger.error('Error handling /optimize command:', error);
         await this.bot.sendMessage(msg.chat.id, '❌ Error generating optimization report');
+      }
+    });
+
+    // /risk - Portfolio risk report
+    this.bot.onText(/\/risk/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const database = (await import('../models/database.js')).default;
+        const riskManager = (await import('./risk-manager.service.js')).default;
+        const dataAggregator = (await import('./data-aggregator.service.js')).default;
+
+        const activePositions = await database.getActivePositions();
+        const poolsMap = new Map();
+        for (const pos of activePositions) {
+          const pool = dataAggregator.getPool(pos.pool_address);
+          if (pool) poolsMap.set(pos.pool_address, pool);
+        }
+
+        const report = await riskManager.getPortfolioRiskReport(activePositions, poolsMap);
+
+        if (!report) {
+          await this.bot.sendMessage(msg.chat.id, '❌ Error generating risk report');
+          return;
+        }
+
+        const statusEmoji = {
+          'LOW': '🟢',
+          'MEDIUM': '🟡',
+          'HIGH': '🟠',
+          'CRITICAL': '🔴',
+        };
+
+        let message = `${statusEmoji[report.riskStatus]} <b>Portfolio Risk Report</b>\n\n`;
+        message += `<b>Status:</b> ${report.riskStatus}\n\n`;
+
+        message += '<b>Portfolio:</b>\n';
+        message += `• Positions: ${report.portfolio.positions}\n`;
+        message += `• Total Value: $${report.portfolio.totalValue.toFixed(2)}\n`;
+        message += `• Peak Value: $${report.portfolio.peakValue.toFixed(2)}\n`;
+        message += `• PnL: ${report.portfolio.totalPnL >= 0 ? '+' : ''}$${report.portfolio.totalPnL.toFixed(2)} (${report.portfolio.pnlPercent >= 0 ? '+' : ''}${report.portfolio.pnlPercent.toFixed(2)}%)\n\n`;
+
+        message += '<b>Risk Metrics:</b>\n';
+        message += `• Current Drawdown: ${report.portfolio.currentDrawdown.toFixed(2)}%\n`;
+        message += `• Max Drawdown Limit: ${report.portfolio.maxDrawdownLimit}%\n\n`;
+
+        message += '<b>Circuit Breaker:</b>\n';
+        message += `• Status: ${report.circuitBreaker.active ? '🔴 ACTIVE' : '🟢 Inactive'}\n`;
+        if (report.circuitBreaker.active) {
+          message += `• Reason: ${report.circuitBreaker.reason}\n`;
+        }
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /risk command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error generating risk report');
       }
     });
 
