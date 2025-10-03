@@ -78,6 +78,7 @@ Welcome! Available commands:
 /report [timeframe] - Performance report
 /optimize - Show optimization opportunities
 /risk - Portfolio risk report
+/health - System health check
 
 <b>Control:</b>
 /pause - Pause bot operations
@@ -571,6 +572,49 @@ Note: PnL tracking coming soon
       } catch (error) {
         logger.error('Error handling /risk command:', error);
         await this.bot.sendMessage(msg.chat.id, '❌ Error generating risk report');
+      }
+    });
+
+    // /health - System health check
+    this.bot.onText(/\/health/, async (msg) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const healthCheck = (await import('./health-check.service.js')).default;
+        const results = await healthCheck.runAllChecks();
+
+        const statusEmoji = {
+          'HEALTHY': '🟢',
+          'DEGRADED': '🟡',
+          'UNHEALTHY': '🔴',
+          'CRITICAL': '🔴',
+        };
+
+        let message = `${statusEmoji[results.overall]} <b>System Health Check</b>\n\n`;
+        message += `<b>Overall Status:</b> ${results.overall}\n`;
+        message += `<b>Timestamp:</b> ${new Date(results.timestamp).toLocaleTimeString()}\n\n`;
+
+        message += `<b>Summary:</b>\n`;
+        message += `• ✅ Healthy: ${results.summary.healthy}\n`;
+        message += `• ⚠️ Degraded: ${results.summary.degraded}\n`;
+        message += `• ❌ Unhealthy: ${results.summary.unhealthy}\n\n`;
+
+        message += '<b>Checks:</b>\n';
+        for (const [name, check] of Object.entries(results.checks)) {
+          const emoji = statusEmoji[check.status] || '⚪';
+          message += `${emoji} ${name}: ${check.status}\n`;
+          if (check.message) {
+            message += `   ${check.message}\n`;
+          }
+          if (check.error) {
+            message += `   Error: ${check.error}\n`;
+          }
+        }
+
+        await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+      } catch (error) {
+        logger.error('Error handling /health command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error running health checks');
       }
     });
 

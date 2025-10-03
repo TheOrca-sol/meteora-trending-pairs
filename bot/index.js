@@ -11,6 +11,7 @@ import executionService from './services/execution.service.js';
 import notificationService from './services/notification.service.js';
 import performanceTracker from './services/performance-tracker.service.js';
 import strategyOptimizer from './services/strategy-optimizer.service.js';
+import priceFeed from './services/price-feed.service.js';
 
 class MeteoraBot {
   constructor() {
@@ -375,11 +376,12 @@ class MeteoraBot {
         // Paper trading: Use simulated starting capital
         totalCapitalUsd = config.bot.paperTradingStartingCapital;
       } else {
-        // Live trading: Get wallet balance
+        // Live trading: Get wallet balance with real SOL price
         const solBalance = await solanaService.getBalance();
-        // Convert SOL to USD (rough estimate, TODO: get actual SOL price)
-        const solPriceUsd = 100; // Placeholder
+        const solPriceUsd = await priceFeed.getSolPrice();
         totalCapitalUsd = solBalance * solPriceUsd;
+
+        logger.debug(`Live wallet: ${solBalance.toFixed(4)} SOL × $${solPriceUsd.toFixed(2)} = $${totalCapitalUsd.toFixed(2)}`);
       }
 
       // Get active positions value
