@@ -448,24 +448,35 @@ class RiskManagerService {
 
   /**
    * Check if rewards should be claimed
+   * Enhanced with profitability analysis (fees > gas costs)
    */
-  async shouldClaimRewards(position, estimatedRewardValue) {
+  async shouldClaimRewards(position, poolData) {
     try {
-      // Only claim if reward value exceeds threshold
-      if (estimatedRewardValue >= config.bot.claimThresholdUsd) {
+      // Import fee tracker
+      const feeTracker = (await import('./fee-tracker.service.js')).default;
+
+      // Use smart claim logic that considers gas costs
+      const claimAnalysis = await feeTracker.shouldClaimFees(position, poolData);
+
+      if (claimAnalysis.shouldClaim) {
         return {
           shouldClaim: true,
-          reason: `Rewards worth $${estimatedRewardValue.toFixed(2)} exceed threshold $${config.bot.claimThresholdUsd}`,
+          reason: claimAnalysis.reason,
+          estimatedFeesUsd: claimAnalysis.estimatedFeesUsd,
+          estimatedGasCostUsd: claimAnalysis.estimatedGasCostUsd,
+          netProfit: claimAnalysis.netProfit,
         };
       }
 
       return {
         shouldClaim: false,
-        reason: `Rewards worth $${estimatedRewardValue.toFixed(2)} below threshold`,
+        reason: claimAnalysis.reason,
+        estimatedFeesUsd: claimAnalysis.estimatedFeesUsd,
+        estimatedGasCostUsd: claimAnalysis.estimatedGasCostUsd,
       };
     } catch (error) {
       logger.error('Failed to check reward claiming:', error);
-      return { shouldClaim: false };
+      return { shouldClaim: false, reason: 'Error checking claim profitability' };
     }
   }
 

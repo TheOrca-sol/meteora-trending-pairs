@@ -71,6 +71,7 @@ Welcome! Available commands:
 /positions - List active positions
 /stats - View performance statistics
 /config - View configuration
+/fees [position_id] - View fee statistics
 
 <b>Strategies & Performance:</b>
 /strategies - List all available strategies
@@ -107,6 +108,20 @@ Welcome! Available commands:
 <b>/stats</b> - Displays performance statistics including PnL and success rate
 
 <b>/config</b> - Shows current bot configuration (TVL, APR thresholds, etc.)
+
+<b>/fees [position_id]</b> - View portfolio fee stats or specific position fees with ROI
+
+<b>/strategies</b> - List all available strategies grouped by priority
+
+<b>/leaderboard [timeframe]</b> - Strategy performance leaderboard (default: 7d)
+
+<b>/report [timeframe]</b> - Generate performance report (default: 24h)
+
+<b>/optimize</b> - Show strategy optimization opportunities for active positions
+
+<b>/risk</b> - Portfolio risk analysis with drawdown and circuit breaker status
+
+<b>/health</b> - System health check for all critical components
 
 <b>/pause</b> - Temporarily pauses bot operations without closing positions
 
@@ -618,6 +633,82 @@ Note: PnL tracking coming soon
       }
     });
 
+    // /fees - Fee tracking statistics
+    this.bot.onText(/\/fees(?:\s+(\d+))?/, async (msg, match) => {
+      if (!isAuthorized(msg)) return;
+
+      try {
+        const feeTracker = (await import('./fee-tracker.service.js')).default;
+        const positionId = match[1] ? parseInt(match[1]) : null;
+
+        if (positionId) {
+          // Show fees for specific position
+          const fees = await feeTracker.getPositionFees(positionId);
+
+          if (!fees) {
+            await this.bot.sendMessage(msg.chat.id, `❌ Position #${positionId} not found`);
+            return;
+          }
+
+          let message = `💰 <b>Position #${positionId} Fees</b>\n\n`;
+          message += `<b>Total Fees:</b> $${fees.totalFees.toFixed(4)}\n`;
+          message += `<b>Gas Costs:</b> $${fees.totalGas.toFixed(4)}\n`;
+          message += `<b>Net Profit:</b> $${fees.netFees.toFixed(4)}\n\n`;
+
+          if (fees.capitalDeployed > 0) {
+            message += `<b>Capital Deployed:</b> $${fees.capitalDeployed.toFixed(2)}\n`;
+            message += `<b>ROI:</b> ${fees.roi?.toFixed(2)}%\n`;
+            message += `<b>Days Active:</b> ${fees.daysActive?.toFixed(1)}\n`;
+            message += `<b>Daily ROI:</b> ${fees.dailyRoi?.toFixed(3)}%\n`;
+            message += `<b>Annualized ROI:</b> ${fees.annualizedRoi?.toFixed(2)}%\n`;
+          }
+
+          await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+        } else {
+          // Show portfolio-wide statistics
+          const stats = await feeTracker.getPortfolioFeeStats();
+
+          if (!stats) {
+            await this.bot.sendMessage(msg.chat.id, '❌ Error retrieving fee statistics');
+            return;
+          }
+
+          let message = `💰 <b>Portfolio Fee Statistics</b>\n\n`;
+          message += `<b>Positions:</b>\n`;
+          message += `• Total: ${stats.totalPositions}\n`;
+          message += `• Active: ${stats.activePositions}\n\n`;
+
+          message += `<b>Fees & Costs:</b>\n`;
+          message += `• Total Fees Earned: $${stats.totalFeesEarned.toFixed(4)}\n`;
+          message += `• Total Gas Costs: $${stats.totalGasCosts.toFixed(4)}\n`;
+          message += `• <b>Net Profit: $${stats.netFeesEarned.toFixed(4)}</b>\n\n`;
+
+          message += `<b>Capital:</b>\n`;
+          message += `• Total Deployed: $${stats.totalCapitalDeployed.toFixed(2)}\n`;
+          if (stats.totalCapitalDeployed > 0) {
+            const roiEmoji = stats.portfolioROI >= 0 ? '📈' : '📉';
+            message += `• ${roiEmoji} Portfolio ROI: ${stats.portfolioROI.toFixed(2)}%\n`;
+          }
+
+          // Get top earning positions
+          const topPositions = await feeTracker.getAllPositionsFees();
+          if (topPositions.length > 0) {
+            message += `\n<b>Top Earners:</b>\n`;
+            topPositions.slice(0, 5).forEach((pos, i) => {
+              message += `${i + 1}. Position #${pos.positionId} - $${pos.netFees.toFixed(4)} (${pos.roi.toFixed(2)}%)\n`;
+            });
+          }
+
+          message += `\n<i>Use /fees [position_id] for details</i>`;
+
+          await this.bot.sendMessage(msg.chat.id, message.trim(), { parse_mode: 'HTML' });
+        }
+      } catch (error) {
+        logger.error('Error handling /fees command:', error);
+        await this.bot.sendMessage(msg.chat.id, '❌ Error retrieving fee statistics');
+      }
+    });
+
     logger.info('Telegram command handlers registered');
   }
 
@@ -726,19 +817,25 @@ Position ID: #${position.id}
   /**
    * Notify rewards claimed
    */
-  async notifyRewardsClaimed(position, signatures) {
-    const message = `
+  async notifyRewardsClaimed(position, signatures, claimInfo = null) {
+    let message = `
 💰 <b>Rewards Claimed</b>
 
 📊 Pool: <b>${position.pool_name || 'Unknown'}</b>
 Position ID: #${position.id}
 
-✅ ${signatures.length} transaction(s) completed
+✅ ${signatures.length} transaction(s) completed`;
 
-🔗 <a href="https://solscan.io/tx/${signatures[0]}">View Transaction</a>
-    `.trim();
+    if (claimInfo && claimInfo.estimatedFeesUsd) {
+      message += `\n\n<b>Estimated Profitability:</b>`;
+      message += `\n• Fees: $${claimInfo.estimatedFeesUsd.toFixed(4)}`;
+      message += `\n• Gas: $${claimInfo.estimatedGasCostUsd?.toFixed(4)}`;
+      message += `\n• Net: $${claimInfo.netProfit?.toFixed(4)}`;
+    }
 
-    await this.send(message);
+    message += `\n\n🔗 <a href="https://solscan.io/tx/${signatures[0]}">View Transaction</a>`;
+
+    await this.send(message.trim());
   }
 
   /**

@@ -76,6 +76,9 @@ class Database {
           metadata JSONB,
           strategy_priority INTEGER DEFAULT 50,
           strategy_risk_level VARCHAR(20) DEFAULT 'medium',
+          total_fees_earned DECIMAL(20, 8) DEFAULT 0,
+          total_gas_costs DECIMAL(20, 8) DEFAULT 0,
+          net_fees_earned DECIMAL(20, 8) DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
@@ -112,6 +115,21 @@ class Database {
           value JSONB,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS fee_claims (
+          id SERIAL PRIMARY KEY,
+          position_id INTEGER REFERENCES positions(id),
+          transaction_signature VARCHAR(88),
+          total_fees_usd DECIMAL(20, 8),
+          gas_cost_sol DECIMAL(20, 8),
+          gas_cost_usd DECIMAL(20, 8),
+          net_profit_usd DECIMAL(20, 8),
+          fee_breakdown JSONB,
+          claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_fee_claims_position_id ON fee_claims(position_id);
+        CREATE INDEX IF NOT EXISTS idx_fee_claims_claimed_at ON fee_claims(claimed_at);
       `);
 
       logger.info('Database tables initialized successfully');

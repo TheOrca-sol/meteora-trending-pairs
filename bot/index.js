@@ -180,21 +180,24 @@ class MeteoraBot {
         return;
       }
 
-      // Check if should claim rewards
-      // TODO: Estimate reward value before claiming
-      const estimatedRewards = 0; // Placeholder
-      const claimCheck = await riskManager.shouldClaimRewards(position, estimatedRewards);
+      // Check if should claim rewards (with profitability analysis)
+      const claimCheck = await riskManager.shouldClaimRewards(position, pool);
       if (claimCheck.shouldClaim) {
-        logger.info(`Claiming rewards from position ${position.id}`);
+        logger.info(`Claiming rewards from position ${position.id}: ${claimCheck.reason}`);
+        logger.info(`  Estimated fees: $${claimCheck.estimatedFeesUsd?.toFixed(4)}, Gas: $${claimCheck.estimatedGasCostUsd?.toFixed(4)}, Net: $${claimCheck.netProfit?.toFixed(4)}`);
+
         const result = await executionService.claimPositionRewards(
           position,
           position.pool_address,
           position.position_pubkey
         );
+
         if (result.success && result.signatures) {
-          await notificationService.notifyRewardsClaimed(position, result.signatures);
+          await notificationService.notifyRewardsClaimed(position, result.signatures, claimCheck);
         }
         this.stats.totalRewardsClaimed++;
+      } else if (claimCheck.estimatedFeesUsd) {
+        logger.debug(`Skipping claim for position ${position.id}: ${claimCheck.reason}`);
       }
 
       // Check if should switch strategies (optimization)
