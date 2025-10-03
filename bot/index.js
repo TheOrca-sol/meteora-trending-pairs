@@ -574,7 +574,7 @@ class MeteoraBot {
     const priceChange24h = pool.priceChange24h || pool.dexScreener?.priceChange24h || 0;
     const score = pool.scores?.overall || pool.scores?.totalScore || 0;
     const fee = pool.fee || pool.baseFee || 0;
-    const trade5m = pool.trade5m || (pool.dexScreener?.txns1h ? (pool.dexScreener.txns1h.buys + pool.dexScreener.txns1h.sells) : 0);
+    const trade5m = pool.trade5m || (pool.dexScreener?.txns5m ? (pool.dexScreener.txns5m.buys + pool.dexScreener.txns5m.sells) : 0);
 
     // Calculate 24h Fee/TVL ratio
     const feeToTvlRatio = pool.fees24h && tvl

@@ -60,9 +60,11 @@ class DataAggregatorService {
         priceUsd: parseFloat(pairData.priceUsd || 0),
         volume24h: parseFloat(pairData.volume?.h24 || 0),
         volume1h: parseFloat(pairData.volume?.h1 || 0),
+        volume5m: parseFloat(pairData.volume?.m5 || 0),
         priceChange24h: parseFloat(pairData.priceChange?.h24 || 0),
         priceChange1h: parseFloat(pairData.priceChange?.h1 || 0),
         priceChange6h: parseFloat(pairData.priceChange?.h6 || 0),
+        priceChange5m: parseFloat(pairData.priceChange?.m5 || 0),
         txns24h: {
           buys: pairData.txns?.h24?.buys || 0,
           sells: pairData.txns?.h24?.sells || 0,
@@ -70,6 +72,10 @@ class DataAggregatorService {
         txns1h: {
           buys: pairData.txns?.h1?.buys || 0,
           sells: pairData.txns?.h1?.sells || 0,
+        },
+        txns5m: {
+          buys: pairData.txns?.m5?.buys || 0,
+          sells: pairData.txns?.m5?.sells || 0,
         },
         liquidity: parseFloat(pairData.liquidity?.usd || 0),
         fdv: parseFloat(pairData.fdv || 0),
