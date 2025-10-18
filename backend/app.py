@@ -185,6 +185,488 @@ def get_pairs():
 def health_check():
     return jsonify({'status': 'healthy'})
 
+@app.route('/api/wallet/positions', methods=['POST'])
+def get_wallet_positions():
+    """
+    Get Meteora positions by checking pools with whitelisted tokens and quote preferences
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        whitelist = data.get('whitelist', [])
+        quote_preferences = data.get('quotePreferences', {'sol': True, 'usdc': True})
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # If no whitelist, return empty
+        if not whitelist:
+            return jsonify({
+                'status': 'success',
+                'positions': [],
+                'message': 'Add tokens to whitelist to find positions'
+            })
+
+        logger.info(f"Fetching positions for wallet: {wallet_address} with {len(whitelist)} whitelisted tokens")
+
+        # Fetch all pools from Meteora API
+        logger.info("Fetching pools from Meteora API...")
+        pools_response = requests.get(
+            "https://dlmm-api.meteora.ag/pair/all",
+            headers={"accept": "application/json"},
+            timeout=15
+        )
+        pools_response.raise_for_status()
+        all_pools = pools_response.json()
+        logger.info(f"Loaded {len(all_pools)} pools")
+
+        # Common quote token addresses
+        QUOTE_TOKENS = {
+            'SOL': 'So11111111111111111111111111111111111111112',
+            'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        }
+
+        # Filter pools based on whitelist and quote preferences
+        candidate_pools = []
+        for pool in all_pools:
+            mint_x = pool.get('mint_x', '')
+            mint_y = pool.get('mint_y', '')
+
+            # Check if pool contains a whitelisted token
+            has_whitelisted_token = mint_x in whitelist or mint_y in whitelist
+            if not has_whitelisted_token:
+                continue
+
+            # Check if pool has preferred quote token
+            has_sol_quote = (mint_x == QUOTE_TOKENS['SOL'] or mint_y == QUOTE_TOKENS['SOL']) and quote_preferences.get('sol', False)
+            has_usdc_quote = (mint_x == QUOTE_TOKENS['USDC'] or mint_y == QUOTE_TOKENS['USDC']) and quote_preferences.get('usdc', False)
+
+            if has_sol_quote or has_usdc_quote:
+                candidate_pools.append(pool)
+
+        logger.info(f"Found {len(candidate_pools)} candidate pools matching whitelist and quote preferences")
+
+        # Now fetch ALL positions for this wallet in ONE RPC call (like the SDK does)
+        # Then match them against candidate pools
+        RPC_URL = "https://api.mainnet-beta.solana.com"
+        DLMM_PROGRAM_ID = "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
+
+        import base58
+
+        def safe_float(value, default=0.0):
+            if value is None or value == '':
+                return default
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+
+        # Query ALL positions for this wallet in one call (SDK approach)
+        logger.info("Fetching all user positions...")
+        rpc_payload = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "getProgramAccounts",
+            "params": [
+                DLMM_PROGRAM_ID,
+                {
+                    "encoding": "base64",
+                    "filters": [
+                        {
+                            "memcmp": {
+                                "offset": 40,  # Owner at offset 40
+                                "bytes": wallet_address
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+
+        try:
+            rpc_response = requests.post(RPC_URL, json=rpc_payload, timeout=30)
+            rpc_response.raise_for_status()
+            rpc_data = rpc_response.json()
+        except Exception as e:
+            logger.error(f"Error querying positions: {e}")
+            return jsonify({
+                'status': 'error',
+                'message': f'Error querying blockchain: {str(e)}'
+            }), 500
+
+        # Extract pool addresses and position data from position accounts
+        user_positions_map = {}  # pool_address -> list of position accounts
+        if 'result' in rpc_data and rpc_data['result']:
+            logger.info(f"Found {len(rpc_data['result'])} total positions for wallet")
+
+            for account in rpc_data['result']:
+                try:
+                    position_pubkey = account.get('pubkey')
+                    account_data = account.get('account', {}).get('data', [])
+                    if not account_data or len(account_data) < 1:
+                        continue
+
+                    # Decode base64 data
+                    import base64
+                    import struct
+                    data_bytes = base64.b64decode(account_data[0])
+
+                    # Extract pool address at offset 8 (32 bytes)
+                    if len(data_bytes) >= 40:
+                        pool_pubkey_bytes = data_bytes[8:40]
+                        pool_address = base58.b58encode(pool_pubkey_bytes).decode('ascii')
+
+                        # Store position account with its pool
+                        if pool_address not in user_positions_map:
+                            user_positions_map[pool_address] = []
+
+                        # Try to extract position data (amounts, fees, etc.)
+                        # Position structure (simplified):
+                        # offset 72: liquidity_shares (u128 = 16 bytes)
+                        # offset 88: fee_pending_x (u64 = 8 bytes)
+                        # offset 96: fee_pending_y (u64 = 8 bytes)
+
+                        position_info = {
+                            'position_account': position_pubkey,
+                            'pool_address': pool_address
+                        }
+
+                        # Extract liquidity shares if available
+                        if len(data_bytes) >= 88:
+                            try:
+                                # Read u128 as two u64s
+                                liquidity_low = struct.unpack('<Q', data_bytes[72:80])[0]
+                                liquidity_high = struct.unpack('<Q', data_bytes[80:88])[0]
+                                liquidity_shares = liquidity_low + (liquidity_high << 64)
+                                position_info['liquidity_shares'] = liquidity_shares
+                            except Exception as e:
+                                logger.error(f"Error extracting liquidity: {e}")
+
+                        # Extract pending fees if available
+                        if len(data_bytes) >= 104:
+                            try:
+                                fee_x = struct.unpack('<Q', data_bytes[88:96])[0]
+                                fee_y = struct.unpack('<Q', data_bytes[96:104])[0]
+                                position_info['fee_pending_x'] = fee_x
+                                position_info['fee_pending_y'] = fee_y
+                            except Exception as e:
+                                logger.error(f"Error extracting fees: {e}")
+
+                        user_positions_map[pool_address].append(position_info)
+
+                except Exception as e:
+                    logger.error(f"Error extracting position data: {e}")
+                    continue
+
+        logger.info(f"User has positions in {len(user_positions_map)} pools")
+
+        # Get SOL price from SOL-USDC pool in Meteora data
+        def get_sol_price_from_pools(pools):
+            """Extract SOL price from SOL-USDC pool"""
+            SOL_MINT = 'So11111111111111111111111111111111111111112'
+            USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+
+            for pool in pools:
+                mint_x = pool.get('mint_x', '')
+                mint_y = pool.get('mint_y', '')
+
+                # Find SOL-USDC pool
+                if (mint_x == SOL_MINT and mint_y == USDC_MINT):
+                    # SOL is X, USDC is Y, so pool_price = USDC per SOL = SOL price
+                    price = safe_float(pool.get('current_price', 0))
+                    if price > 0:
+                        logger.info(f"Found SOL price from SOL-USDC pool: ${price:.2f}")
+                        return price
+                elif (mint_x == USDC_MINT and mint_y == SOL_MINT):
+                    # USDC is X, SOL is Y, so pool_price = SOL per USDC, need to invert
+                    price = safe_float(pool.get('current_price', 0))
+                    if price > 0:
+                        sol_price = 1.0 / price
+                        logger.info(f"Found SOL price from USDC-SOL pool: ${sol_price:.2f}")
+                        return sol_price
+
+            logger.warning("Could not find SOL-USDC pool, using fallback price $150")
+            return 150.0  # Fallback
+
+        sol_price_usd = get_sol_price_from_pools(all_pools)
+
+        # Now match user's pools with candidate pools
+        positions = []
+        candidate_pool_map = {pool['address']: pool for pool in candidate_pools}
+
+        for pool_address, position_accounts in user_positions_map.items():
+            if pool_address in candidate_pool_map:
+                pool = candidate_pool_map[pool_address]
+                logger.info(f"Matched position: {pool.get('name', '')} ({len(position_accounts)} position(s))")
+
+                # Fetch detailed position data from Meteora API for each position
+                total_token_x = 0
+                total_token_y = 0
+                total_liquidity_shares = sum(p.get('liquidity_shares', 0) for p in position_accounts)
+                total_fee_x = sum(p.get('fee_pending_x', 0) for p in position_accounts)
+                total_fee_y = sum(p.get('fee_pending_y', 0) for p in position_accounts)
+
+                # Fetch deposit and withdrawal history for each position to calculate current balance
+                for position_account in position_accounts:
+                    position_address = position_account.get('position_account')
+                    try:
+                        # Fetch deposits
+                        deposits_response = requests.get(
+                            f"https://dlmm-api.meteora.ag/position/{position_address}/deposits",
+                            timeout=5
+                        )
+                        # Fetch withdrawals
+                        withdraws_response = requests.get(
+                            f"https://dlmm-api.meteora.ag/position/{position_address}/withdraws",
+                            timeout=5
+                        )
+
+                        if deposits_response.status_code == 200:
+                            deposits = deposits_response.json()
+                            for deposit in deposits:
+                                total_token_x += deposit.get('token_x_amount', 0)
+                                total_token_y += deposit.get('token_y_amount', 0)
+
+                        if withdraws_response.status_code == 200:
+                            withdraws = withdraws_response.json()
+                            for withdraw in withdraws:
+                                total_token_x -= withdraw.get('token_x_amount', 0)
+                                total_token_y -= withdraw.get('token_y_amount', 0)
+
+                    except Exception as e:
+                        logger.error(f"  Error fetching position history: {e}")
+
+                # Get token info and derive prices from pool data
+                mint_x = pool.get('mint_x', '')
+                mint_y = pool.get('mint_y', '')
+                pool_price = safe_float(pool.get('current_price', 0))  # Y per X (e.g., USDC per JUP)
+
+                # Derive token USD prices from pool price
+                # Common quote tokens we can use as USD anchors
+                USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+                SOL_MINT = 'So11111111111111111111111111111111111111112'
+
+                # Default prices
+                price_x = 0
+                price_y = 0
+
+                # If Y token is USDC, then pool_price = USDC per X token = X price in USD
+                if mint_y == USDC_MINT:
+                    price_y = 1.0  # USDC = $1
+                    price_x = pool_price  # X token price in USD
+                # If X token is USDC, then pool_price = Y per USDC, so Y price = pool_price
+                elif mint_x == USDC_MINT:
+                    price_x = 1.0  # USDC = $1
+                    price_y = pool_price
+                # For SOL pairs, use real-time SOL price from Jupiter
+                elif mint_y == SOL_MINT:
+                    price_y = sol_price_usd
+                    price_x = pool_price * price_y
+                elif mint_x == SOL_MINT:
+                    price_x = sol_price_usd
+                    price_y = pool_price * price_x
+
+                # Get token decimals (standard decimals for common tokens, or query from RPC)
+                # For now, use common decimals - JUP: 6, USDC: 6, SOL: 9, WEED: likely 6
+                COMMON_DECIMALS = {
+                    'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN': 6,  # JUP
+                    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': 6,  # USDC
+                    'So11111111111111111111111111111111111111112': 9,  # SOL
+                }
+                decimals_x = COMMON_DECIMALS.get(mint_x, 6)  # Default to 6 if unknown
+                decimals_y = COMMON_DECIMALS.get(mint_y, 6)
+
+                # Note: Fee extraction from position bytes needs verification
+                # The current offsets may not be correct for all position versions
+                # For now, set fees to 0 until we can verify the correct data structure
+                total_pending_fees_usd = 0
+                # fee_x_usd = (total_fee_x / (10 ** decimals_x)) * price_x if total_fee_x > 0 else 0
+                # fee_y_usd = (total_fee_y / (10 ** decimals_y)) * price_y if total_fee_y > 0 else 0
+                # total_pending_fees_usd = fee_x_usd + fee_y_usd
+
+                # Calculate position value from actual token amounts (deposits - withdrawals)
+                # Convert raw amounts to human-readable (divide by 10^decimals) then multiply by price
+                token_x_readable = total_token_x / (10 ** decimals_x) if total_token_x > 0 else 0
+                token_y_readable = total_token_y / (10 ** decimals_y) if total_token_y > 0 else 0
+
+                value_from_x = token_x_readable * price_x
+                value_from_y = token_y_readable * price_y
+                estimated_position_value = value_from_x + value_from_y
+
+                # Convert to strings to avoid JSON serialization issues with huge numbers
+                position_data = {
+                    'address': pool_address,
+                    'pairName': pool.get('name', ''),
+                    # Pool-level data (for reference)
+                    'pool_liquidity': safe_float(pool.get('liquidity', 0)),
+                    'pool_apr': safe_float(pool.get('apr', 0)),
+                    'pool_fees24h': safe_float(pool.get('fees_24h', 0)),
+                    'pool_volume24h': safe_float(pool.get('cumulative_trade_volume', 0)),
+                    'pool_current_price': safe_float(pool.get('current_price', 0)),
+                    # Position-specific data
+                    'liquidity_shares': str(total_liquidity_shares),
+                    'pending_fee_x': str(total_fee_x),
+                    'pending_fee_y': str(total_fee_y),
+                    'pending_fees_usd': total_pending_fees_usd,
+                    'estimated_value_usd': estimated_position_value,
+                    'token_x_amount': token_x_readable,
+                    'token_y_amount': token_y_readable,
+                    'has_liquidity': total_liquidity_shares > 0,
+                    'has_pending_fees': total_fee_x > 0 or total_fee_y > 0,
+                    'position_count': len(position_accounts),
+                    'status': 'Active' if total_liquidity_shares > 0 else 'Empty',
+                    'mint_x': mint_x,
+                    'mint_y': mint_y,
+                    'price_x': price_x,
+                    'price_y': price_y
+                }
+
+                logger.info(f"  Position value: ${estimated_position_value:.2f} ({token_x_readable:.2f} X + {token_y_readable:.2f} Y)")
+
+                positions.append(position_data)
+
+        if not positions:
+            return jsonify({
+                'status': 'success',
+                'positions': [],
+                'message': 'No active Meteora DLMM positions found for this wallet'
+            })
+
+        return jsonify({
+            'status': 'success',
+            'positions': positions,
+            'total_positions': len(positions)
+        })
+    except Exception as e:
+        logger.error(f"Error fetching positions: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/opportunities/analyze', methods=['POST'])
+def analyze_opportunities():
+    """
+    Analyze and find better pool opportunities based on whitelist and preferences
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        whitelist = data.get('whitelist', [])
+        quote_preferences = data.get('quotePreferences', {'sol': True, 'usdc': True})
+        current_positions = data.get('currentPositions', [])
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        if not whitelist:
+            return jsonify({
+                'status': 'success',
+                'opportunities': [],
+                'message': 'No tokens in whitelist'
+            })
+
+        logger.info(f"Analyzing opportunities for {len(whitelist)} tokens")
+
+        # Fetch all pools from Meteora
+        response = requests.get(
+            "https://dlmm-api.meteora.ag/pair/all",
+            headers={"accept": "application/json"},
+            timeout=15
+        )
+        response.raise_for_status()
+        all_pools = response.json()
+
+        # Common quote token addresses
+        QUOTE_TOKENS = {
+            'SOL': 'So11111111111111111111111111111111111111112',
+            'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+        }
+
+        # Filter pools based on whitelist and quote preferences
+        opportunities = []
+        for pool in all_pools:
+            mint_x = pool.get('mint_x', '')
+            mint_y = pool.get('mint_y', '')
+
+            # Check if pool contains a whitelisted token
+            has_whitelisted_token = mint_x in whitelist or mint_y in whitelist
+            if not has_whitelisted_token:
+                continue
+
+            # Check if pool has preferred quote token
+            has_sol_quote = (mint_x == QUOTE_TOKENS['SOL'] or mint_y == QUOTE_TOKENS['SOL']) and quote_preferences.get('sol', False)
+            has_usdc_quote = (mint_x == QUOTE_TOKENS['USDC'] or mint_y == QUOTE_TOKENS['USDC']) and quote_preferences.get('usdc', False)
+
+            if not (has_sol_quote or has_usdc_quote):
+                continue
+
+            # Determine quote token
+            quote_token = 'SOL' if (mint_x == QUOTE_TOKENS['SOL'] or mint_y == QUOTE_TOKENS['SOL']) else 'USDC'
+
+            # Calculate opportunity score (weighted combination of metrics)
+            def safe_float(value, default=0.0):
+                if value is None or value == '':
+                    return default
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    return default
+
+            apr = safe_float(pool.get('apr', 0))
+            fees_24h = safe_float(pool.get('fees_24h', 0))
+            liquidity = safe_float(pool.get('liquidity', 0))
+            volume = safe_float(pool.get('cumulative_trade_volume', 0))
+
+            # Skip pools with very low liquidity or volume
+            if liquidity < 1000 or volume < 1000:
+                continue
+
+            # Calculate score (you can adjust weights)
+            score = (apr * 0.4) + (min(fees_24h / 1000, 100) * 0.3) + (min(liquidity / 100000, 100) * 0.3)
+
+            opportunity = {
+                'address': pool.get('address', ''),
+                'pairName': pool.get('name', ''),
+                'quoteToken': quote_token,
+                'apr': apr,
+                'fees24h': fees_24h,
+                'volume24h': volume,
+                'liquidity': liquidity,
+                'binStep': pool.get('bin_step', 0),
+                'score': score,
+                'mint_x': mint_x,
+                'mint_y': mint_y
+            }
+
+            opportunities.append(opportunity)
+
+        # Sort by score (best first)
+        opportunities.sort(key=lambda x: x['score'], reverse=True)
+
+        # Limit to top 20 opportunities
+        top_opportunities = opportunities[:20]
+
+        logger.info(f"Found {len(top_opportunities)} opportunities")
+
+        return jsonify({
+            'status': 'success',
+            'opportunities': top_opportunities,
+            'total_found': len(opportunities)
+        })
+    except Exception as e:
+        logger.error(f"Error analyzing opportunities: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=port, debug=True)
