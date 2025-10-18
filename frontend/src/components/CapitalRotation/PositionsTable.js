@@ -15,6 +15,94 @@ import {
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import axios from 'axios';
+
+// Position Row Component with DexScreener data fetching
+const PositionRow = ({ position, formatNumber, formatFeeRate, formatLargeNumber, hasValue }) => {
+  const [txData, setTxData] = useState(null);
+  const [txLoading, setTxLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDexScreenerData = async () => {
+      try {
+        const response = await axios.get(`https://api.dexscreener.com/latest/dex/pairs/solana/${position.address}`);
+        const dexData = response.data.pairs?.[0];
+        if (dexData?.txns?.m5) {
+          const total = (dexData.txns.m5.buys || 0) + (dexData.txns.m5.sells || 0);
+          setTxData(total);
+        }
+      } catch (err) {
+        console.error('Error fetching DexScreener data:', err);
+      } finally {
+        setTxLoading(false);
+      }
+    };
+
+    if (position.address) {
+      fetchDexScreenerData();
+    }
+  }, [position.address]);
+
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Typography variant="body2" fontWeight={500}>
+          {position.pairName}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Bin Step: {position.binStep} • Fee: {position.baseFee}%
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2" fontWeight={500} color={position.estimated_value_usd > 0 ? 'success.main' : 'text.primary'}>
+          ${formatNumber(position.estimated_value_usd || 0)}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          {position.token_x_amount > 0 ? `${formatNumber(position.token_x_amount)} X` : ''}{position.token_y_amount > 0 ? ` + ${formatNumber(position.token_y_amount)} Y` : ''}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Chip
+          label={formatFeeRate(position.pool_feeRate30min)}
+          color={position.pool_feeRate30min > 0.01 ? 'success' : 'default'}
+          size="small"
+        />
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(position.pool_fees30min || 0)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(position.pool_volume30min || 0)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(position.pool_liquidity || 0)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        {txLoading ? (
+          <CircularProgress size={16} />
+        ) : (
+          <Typography variant="body2">
+            {txData !== null ? txData : '-'}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell align="right">
+        <Chip
+          label={position.status || 'Active'}
+          color="success"
+          size="small"
+          variant="outlined"
+        />
+      </TableCell>
+    </TableRow>
+  );
+};
 
 function PositionsTable({ walletAddress, whitelist, quotePreferences, positions, setPositions }) {
   const [loading, setLoading] = useState(false);
@@ -61,6 +149,14 @@ function PositionsTable({ walletAddress, whitelist, quotePreferences, positions,
   const formatPercent = (num) => {
     if (!num) return '0.00%';
     return `${num > 0 ? '+' : ''}${formatNumber(num)}%`;
+  };
+
+  const formatFeeRate = (num) => {
+    if (!num) return '0.0000%';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4
+    }).format(num) + '%';
   };
 
   const formatLargeNumber = (numStr) => {
@@ -125,64 +221,25 @@ function PositionsTable({ walletAddress, whitelist, quotePreferences, positions,
             <TableHead>
               <TableRow>
                 <TableCell>Pool</TableCell>
-                <TableCell align="right">Position Value (Est.)</TableCell>
-                <TableCell align="right">Pending Fees</TableCell>
-                <TableCell align="right">Current Price</TableCell>
-                <TableCell align="right">Pool APR</TableCell>
+                <TableCell align="right">Position Value</TableCell>
+                <TableCell align="right">Fee Rate (30min)</TableCell>
+                <TableCell align="right">30min Fees</TableCell>
+                <TableCell align="right">Volume (30min)</TableCell>
+                <TableCell align="right">Liquidity</TableCell>
+                <TableCell align="right">5m Txs</TableCell>
                 <TableCell align="right">Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {positions.map((position, index) => (
-                <TableRow key={index} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight={500}>
-                      {position.pairName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {position.position_count} position{position.position_count > 1 ? 's' : ''}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" fontWeight={500} color={position.estimated_value_usd > 0 ? 'success.main' : 'text.primary'}>
-                      ${formatNumber(position.estimated_value_usd || 0)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {position.has_liquidity ? 'Active position' : 'Closed'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2" fontWeight={500}>
-                      ${formatNumber(position.pending_fees_usd || 0)}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {position.pending_fees_usd > 0 ? 'Claimable' : 'No fees'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Typography variant="body2">
-                      ${position.pool_current_price ? position.pool_current_price.toFixed(6) : '0.00'}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      per token
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      label={formatPercent(position.pool_apr)}
-                      color={position.pool_apr > 50 ? 'success' : 'default'}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      label={position.status || 'Active'}
-                      color="success"
-                      size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                </TableRow>
+                <PositionRow
+                  key={index}
+                  position={position}
+                  formatNumber={formatNumber}
+                  formatFeeRate={formatFeeRate}
+                  formatLargeNumber={formatLargeNumber}
+                  hasValue={hasValue}
+                />
               ))}
             </TableBody>
           </Table>
@@ -192,8 +249,7 @@ function PositionsTable({ walletAddress, whitelist, quotePreferences, positions,
       {positions.length > 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="caption">
-            <strong>Note:</strong> Position values are calculated based on your deposit history (deposits minus withdrawals) multiplied by current token prices.
-            Pending fees display is temporarily disabled while we verify the correct data extraction method.
+            <strong>Note:</strong> Position values are calculated based on your deposit history (deposits minus withdrawals) multiplied by current token prices from Meteora pools.
           </Typography>
         </Alert>
       )}

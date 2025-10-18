@@ -497,15 +497,25 @@ def get_wallet_positions():
                 estimated_position_value = value_from_x + value_from_y
 
                 # Convert to strings to avoid JSON serialization issues with huge numbers
+                # Calculate 30-minute fee rate for this pool
+                fees_obj = pool.get('fees', {})
+                volume_obj = pool.get('volume', {})
+                fees_30min = safe_float(fees_obj.get('min_30', 0))
+                volume_30min = safe_float(volume_obj.get('min_30', 0))
+                pool_liquidity = safe_float(pool.get('liquidity', 0))
+                fee_rate_30min = (fees_30min / pool_liquidity * 100) if pool_liquidity > 0 else 0
+
                 position_data = {
                     'address': pool_address,
                     'pairName': pool.get('name', ''),
                     # Pool-level data (for reference)
-                    'pool_liquidity': safe_float(pool.get('liquidity', 0)),
-                    'pool_apr': safe_float(pool.get('apr', 0)),
-                    'pool_fees24h': safe_float(pool.get('fees_24h', 0)),
-                    'pool_volume24h': safe_float(pool.get('cumulative_trade_volume', 0)),
+                    'pool_liquidity': pool_liquidity,
+                    'pool_feeRate30min': fee_rate_30min,
+                    'pool_fees30min': fees_30min,
+                    'pool_volume30min': volume_30min,
                     'pool_current_price': safe_float(pool.get('current_price', 0)),
+                    'binStep': pool.get('bin_step', 0),
+                    'baseFee': safe_float(pool.get('base_fee_percentage', 0)),
                     # Position-specific data
                     'liquidity_shares': str(total_liquidity_shares),
                     'pending_fee_x': str(total_fee_x),
@@ -558,6 +568,7 @@ def analyze_opportunities():
         whitelist = data.get('whitelist', [])
         quote_preferences = data.get('quotePreferences', {'sol': True, 'usdc': True})
         current_positions = data.get('currentPositions', [])
+        min_fees_30min = data.get('minFees30min', 100)  # Default: $100
 
         if not wallet_address:
             return jsonify({
@@ -589,23 +600,33 @@ def analyze_opportunities():
             'USDC': 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
         }
 
-        # Filter pools based on whitelist and quote preferences
+        # Build allowed tokens set: whitelist + selected quote tokens
+        allowed_tokens = set(whitelist)
+        if quote_preferences.get('sol', False):
+            allowed_tokens.add(QUOTE_TOKENS['SOL'])
+        if quote_preferences.get('usdc', False):
+            allowed_tokens.add(QUOTE_TOKENS['USDC'])
+
+        logger.info(f"Allowed tokens for opportunities: {len(allowed_tokens)} tokens")
+        logger.info(f"Minimum 30min fees filter: ${min_fees_30min}")
+
+        # Filter pools: BOTH tokens must be in allowed set
         opportunities = []
         for pool in all_pools:
             mint_x = pool.get('mint_x', '')
             mint_y = pool.get('mint_y', '')
 
-            # Check if pool contains a whitelisted token
+            # Both tokens must be in the allowed set (whitelist + quote tokens)
+            if mint_x not in allowed_tokens or mint_y not in allowed_tokens:
+                continue
+
+            # At least one must be from whitelist (to avoid showing only SOL-USDC when you don't have positions)
             has_whitelisted_token = mint_x in whitelist or mint_y in whitelist
             if not has_whitelisted_token:
-                continue
-
-            # Check if pool has preferred quote token
-            has_sol_quote = (mint_x == QUOTE_TOKENS['SOL'] or mint_y == QUOTE_TOKENS['SOL']) and quote_preferences.get('sol', False)
-            has_usdc_quote = (mint_x == QUOTE_TOKENS['USDC'] or mint_y == QUOTE_TOKENS['USDC']) and quote_preferences.get('usdc', False)
-
-            if not (has_sol_quote or has_usdc_quote):
-                continue
+                # Allow quote-only pairs (like SOL-USDC) only if you have both quotes selected
+                is_quote_pair = (mint_x in QUOTE_TOKENS.values() and mint_y in QUOTE_TOKENS.values())
+                if not is_quote_pair:
+                    continue
 
             # Determine quote token
             quote_token = 'SOL' if (mint_x == QUOTE_TOKENS['SOL'] or mint_y == QUOTE_TOKENS['SOL']) else 'USDC'
@@ -619,27 +640,37 @@ def analyze_opportunities():
                 except (ValueError, TypeError):
                     return default
 
-            apr = safe_float(pool.get('apr', 0))
-            fees_24h = safe_float(pool.get('fees_24h', 0))
+            # Get 30-minute data
+            fees_obj = pool.get('fees', {})
+            volume_obj = pool.get('volume', {})
+            fees_30min = safe_float(fees_obj.get('min_30', 0))
+            volume_30min = safe_float(volume_obj.get('min_30', 0))
             liquidity = safe_float(pool.get('liquidity', 0))
-            volume = safe_float(pool.get('cumulative_trade_volume', 0))
 
-            # Skip pools with very low liquidity or volume
-            if liquidity < 1000 or volume < 1000:
+            # Calculate 30-minute fee rate (percentage)
+            fee_rate_30min = (fees_30min / liquidity * 100) if liquidity > 0 else 0
+
+            # Skip pools with very low liquidity, volume, or fees
+            if liquidity < 1000 or volume_30min < 20:  # $20 in 30min = ~$1K daily
                 continue
 
-            # Calculate score (you can adjust weights)
-            score = (apr * 0.4) + (min(fees_24h / 1000, 100) * 0.3) + (min(liquidity / 100000, 100) * 0.3)
+            # Skip pools with fees below minimum threshold
+            if fees_30min < min_fees_30min:
+                continue
+
+            # Calculate score based on fee rate (higher is better)
+            score = fee_rate_30min
 
             opportunity = {
                 'address': pool.get('address', ''),
                 'pairName': pool.get('name', ''),
                 'quoteToken': quote_token,
-                'apr': apr,
-                'fees24h': fees_24h,
-                'volume24h': volume,
+                'feeRate30min': fee_rate_30min,
+                'fees30min': fees_30min,
+                'volume30min': volume_30min,
                 'liquidity': liquidity,
                 'binStep': pool.get('bin_step', 0),
+                'baseFee': safe_float(pool.get('base_fee_percentage', 0)),
                 'score': score,
                 'mint_x': mint_x,
                 'mint_y': mint_y
@@ -647,13 +678,68 @@ def analyze_opportunities():
 
             opportunities.append(opportunity)
 
+        # Log current positions for analysis
+        logger.info("=" * 80)
+        logger.info("CURRENT POSITIONS:")
+        position_addresses = set()
+        for pos in current_positions:
+            position_addresses.add(pos.get('address', ''))
+            logger.info(f"  {pos.get('pairName', 'Unknown')}")
+            logger.info(f"    Address: {pos.get('address', 'Unknown')}")
+            logger.info(f"    Fee Rate (30min): {safe_float(pos.get('pool_feeRate30min', 0)):.4f}%")
+            logger.info(f"    30min Fees: ${safe_float(pos.get('pool_fees30min', 0)):.2f}")
+            logger.info(f"    30min Volume: ${safe_float(pos.get('pool_volume30min', 0)):.2f}")
+            logger.info(f"    Liquidity: ${safe_float(pos.get('pool_liquidity', 0)):.2f}")
+            logger.info(f"    Value: ${safe_float(pos.get('estimated_value_usd', 0)):.2f}")
+
+        # Filter opportunities: only show pools with better fee rates than current positions
+        if current_positions:
+            # Get best fee rate from current positions
+            position_best_fee_rate = max([safe_float(p.get('pool_feeRate30min', 0)) for p in current_positions], default=0)
+
+            logger.info("=" * 80)
+            logger.info(f"FILTERING CRITERIA:")
+            logger.info(f"  1. Exclude pools you already have positions in ({len(position_addresses)} pools)")
+            logger.info(f"  2. Fee rate must be at least 30% better than best position")
+            logger.info(f"")
+            logger.info(f"  Best Position Fee Rate: {position_best_fee_rate:.4f}% (need >{position_best_fee_rate * 1.3:.4f}%)")
+            logger.info("=" * 80)
+
+            # Filter: opportunity must pass criteria
+            MIN_IMPROVEMENT = 1.3  # Must be 30% better
+            filtered_opportunities = []
+
+            logger.info(f"EVALUATING {len(opportunities)} CANDIDATE OPPORTUNITIES:")
+            for opp in opportunities:
+                # Criterion 1: Exclude pools you already have positions in
+                if opp['address'] in position_addresses:
+                    logger.info(f"  {opp['pairName']}")
+                    logger.info(f"    Result: EXCLUDED (already have position in this pool)")
+                    continue
+
+                # Criterion 2: Fee rate must be significantly better
+                is_better = opp['feeRate30min'] > position_best_fee_rate * MIN_IMPROVEMENT
+
+                logger.info(f"  {opp['pairName']}")
+                logger.info(f"    Fee Rate (30min): {opp['feeRate30min']:.4f}% {'✓' if is_better else '✗'}")
+                logger.info(f"    30min Fees: ${opp['fees30min']:.2f}")
+                logger.info(f"    30min Volume: ${opp['volume30min']:.2f}")
+                logger.info(f"    Result: {'INCLUDED' if is_better else 'FILTERED OUT'}")
+
+                if is_better:
+                    filtered_opportunities.append(opp)
+
+            opportunities = filtered_opportunities
+            logger.info("=" * 80)
+            logger.info(f"FINAL: {len(opportunities)} opportunities passed the filter")
+
         # Sort by score (best first)
         opportunities.sort(key=lambda x: x['score'], reverse=True)
 
         # Limit to top 20 opportunities
         top_opportunities = opportunities[:20]
 
-        logger.info(f"Found {len(top_opportunities)} opportunities")
+        logger.info(f"Returning {len(top_opportunities)} top opportunities")
 
         return jsonify({
             'status': 'success',

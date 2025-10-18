@@ -39,15 +39,17 @@ export const capitalRotationService = {
    * @param {Array} whitelist - Array of token mint addresses
    * @param {Object} quotePreferences - Quote token preferences {sol: boolean, usdc: boolean}
    * @param {Array} currentPositions - Current user positions
+   * @param {number} minFees30min - Minimum 30-minute fees in USD (default: 100)
    * @returns {Promise} - Array of opportunities
    */
-  async analyzeOpportunities(walletAddress, whitelist, quotePreferences, currentPositions = []) {
+  async analyzeOpportunities(walletAddress, whitelist, quotePreferences, currentPositions = [], minFees30min = 100) {
     try {
       const response = await axios.post(`${API_BASE_URL}/opportunities/analyze`, {
         walletAddress,
         whitelist,
         quotePreferences,
-        currentPositions
+        currentPositions,
+        minFees30min
       });
 
       return {

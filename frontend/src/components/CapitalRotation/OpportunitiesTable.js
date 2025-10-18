@@ -13,12 +13,112 @@ import {
   Button,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  TextField
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import StarIcon from '@mui/icons-material/Star';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import axios from 'axios';
+
+// Opportunity Row Component with DexScreener data fetching
+const OpportunityRow = ({ opp, formatNumber, formatFeeRate, getOpportunityScore, getScoreColor, handleViewOnMeteora }) => {
+  const [txData, setTxData] = useState(null);
+  const [txLoading, setTxLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDexScreenerData = async () => {
+      try {
+        const response = await axios.get(`https://api.dexscreener.com/latest/dex/pairs/solana/${opp.address}`);
+        const dexData = response.data.pairs?.[0];
+        if (dexData?.txns?.m5) {
+          const total = (dexData.txns.m5.buys || 0) + (dexData.txns.m5.sells || 0);
+          setTxData(total);
+        }
+      } catch (err) {
+        console.error('Error fetching DexScreener data:', err);
+      } finally {
+        setTxLoading(false);
+      }
+    };
+
+    if (opp.address) {
+      fetchDexScreenerData();
+    }
+  }, [opp.address]);
+
+  const score = getOpportunityScore(opp);
+
+  return (
+    <TableRow hover>
+      <TableCell>
+        <Typography variant="body2" fontWeight={500}>
+          {opp.pairName}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Bin Step: {opp.binStep} • Fee: {opp.baseFee}%
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Chip
+          label={formatFeeRate(opp.feeRate30min)}
+          color={opp.feeRate30min > 0.02 ? 'success' : 'default'}
+          size="small"
+        />
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(opp.fees30min)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(opp.volume30min)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        <Typography variant="body2">
+          ${formatNumber(opp.liquidity)}
+        </Typography>
+      </TableCell>
+      <TableCell align="right">
+        {txLoading ? (
+          <CircularProgress size={16} />
+        ) : (
+          <Typography variant="body2">
+            {txData !== null ? txData : '-'}
+          </Typography>
+        )}
+      </TableCell>
+      <TableCell align="right">
+        <Chip
+          label={score}
+          color={getScoreColor(score)}
+          size="small"
+          variant="outlined"
+        />
+      </TableCell>
+      <TableCell align="center">
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+          <Tooltip title="View on Meteora">
+            <IconButton
+              size="small"
+              onClick={() => handleViewOnMeteora(opp.address)}
+            >
+              <OpenInNewIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Compare with current position">
+            <IconButton size="small" color="primary">
+              <CompareArrowsIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </TableCell>
+    </TableRow>
+  );
+};
 
 function OpportunitiesTable({
   walletAddress,
@@ -30,6 +130,7 @@ function OpportunitiesTable({
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [minFees30min, setMinFees30min] = useState(100);
 
   const fetchOpportunities = async () => {
     if (!walletAddress || whitelist.length === 0) return;
@@ -43,7 +144,8 @@ function OpportunitiesTable({
         walletAddress,
         whitelist,
         quotePreferences,
-        positions
+        positions,
+        minFees30min
       );
 
       if (result.success) {
@@ -78,10 +180,18 @@ function OpportunitiesTable({
     return `${num > 0 ? '+' : ''}${formatNumber(num)}%`;
   };
 
+  const formatFeeRate = (num) => {
+    if (!num) return '0.0000%';
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4
+    }).format(num) + '%';
+  };
+
   const getOpportunityScore = (opportunity) => {
-    // Simple scoring based on APR and volume
-    if (opportunity.apr > 100) return 'Excellent';
-    if (opportunity.apr > 50) return 'Good';
+    // Simple scoring based on 30min fee rate
+    if (opportunity.feeRate30min > 0.05) return 'Excellent';
+    if (opportunity.feeRate30min > 0.02) return 'Good';
     return 'Average';
   };
 
@@ -104,22 +214,35 @@ function OpportunitiesTable({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <StarIcon color="primary" />
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Rotation Opportunities
           </Typography>
         </Box>
-        <Button
-          startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
-          onClick={fetchOpportunities}
-          disabled={loading || !canAnalyze}
-          variant="contained"
-          size="small"
-        >
-          Analyze
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            label="Min 30min Fees (USD)"
+            type="number"
+            value={minFees30min}
+            onChange={(e) => setMinFees30min(Number(e.target.value))}
+            size="small"
+            sx={{ width: 180 }}
+            InputProps={{
+              inputProps: { min: 0, step: 10 }
+            }}
+          />
+          <Button
+            startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
+            onClick={fetchOpportunities}
+            disabled={loading || !canAnalyze}
+            variant="contained"
+            size="small"
+          >
+            Analyze
+          </Button>
+        </Box>
       </Box>
 
       {!canAnalyze && (
@@ -154,77 +277,27 @@ function OpportunitiesTable({
             <TableHead>
               <TableRow>
                 <TableCell>Pool</TableCell>
-                <TableCell align="right">APR</TableCell>
-                <TableCell align="right">24h Fees</TableCell>
-                <TableCell align="right">Volume (24h)</TableCell>
+                <TableCell align="right">Fee Rate (30min)</TableCell>
+                <TableCell align="right">30min Fees</TableCell>
+                <TableCell align="right">Volume (30min)</TableCell>
                 <TableCell align="right">Liquidity</TableCell>
+                <TableCell align="right">5m Txs</TableCell>
                 <TableCell align="right">Score</TableCell>
                 <TableCell align="center">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {opportunities.map((opp, index) => {
-                const score = getOpportunityScore(opp);
-                return (
-                  <TableRow key={index} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={500}>
-                        {opp.pairName}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {opp.quoteToken} pair
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={formatPercent(opp.apr)}
-                        color={opp.apr > 50 ? 'success' : 'default'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2">
-                        ${formatNumber(opp.fees24h)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2">
-                        ${formatNumber(opp.volume24h)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2">
-                        ${formatNumber(opp.liquidity)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        label={score}
-                        color={getScoreColor(score)}
-                        size="small"
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
-                        <Tooltip title="View on Meteora">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewOnMeteora(opp.address)}
-                          >
-                            <OpenInNewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Compare with current position">
-                          <IconButton size="small" color="primary">
-                            <CompareArrowsIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+              {opportunities.map((opp, index) => (
+                <OpportunityRow
+                  key={index}
+                  opp={opp}
+                  formatNumber={formatNumber}
+                  formatFeeRate={formatFeeRate}
+                  getOpportunityScore={getOpportunityScore}
+                  getScoreColor={getScoreColor}
+                  handleViewOnMeteora={handleViewOnMeteora}
+                />
+              ))}
             </TableBody>
           </Table>
         </TableContainer>
