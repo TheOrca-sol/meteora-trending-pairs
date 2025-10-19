@@ -5,6 +5,7 @@ import { useWallet } from '../contexts/WalletContext';
 import WalletManager from '../components/CapitalRotation/WalletManager';
 import WhitelistManager from '../components/CapitalRotation/WhitelistManager';
 import PreferencesPanel from '../components/CapitalRotation/PreferencesPanel';
+import MonitoringPanel from '../components/CapitalRotation/MonitoringPanel';
 import PositionsTable from '../components/CapitalRotation/PositionsTable';
 import OpportunitiesTable from '../components/CapitalRotation/OpportunitiesTable';
 
@@ -29,6 +30,11 @@ function CapitalRotationPage() {
 
   const [positions, setPositions] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
+
+  const [minFees30min, setMinFees30min] = useState(() => {
+    const saved = localStorage.getItem('minFees30min');
+    return saved ? Number(saved) : 100;
+  });
 
   return (
     <Container
@@ -119,6 +125,16 @@ function CapitalRotationPage() {
             </Grid>
           </Grid>
 
+          {/* Auto-Monitoring Section */}
+          <Box sx={{ mb: 4 }}>
+            <MonitoringPanel
+              walletAddress={activeAddress}
+              whitelist={whitelist}
+              quotePreferences={quotePreferences}
+              minFees30min={minFees30min}
+            />
+          </Box>
+
           <Divider sx={{ my: 4 }} />
 
           {/* Positions Section */}
@@ -154,6 +170,8 @@ function CapitalRotationPage() {
               positions={positions}
               opportunities={opportunities}
               setOpportunities={setOpportunities}
+              minFees30min={minFees30min}
+              setMinFees30min={setMinFees30min}
             />
           </Paper>
         </>

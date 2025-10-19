@@ -2,4 +2,9 @@ flask
 flask-cors
 requests
 gunicorn
-base58 
+base58
+APScheduler
+python-telegram-bot
+SQLAlchemy
+psycopg2-binary
+python-dotenv 

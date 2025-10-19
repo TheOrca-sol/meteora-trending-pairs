@@ -4,6 +4,17 @@ import requests
 import logging
 import os
 import gc
+import random
+import string
+import threading
+from datetime import datetime, timedelta
+from monitoring_service import monitoring_service
+from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes
+from telegram_bot import telegram_bot_handler, get_bot_link
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -753,6 +764,309 @@ def analyze_opportunities():
             'message': str(e)
         }), 500
 
+@app.route('/api/monitoring/start', methods=['POST'])
+def start_monitoring():
+    """
+    Start automated opportunity monitoring with Telegram notifications
+    Requires Telegram to be connected first
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Check if user has linked Telegram
+        db = get_db()
+        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+        db.close()
+
+        if not user:
+            return jsonify({
+                'status': 'error',
+                'message': 'Please connect your Telegram account first'
+            }), 400
+
+        config = {
+            'interval_minutes': data.get('intervalMinutes', 15),
+            'threshold_multiplier': data.get('thresholdMultiplier', 1.3),
+            'whitelist': data.get('whitelist', []),
+            'quote_preferences': data.get('quotePreferences', {'sol': True, 'usdc': True}),
+            'min_fees_30min': data.get('minFees30min', 100)
+        }
+
+        success = monitoring_service.start_monitoring(wallet_address, config)
+
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': f'Monitoring started. Checking every {config["interval_minutes"]} minutes.',
+                'config': {
+                    'interval_minutes': config['interval_minutes'],
+                    'threshold_multiplier': config['threshold_multiplier']
+                }
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to start monitoring. Please ensure Telegram is connected.'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error starting monitoring: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/monitoring/stop', methods=['POST'])
+def stop_monitoring():
+    """
+    Stop automated opportunity monitoring
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        success = monitoring_service.stop_monitoring(wallet_address)
+
+        if success:
+            return jsonify({
+                'status': 'success',
+                'message': 'Monitoring stopped'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to stop monitoring'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error stopping monitoring: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/monitoring/status', methods=['POST'])
+def get_monitoring_status():
+    """
+    Get monitoring status for a wallet
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        status = monitoring_service.get_monitoring_status(wallet_address)
+
+        return jsonify({
+            'status': 'success',
+            'monitoring': status
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting monitoring status: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/telegram/generate-code', methods=['POST'])
+def generate_telegram_code():
+    """
+    Generate a temporary 6-digit code for Telegram authentication
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Generate random 6-digit code
+        code = ''.join(random.choices(string.digits, k=6))
+
+        # Check if code already exists (very unlikely)
+        db = get_db()
+        while db.query(TelegramAuthCode).filter(TelegramAuthCode.code == code).first():
+            code = ''.join(random.choices(string.digits, k=6))
+
+        # Create auth code entry (expires in 5 minutes)
+        auth_code = TelegramAuthCode(
+            code=code,
+            wallet_address=wallet_address,
+            expires_at=datetime.utcnow() + timedelta(minutes=5)
+        )
+        db.add(auth_code)
+        db.commit()
+        db.close()
+
+        # Generate bot link
+        bot_link = get_bot_link(code)
+
+        logger.info(f"Generated auth code for wallet {wallet_address}")
+
+        return jsonify({
+            'status': 'success',
+            'code': code,
+            'botLink': bot_link,
+            'expiresIn': 300  # 5 minutes in seconds
+        })
+
+    except Exception as e:
+        logger.error(f"Error generating auth code: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/telegram/connection-status', methods=['POST'])
+def check_telegram_connection():
+    """
+    Check if a wallet has linked their Telegram account
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        db = get_db()
+        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+        db.close()
+
+        if user:
+            return jsonify({
+                'status': 'success',
+                'connected': True,
+                'telegram_username': user.telegram_username,
+                'connected_at': user.created_at.isoformat() if user.created_at else None
+            })
+        else:
+            return jsonify({
+                'status': 'success',
+                'connected': False
+            })
+
+    except Exception as e:
+        logger.error(f"Error checking Telegram connection: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/telegram/disconnect', methods=['POST'])
+def disconnect_telegram():
+    """
+    Disconnect Telegram account from wallet
+    """
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        db = get_db()
+        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+
+        if user:
+            # Stop monitoring first
+            monitoring_service.stop_monitoring(wallet_address)
+
+            # Delete user (cascade will delete everything)
+            db.delete(user)
+            db.commit()
+
+            logger.info(f"Disconnected Telegram for wallet {wallet_address}")
+
+            db.close()
+            return jsonify({
+                'status': 'success',
+                'message': 'Telegram account disconnected'
+            })
+        else:
+            db.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'No Telegram account linked'
+            }), 404
+
+    except Exception as e:
+        logger.error(f"Error disconnecting Telegram: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+def start_telegram_bot():
+    """Start Telegram bot in background thread"""
+    try:
+        logger.info("Starting Telegram bot in background...")
+        telegram_bot_handler.start_polling()
+    except Exception as e:
+        logger.error(f"Error starting Telegram bot: {e}")
+
+
+def initialize_app():
+    """Initialize application components"""
+    try:
+        # Load active monitors from database
+        logger.info("Loading active monitors from database...")
+        monitoring_service.load_active_monitors()
+
+        # Start Telegram bot in background thread
+        # Note: This only works with use_reloader=False (see bottom of file)
+        bot_thread = threading.Thread(target=start_telegram_bot, daemon=True)
+        bot_thread.start()
+        logger.info("Telegram bot thread started")
+
+        # Clean up expired auth codes
+        db = get_db()
+        cleaned = cleanup_expired_auth_codes(db)
+        db.close()
+        logger.info(f"Cleaned up {cleaned} expired auth codes")
+
+        logger.info("Application initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing application: {e}")
+
+
 if __name__ == '__main__':
+    # Initialize app
+    initialize_app()
+
+    # Start Flask server
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Note: use_reloader=False to avoid Telegram bot threading issues
+    # Set to True if you need auto-reload during development (but bot won't work)
+    app.run(host='0.0.0.0', port=port, debug=True, use_reloader=False)

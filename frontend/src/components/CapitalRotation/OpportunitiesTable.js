@@ -126,11 +126,12 @@ function OpportunitiesTable({
   quotePreferences,
   positions,
   opportunities,
-  setOpportunities
+  setOpportunities,
+  minFees30min,
+  setMinFees30min
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [minFees30min, setMinFees30min] = useState(100);
 
   const fetchOpportunities = async () => {
     if (!walletAddress || whitelist.length === 0) return;
@@ -226,7 +227,11 @@ function OpportunitiesTable({
             label="Min 30min Fees (USD)"
             type="number"
             value={minFees30min}
-            onChange={(e) => setMinFees30min(Number(e.target.value))}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              setMinFees30min(value);
+              localStorage.setItem('minFees30min', value);
+            }}
             size="small"
             sx={{ width: 180 }}
             InputProps={{
