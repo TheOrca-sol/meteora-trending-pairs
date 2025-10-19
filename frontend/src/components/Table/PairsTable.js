@@ -166,10 +166,11 @@ const Row = ({ pair, periodData }) => {
 
   // Calculate fees for different periods using DexScreener data if available, or Jupiter data
   const volume24h = pairData?.volume?.h24 || (tokenInfo?.stats24h?.buyVolume + tokenInfo?.stats24h?.sellVolume) || 0;
-  const volume30m = pairData?.volume?.m30 || 0;
+  const volume30m = pairData?.volume?.m30 || pair.volume30min || 0;
   const feePercentage = pair.baseFee || 0.3; // Use backend baseFee
   const dailyFees = volume24h * (feePercentage / 100);
-  const thirtyMinFees = volume30m * (feePercentage / 100);
+  // Use backend 30min fees if available, otherwise calculate from volume
+  const thirtyMinFees = pair.fees30min || (volume30m * (feePercentage / 100));
   
   // Calculate APR using daily fees from DexScreener/Jupiter or fallback to backend APR
   const tvl = pairData?.liquidity?.usd || tokenInfo?.liquidity || pair.totalLiquidity || 0;

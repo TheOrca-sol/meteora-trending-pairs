@@ -115,11 +115,19 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
         processed_pairs = []
         for pair in page_data:
             try:
+                # Extract 30min volume and fees
+                volume_obj = pair.get('volume', {})
+                fees_obj = pair.get('fees', {})
+                volume_30min = safe_float(volume_obj.get('min_30', 0))
+                fees_30min = safe_float(fees_obj.get('min_30', 0))
+
                 processed_pair = {
                     'address': pair.get('address', ''),
                     'pairName': pair.get('name', ''),
                     'price': safe_float(pair.get('current_price', 0)),
                     'fees24h': safe_float(pair.get('fees_24h', 0)),
+                    'fees30min': fees_30min,
+                    'volume30min': volume_30min,
                     'apr': safe_float(pair.get('apr', 0)),
                     'totalLiquidity': safe_float(pair.get('liquidity', 0)),
                     'binStep': safe_int(pair.get('bin_step', 0)),
