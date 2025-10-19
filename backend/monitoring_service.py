@@ -15,25 +15,54 @@ logger = logging.getLogger(__name__)
 
 class MonitoringService:
     def __init__(self):
-        self.scheduler = BackgroundScheduler()
+        # Configure scheduler with proper logging
+        from apscheduler.executors.pool import ThreadPoolExecutor
+
+        executors = {
+            'default': ThreadPoolExecutor(10)
+        }
+
+        job_defaults = {
+            'coalesce': False,
+            'max_instances': 3,
+            'misfire_grace_time': 300  # 5 minutes
+        }
+
+        self.scheduler = BackgroundScheduler(
+            executors=executors,
+            job_defaults=job_defaults
+        )
         self.scheduler.start()
-        logger.info("Monitoring service initialized")
+        logger.info("Monitoring service initialized with BackgroundScheduler")
 
     def load_active_monitors(self):
         """Load all active monitors from database and schedule them"""
+        logger.info("Starting to load active monitors from database...")
         db = get_db()
         try:
             active_configs = db.query(MonitoringConfig).filter(
                 MonitoringConfig.enabled == True
             ).all()
 
-            for config in active_configs:
-                self._schedule_monitor(config.wallet_address, config.interval_minutes)
-                logger.info(f"Loaded active monitor for {config.wallet_address}")
+            logger.info(f"Found {len(active_configs)} enabled monitoring configs")
 
-            logger.info(f"Loaded {len(active_configs)} active monitors from database")
+            for config in active_configs:
+                wallet_short = f"{config.wallet_address[:8]}...{config.wallet_address[-6:]}"
+                logger.info(f"Scheduling monitor for {wallet_short} (interval: {config.interval_minutes} min)")
+                self._schedule_monitor(config.wallet_address, config.interval_minutes)
+
+                # Verify job was scheduled
+                job_id = f"monitor_{config.wallet_address}"
+                job = self.scheduler.get_job(job_id)
+                if job:
+                    logger.info(f"✅ Monitor scheduled successfully. Next run: {job.next_run_time}")
+                else:
+                    logger.error(f"❌ Failed to schedule monitor for {wallet_short}")
+
+            total_jobs = len(self.scheduler.get_jobs())
+            logger.info(f"Monitor loading complete. Total scheduler jobs: {total_jobs}")
         except Exception as e:
-            logger.error(f"Error loading active monitors: {e}")
+            logger.error(f"Error loading active monitors: {e}", exc_info=True)
         finally:
             db.close()
 
@@ -170,20 +199,28 @@ class MonitoringService:
         job_id = f"monitor_{wallet_address}"
 
         # Remove existing job if any
-        if self.scheduler.get_job(job_id):
+        existing = self.scheduler.get_job(job_id)
+        if existing:
+            logger.info(f"Removing existing job {job_id}")
             self.scheduler.remove_job(job_id)
 
         # Schedule new job
-        next_run = datetime.now() + timedelta(minutes=interval_minutes)
+        # Note: Don't set next_run_time - let the interval trigger handle it
+        # This ensures the job runs at proper intervals
+        logger.info(f"Adding job {job_id} with {interval_minutes} min interval")
         self.scheduler.add_job(
             func=self._check_opportunities,
             trigger='interval',
             minutes=interval_minutes,
             id=job_id,
             args=[wallet_address],
-            next_run_time=next_run,
             replace_existing=True
         )
+
+        # Log the scheduled time
+        job = self.scheduler.get_job(job_id)
+        if job:
+            logger.info(f"Job {job_id} next run: {job.next_run_time}")
 
     def _check_opportunities(self, wallet_address: str):
         """Check for new opportunities (runs in background)"""
@@ -222,10 +259,15 @@ class MonitoringService:
                 float(config.threshold_multiplier)
             )
 
+            # Log comparison results
+            logger.info(f"Opportunity comparison: {len(previous_opps)} previous, {len(opportunities)} current, {len(new_opportunities)} new/improved")
+
             # Send notifications
             if new_opportunities:
-                logger.info(f"Found {len(new_opportunities)} new opportunities for {wallet_address}")
+                logger.info(f"🔔 Found {len(new_opportunities)} new opportunities for {wallet_address} - sending notifications")
                 self._send_telegram_notifications(wallet_address, new_opportunities)
+            else:
+                logger.info(f"No new opportunities to notify about (threshold: {float(config.threshold_multiplier)}x)")
 
             # Save snapshot
             snapshot = OpportunitySnapshot(

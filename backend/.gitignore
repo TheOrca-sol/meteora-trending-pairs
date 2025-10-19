@@ -1,0 +1,35 @@
+# Environment variables
+.env
+.env.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+nohup.out
+
+# Database
+*.db
+*.sqlite
+monitoring_data.json
+
+# OS
+.DS_Store
+Thumbs.db

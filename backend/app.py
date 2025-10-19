@@ -17,8 +17,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:%(name)s:%(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# Enable APScheduler logging
+logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000", "http://localhost:5000"]}})
@@ -974,6 +980,39 @@ def check_telegram_connection():
 
     except Exception as e:
         logger.error(f"Error checking Telegram connection: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/monitoring/debug', methods=['GET'])
+def debug_monitoring_status():
+    """
+    Debug endpoint to check scheduler status
+    """
+    try:
+        jobs = monitoring_service.scheduler.get_jobs()
+        jobs_info = []
+
+        for job in jobs:
+            jobs_info.append({
+                'id': job.id,
+                'next_run': job.next_run_time.isoformat() if job.next_run_time else None,
+                'trigger': str(job.trigger),
+                'func_name': job.func.__name__
+            })
+
+        return jsonify({
+            'status': 'success',
+            'scheduler_running': monitoring_service.scheduler.running,
+            'scheduler_state': monitoring_service.scheduler.state,
+            'total_jobs': len(jobs),
+            'jobs': jobs_info
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting debug info: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': str(e)
