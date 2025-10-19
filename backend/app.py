@@ -166,19 +166,25 @@ def get_pairs():
         page = int(request.args.get('page', 1))
         limit = min(int(request.args.get('limit', 50)), 100)  # Max 100 per page
         search_term = request.args.get('search', '').strip()
-        
+
         # Handle empty string for min_liquidity
         min_liquidity_param = request.args.get('min_liquidity', '').strip()
         min_liquidity = float(min_liquidity_param) if min_liquidity_param else 0.0
-        
-        sort_by = request.args.get('sort_by', 'fees_24h')
-        
-        logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}")
 
-        # Fetch data from cache (or Meteora API if cache is stale)
-        logger.info("Fetching pool data from cache...")
-        data = get_cached_pools()
-        logger.info(f"Received {len(data)} pairs from cache")
+        sort_by = request.args.get('sort_by', 'fees_24h')
+
+        # Check if user wants to force refresh (bypass cache)
+        force_refresh = request.args.get('force_refresh', 'false').lower() == 'true'
+
+        logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}, force_refresh={force_refresh}")
+
+        # Fetch data from cache (or Meteora API if cache is stale or force refresh)
+        if force_refresh:
+            logger.info("Force refresh requested - bypassing cache...")
+        else:
+            logger.info("Fetching pool data from cache...")
+        data = get_cached_pools(force_refresh=force_refresh)
+        logger.info(f"Received {len(data)} pairs {'(fresh from API)' if force_refresh else '(from cache)'}")
         
         # Process data with pagination and filtering
         result = process_pairs_data(data, page, limit, search_term, min_liquidity, sort_by)

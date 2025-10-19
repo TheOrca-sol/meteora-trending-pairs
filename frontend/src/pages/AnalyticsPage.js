@@ -64,7 +64,9 @@ function AnalyticsPage() {
           limit: rowsPerPage,
           search: filters.search,
           min_liquidity: filters.minTotalLiquidity,
-          sort_by: orderBy
+          sort_by: orderBy,
+          // Force refresh bypasses cache for fresh data when manually refreshing
+          force_refresh: isManualRefresh ? 'true' : 'false'
         }
       });
 
