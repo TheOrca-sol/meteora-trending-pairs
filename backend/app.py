@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 from monitoring_service import monitoring_service
 from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes
 from telegram_bot import telegram_bot_handler, get_bot_link
+from pool_cache import get_cached_pools, pool_cache
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -165,19 +166,11 @@ def get_pairs():
         sort_by = request.args.get('sort_by', 'fees_24h')
         
         logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}")
-        
-        # Fetch data
-        logger.info("Fetching data from Meteora API...")
-        response = requests.get(
-            "https://dlmm-api.meteora.ag/pair/all",
-            headers={"accept": "application/json"},
-            timeout=15
-        )
-        response.raise_for_status()
-        
-        # Get full data and process with pagination
-        data = response.json()
-        logger.info(f"Received {len(data)} pairs from Meteora API")
+
+        # Fetch data from cache (or Meteora API if cache is stale)
+        logger.info("Fetching pool data from cache...")
+        data = get_cached_pools()
+        logger.info(f"Received {len(data)} pairs from cache")
         
         # Process data with pagination and filtering
         result = process_pairs_data(data, page, limit, search_term, min_liquidity, sort_by)
@@ -229,16 +222,10 @@ def get_wallet_positions():
 
         logger.info(f"Fetching positions for wallet: {wallet_address} with {len(whitelist)} whitelisted tokens")
 
-        # Fetch all pools from Meteora API
-        logger.info("Fetching pools from Meteora API...")
-        pools_response = requests.get(
-            "https://dlmm-api.meteora.ag/pair/all",
-            headers={"accept": "application/json"},
-            timeout=15
-        )
-        pools_response.raise_for_status()
-        all_pools = pools_response.json()
-        logger.info(f"Loaded {len(all_pools)} pools")
+        # Fetch all pools from cache
+        logger.info("Fetching pools from cache...")
+        all_pools = get_cached_pools()
+        logger.info(f"Loaded {len(all_pools)} pools from cache")
 
         # Common quote token addresses
         QUOTE_TOKENS = {
@@ -602,14 +589,9 @@ def analyze_opportunities():
 
         logger.info(f"Analyzing opportunities for {len(whitelist)} tokens")
 
-        # Fetch all pools from Meteora
-        response = requests.get(
-            "https://dlmm-api.meteora.ag/pair/all",
-            headers={"accept": "application/json"},
-            timeout=15
-        )
-        response.raise_for_status()
-        all_pools = response.json()
+        # Fetch all pools from cache
+        all_pools = get_cached_pools()
+        logger.info(f"Loaded {len(all_pools)} pools from cache for opportunities")
 
         # Common quote token addresses
         QUOTE_TOKENS = {
@@ -1013,6 +995,25 @@ def debug_monitoring_status():
 
     except Exception as e:
         logger.error(f"Error getting debug info: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/cache/stats', methods=['GET'])
+def get_cache_stats():
+    """
+    Get pool cache statistics
+    """
+    try:
+        stats = pool_cache.get_stats()
+        return jsonify({
+            'status': 'success',
+            'cache': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': str(e)
