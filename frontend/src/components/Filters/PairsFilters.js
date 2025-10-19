@@ -19,7 +19,6 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import TuneIcon from '@mui/icons-material/Tune';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import TimelineIcon from '@mui/icons-material/Timeline';
 
 const FilterSection = ({ title, children }) => (
@@ -101,28 +100,19 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
               }
             />
             <Divider orientation="vertical" flexItem />
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               gap: 1,
               alignItems: 'center'
             }}>
               <Typography variant="body2" color="text.secondary">
                 Quick Sort:
               </Typography>
-              <Tooltip title="Sort by Volume">
-                <IconButton 
+              <Tooltip title="Sort by 30min Fee Rate">
+                <IconButton
                   size="small"
-                  onClick={() => handleFilterChange('sortBy')({ target: { value: 'volume30min' } })}
-                  color={filters.sortBy === 'volume30min' ? 'primary' : 'default'}
-                >
-                  <MonetizationOnIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="Sort by APR">
-                <IconButton 
-                  size="small"
-                  onClick={() => handleFilterChange('sortBy')({ target: { value: 'apr' } })}
-                  color={filters.sortBy === 'apr' ? 'primary' : 'default'}
+                  onClick={() => handleFilterChange('sortBy')({ target: { value: 'fee_rate_30min' } })}
+                  color={filters.sortBy === 'fee_rate_30min' ? 'primary' : 'default'}
                 >
                   <TimelineIcon fontSize="small" />
                 </IconButton>
@@ -199,20 +189,7 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
 
         <FilterSection title="Pool Parameters">
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={4}>
-              <TextField
-                fullWidth
-                label="Min APR (%)"
-                size="small"
-                type="number"
-                value={filters.minApr}
-                onChange={handleFilterChange('minApr')}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>
-                }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Bin Step"
@@ -222,7 +199,7 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
                 onChange={handleFilterChange('binStep')}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={4}>
+            <Grid item xs={12} sm={6}>
               <TextField
                 fullWidth
                 label="Base Fee"

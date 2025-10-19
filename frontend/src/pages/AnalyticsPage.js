@@ -26,7 +26,7 @@ function AnalyticsPage() {
   const [lastUpdated, setLastUpdated] = useState(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
-  const [orderBy, setOrderBy] = useState('fees_24h');
+  const [orderBy, setOrderBy] = useState('fee_rate_30min');
   const [order, setOrder] = useState('desc');
   const [pagination, setPagination] = useState(null);
   const [filters, setFilters] = useState({

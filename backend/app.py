@@ -74,13 +74,22 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
             except (ValueError, TypeError):
                 return default
         
+        # Calculate fee rate for sorting (30min fees / TVL)
+        # Use minimum TVL threshold to avoid unrealistic fee rates from low liquidity pools
+        def calculate_fee_rate(pair):
+            fees_obj = pair.get('fees', {})
+            fees_30min = safe_float(fees_obj.get('min_30', 0))
+            tvl = safe_float(pair.get('liquidity', 0))
+            # Only calculate fee rate for pools with TVL >= $1000
+            # This avoids showing unrealistic percentages from tiny liquidity pools
+            return (fees_30min / tvl * 100) if tvl >= 1000 else 0
+
         sort_key = {
+            'fee_rate_30min': calculate_fee_rate,
             'fees_24h': lambda x: safe_float(x.get('fees_24h', 0)),
             'liquidity': lambda x: safe_float(x.get('liquidity', 0)),
-            'apr': lambda x: safe_float(x.get('apr', 0)),
-            'volume': lambda x: safe_float(x.get('cumulative_trade_volume', 0)),
             'name': lambda x: str(x.get('name', ''))
-        }.get(sort_by, lambda x: safe_float(x.get('fees_24h', 0)))
+        }.get(sort_by, calculate_fee_rate)  # Default to fee_rate_30min
         
         sorted_data = sorted(filtered_data, key=sort_key, reverse=True)
         
