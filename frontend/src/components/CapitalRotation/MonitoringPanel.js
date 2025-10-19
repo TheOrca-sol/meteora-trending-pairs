@@ -71,6 +71,17 @@ function MonitoringPanel({ walletAddress, whitelist, quotePreferences, minFees30
     }
   }, [walletAddress]);
 
+  // Auto-refresh status every 30 seconds when monitoring is enabled
+  useEffect(() => {
+    if (!walletAddress || !enabled) return;
+
+    const interval = setInterval(() => {
+      loadStatus();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [walletAddress, enabled]);
+
   // Poll for Telegram connection when auth dialog is open
   useEffect(() => {
     let interval;
