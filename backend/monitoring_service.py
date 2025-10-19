@@ -7,7 +7,7 @@ import logging
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
-from models import get_db, User, MonitoringConfig, OpportunitySnapshot
+from models import get_db, User, MonitoringConfig, OpportunitySnapshot, cleanup_old_snapshots
 from telegram_bot import telegram_bot_handler
 
 logger = logging.getLogger(__name__)
@@ -34,6 +34,16 @@ class MonitoringService:
         )
         self.scheduler.start()
         logger.info("Monitoring service initialized with BackgroundScheduler")
+
+        # Schedule database cleanup job (runs every hour)
+        self.scheduler.add_job(
+            func=self._cleanup_old_snapshots,
+            trigger='interval',
+            hours=1,
+            id='cleanup_snapshots',
+            replace_existing=True
+        )
+        logger.info("Scheduled hourly snapshot cleanup job")
 
     def load_active_monitors(self):
         """Load all active monitors from database and schedule them"""
@@ -412,6 +422,21 @@ class MonitoringService:
 <a href="https://app.meteora.ag/dlmm/{opp['address']}">View on Meteora</a>
 """
         return message.strip()
+
+    def _cleanup_old_snapshots(self):
+        """
+        Clean up old opportunity snapshots (runs hourly)
+        Keeps only the last 10 snapshots per user
+        """
+        db = get_db()
+        try:
+            deleted_count = cleanup_old_snapshots(db, keep_last_n=10)
+            if deleted_count > 0:
+                logger.info(f"🧹 Cleaned up {deleted_count} old opportunity snapshots")
+        except Exception as e:
+            logger.error(f"Error cleaning up snapshots: {e}", exc_info=True)
+        finally:
+            db.close()
 
     def shutdown(self):
         """Shutdown the scheduler"""

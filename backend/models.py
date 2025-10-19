@@ -2,12 +2,13 @@
 Database models for Capital Rotation Monitoring
 """
 
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DECIMAL, BigInteger, TIMESTAMP, ForeignKey, Index
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DECIMAL, BigInteger, TIMESTAMP, ForeignKey, Index, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 import os
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -111,6 +112,10 @@ class TelegramAuthCode(Base):
 
 class OpportunitySnapshot(Base):
     __tablename__ = 'opportunity_snapshots'
+    __table_args__ = (
+        # Composite index for efficient queries ordered by created_at per wallet
+        Index('idx_snapshots_wallet_created', 'wallet_address', 'created_at'),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     wallet_address = Column(String(44), ForeignKey('users.wallet_address', ondelete='CASCADE'), nullable=False, index=True)
@@ -146,4 +151,74 @@ def cleanup_expired_auth_codes(db):
         return deleted
     except Exception as e:
         db.rollback()
+        raise e
+
+
+def cleanup_old_snapshots(db, keep_last_n=10):
+    """
+    Clean up old opportunity snapshots, keeping only the most recent N per user.
+
+    Args:
+        db: Database session
+        keep_last_n: Number of recent snapshots to keep per user (default: 10)
+
+    Returns:
+        Number of snapshots deleted
+    """
+    try:
+        # Use SQL to delete old snapshots efficiently
+        # This keeps the last N snapshots per wallet_address
+        delete_query = text("""
+            DELETE FROM opportunity_snapshots
+            WHERE id IN (
+                SELECT id FROM (
+                    SELECT id,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY wallet_address
+                               ORDER BY created_at DESC
+                           ) as rn
+                    FROM opportunity_snapshots
+                ) t
+                WHERE rn > :keep_last_n
+            )
+        """)
+
+        result = db.execute(delete_query, {'keep_last_n': keep_last_n})
+        deleted_count = result.rowcount
+        db.commit()
+
+        return deleted_count
+
+    except Exception as e:
+        db.rollback()
+        raise e
+
+
+def create_performance_indexes(db):
+    """
+    Create performance indexes for scalability
+    Safe to run multiple times - uses IF NOT EXISTS
+    """
+    try:
+        # Composite index on opportunity_snapshots for cleanup query performance
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_snapshots_wallet_created
+            ON opportunity_snapshots(wallet_address, created_at DESC)
+        """))
+
+        # Partial index on monitoring_configs for active monitors
+        db.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_active_monitors
+            ON monitoring_configs(wallet_address)
+            WHERE enabled = TRUE
+        """))
+
+        db.commit()
+        logger = logging.getLogger(__name__)
+        logger.info("✅ Performance indexes created/verified")
+
+    except Exception as e:
+        db.rollback()
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error creating performance indexes: {e}")
         raise e

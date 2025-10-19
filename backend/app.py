@@ -9,7 +9,7 @@ import string
 import threading
 from datetime import datetime, timedelta
 from monitoring_service import monitoring_service
-from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes
+from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes, create_performance_indexes
 from telegram_bot import telegram_bot_handler, get_bot_link
 from pool_cache import get_cached_pools, pool_cache
 from dotenv import load_dotenv
@@ -1080,6 +1080,11 @@ def start_telegram_bot():
 def initialize_app():
     """Initialize application components"""
     try:
+        # Create performance indexes
+        db = get_db()
+        create_performance_indexes(db)
+        db.close()
+
         # Load active monitors from database
         logger.info("Loading active monitors from database...")
         monitoring_service.load_active_monitors()

@@ -183,14 +183,14 @@ def check_opportunities(wallet_address):
 ## Implementation Priority
 
 ### Immediate (Must Do for >100 users):
-1. ✅ **Shared Pool Cache** - Reduces API calls by 99%
-2. ✅ **Staggered Scheduling** - Prevents all users checking at once
-3. ✅ **Snapshot Cleanup** - Prevents database bloat
+1. ✅ **Shared Pool Cache** - Reduces API calls by 99% *(IMPLEMENTED)*
+2. ✅ **Staggered Scheduling** - Prevents all users checking at once *(IMPLEMENTED)*
+3. ✅ **Snapshot Cleanup** - Prevents database bloat *(IMPLEMENTED - hourly cleanup)*
 
 ### Short Term (Before 500 users):
-4. **Batch Processing** - Group similar users
-5. **Database Indexes** - Optimize queries
-6. **Connection Pooling** - Already have with Supabase
+4. **Batch Processing** - Group similar users *(Future optimization)*
+5. ✅ **Database Indexes** - Optimize queries *(IMPLEMENTED)*
+6. ✅ **Connection Pooling** - Already have with Supabase *(IMPLEMENTED)*
 
 ### Long Term (Before 1000+ users):
 7. **Background Workers** - Separate process pool for checks
