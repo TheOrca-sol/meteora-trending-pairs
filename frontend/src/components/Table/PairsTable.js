@@ -171,11 +171,10 @@ const Row = ({ pair, periodData }) => {
   const dailyFees = volume24h * (feePercentage / 100);
   // Use backend 30min fees if available, otherwise calculate from volume
   const thirtyMinFees = pair.fees30min || (volume30m * (feePercentage / 100));
-  
-  // Calculate APR using daily fees from DexScreener/Jupiter or fallback to backend APR
+
+  // Calculate 30min fee rate (30min fees / TVL as percentage)
   const tvl = pairData?.liquidity?.usd || tokenInfo?.liquidity || pair.totalLiquidity || 0;
-  const calculatedApr = tvl > 0 ? ((dailyFees * 365 * 100) / tvl) : 0;
-  const finalApr = calculatedApr || pair.apr || 0;
+  const feeRate30min = tvl > 0 ? ((thirtyMinFees / tvl) * 100) : 0;
 
   // Get stats for each timeframe from DexScreener or Jupiter fallback
   const timeframes = {
@@ -371,13 +370,13 @@ const Row = ({ pair, periodData }) => {
           </Typography>
         </TableCell>
 
-        {/* APR 24H */}
+        {/* 30min Fee Rate */}
         <TableCell align="right">
-          <Typography sx={{ 
+          <Typography sx={{
             fontWeight: 500,
             color: 'success.main'
           }}>
-            {Number(finalApr).toLocaleString()}%
+            {feeRate30min.toFixed(4)}%
           </Typography>
         </TableCell>
 
@@ -515,7 +514,7 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
               <TableCell align="right">PRICE $</TableCell>
               <TableCell align="right">TODAY FEES ↗</TableCell>
               <TableCell align="right">TVL</TableCell>
-              <TableCell align="right">APR 24H</TableCell>
+              <TableCell align="right">30M FEE RATE</TableCell>
               <TableCell align="right">5M TX</TableCell>
               <TableCell align="right">1H TX</TableCell>
               <TableCell align="right">6H TX</TableCell>
