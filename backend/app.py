@@ -8,9 +8,6 @@ import random
 import string
 import threading
 from datetime import datetime, timedelta
-from monitoring_service import monitoring_service
-from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes, create_performance_indexes
-from telegram_bot import telegram_bot_handler, get_bot_link
 from pool_cache import get_cached_pools, pool_cache
 from grouped_pool_cache import get_grouped_cached_pools, grouped_pool_cache
 from dotenv import load_dotenv
@@ -25,8 +22,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Enable APScheduler logging
-logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+# Optional database features (for Capital Rotation)
+# These are only needed if DATABASE_URL is set
+DATABASE_ENABLED = os.getenv('DATABASE_URL') is not None
+
+if DATABASE_ENABLED:
+    try:
+        from monitoring_service import monitoring_service
+        from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes, create_performance_indexes
+        from telegram_bot import telegram_bot_handler, get_bot_link
+        # Enable APScheduler logging
+        logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+        logger.info("Database features enabled (Capital Rotation)")
+    except Exception as e:
+        logger.warning(f"Failed to load database features: {e}")
+        DATABASE_ENABLED = False
+else:
+    logger.info("Running in analytics-only mode (no DATABASE_URL set)")
 
 app = Flask(__name__)
 
@@ -1185,8 +1197,11 @@ def initialize_app():
 
 
 if __name__ == '__main__':
-    # Initialize app
-    initialize_app()
+    # Initialize app (only if database features are enabled)
+    if DATABASE_ENABLED:
+        initialize_app()
+    else:
+        logger.info("Skipping database initialization (analytics-only mode)")
 
     # Start Flask server
     port = int(os.environ.get('PORT', 5000))
