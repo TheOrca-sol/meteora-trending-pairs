@@ -462,15 +462,6 @@ const Row = ({ pair, periodData }) => {
             </Typography>
           </TableCell>
         ))}
-
-        {/* DEX */}
-        <TableCell align="right">
-          <Avatar 
-            src={pair.dexLogo} 
-            alt={pair.dex}
-            sx={{ width: 16, height: 16, ml: 'auto' }}
-          />
-        </TableCell>
       </TableRow>
 
       {/* Expanded Row */}
@@ -552,7 +543,6 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
               <TableCell align="right">1H VOL</TableCell>
               <TableCell align="right">6H VOL</TableCell>
               <TableCell align="right">24H VOL</TableCell>
-              <TableCell align="right">DEX</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

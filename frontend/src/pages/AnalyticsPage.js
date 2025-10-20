@@ -29,19 +29,44 @@ function AnalyticsPage() {
   const [orderBy, setOrderBy] = useState('fee_rate_30min');
   const [order, setOrder] = useState('desc');
   const [pagination, setPagination] = useState(null);
-  const [filters, setFilters] = useState({
-    search: '',
-    minFees30min: '',
-    minFees24h: '',
-    minApr: '',
-    binStep: '',
-    baseFee: '',
-    minTotalLiquidity: '',
-    sortBy: '',
-    sortDirection: '',
-  });
+
+  // Initialize filters from localStorage or use defaults
+  const getInitialFilters = () => {
+    try {
+      const savedFilters = localStorage.getItem('pairsFilters');
+      if (savedFilters) {
+        return JSON.parse(savedFilters);
+      }
+    } catch (error) {
+      console.error('Error loading filters from localStorage:', error);
+    }
+
+    // Default filter values
+    return {
+      search: '',
+      minFees30min: '100',
+      minFees24h: '',
+      minApr: '',
+      binStep: '',
+      baseFee: '',
+      minTotalLiquidity: '10000',
+      sortBy: '',
+      sortDirection: '',
+    };
+  };
+
+  const [filters, setFilters] = useState(getInitialFilters());
 
   const isInitialLoad = useRef(true);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('pairsFilters', JSON.stringify(filters));
+    } catch (error) {
+      console.error('Error saving filters to localStorage:', error);
+    }
+  }, [filters]);
 
   const fetchPairs = useCallback(async (isManualRefresh = false, isPagination = false) => {
     try {
