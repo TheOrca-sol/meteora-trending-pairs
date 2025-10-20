@@ -134,9 +134,70 @@ function AnalyticsPage() {
     trackUserInteraction.filterChange(filterName, value);
   };
 
-  const filteredPairs = pairs;
-  const sortedPairs = React.useMemo(() => pairs, [pairs]);
-  const paginatedPairs = React.useMemo(() => pairs, [pairs]);
+  // Apply client-side filters to the pairs data
+  const filteredPairs = React.useMemo(() => {
+    return pairs.filter(pair => {
+      // Filter by 30min fees
+      if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
+        const fees30min = parseFloat(pair.fees30min || 0);
+        if (fees30min < parseFloat(filters.minFees30min)) {
+          return false;
+        }
+      }
+
+      // Filter by 30min volume
+      if (filters.minVolume30min && parseFloat(filters.minVolume30min) > 0) {
+        const volume30min = parseFloat(pair.volume30min || 0);
+        if (volume30min < parseFloat(filters.minVolume30min)) {
+          return false;
+        }
+      }
+
+      // Filter by 24h fees
+      if (filters.minFees24h && parseFloat(filters.minFees24h) > 0) {
+        const fees24h = parseFloat(pair.fees24h || 0);
+        if (fees24h < parseFloat(filters.minFees24h)) {
+          return false;
+        }
+      }
+
+      // Filter by APR
+      if (filters.minApr && parseFloat(filters.minApr) > 0) {
+        const apr = parseFloat(pair.apr || 0);
+        if (apr < parseFloat(filters.minApr)) {
+          return false;
+        }
+      }
+
+      // Filter by bin step
+      if (filters.binStep && filters.binStep !== '') {
+        const binStep = parseInt(pair.binStep || 0);
+        if (binStep !== parseInt(filters.binStep)) {
+          return false;
+        }
+      }
+
+      // Filter by base fee
+      if (filters.baseFee && parseFloat(filters.baseFee) > 0) {
+        const baseFee = parseFloat(pair.baseFee || 0);
+        if (baseFee < parseFloat(filters.baseFee)) {
+          return false;
+        }
+      }
+
+      // Filter blacklisted pairs
+      if (filters.hideBlacklisted) {
+        if (pair.is_blacklisted) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [pairs, filters]);
+
+  const sortedPairs = React.useMemo(() => filteredPairs, [filteredPairs]);
+  const paginatedPairs = React.useMemo(() => filteredPairs, [filteredPairs]);
 
   const handleChangePage = (event, newPage) => {
     setPaginationLoading(true);
