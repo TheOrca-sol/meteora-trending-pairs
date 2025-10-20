@@ -45,10 +45,7 @@ function AnalyticsPage() {
     return {
       search: '',
       minFees30min: '100',
-      minFees24h: '',
-      minApr: '',
-      binStep: '',
-      baseFee: '',
+      minVolume24h: '25000',
       minTotalLiquidity: '10000',
       sortBy: '',
       sortDirection: '',
@@ -87,6 +84,7 @@ function AnalyticsPage() {
           limit: rowsPerPage,
           search: filters.search,
           min_liquidity: filters.minTotalLiquidity,
+          min_volume_24h: filters.minVolume24h,
           sort_by: orderBy,
           // Force refresh bypasses cache for fresh data when manually refreshing
           force_refresh: isManualRefresh ? 'true' : 'false'
@@ -166,37 +164,8 @@ function AnalyticsPage() {
         }
       }
 
-      // Filter by 24h fees
-      if (filters.minFees24h && parseFloat(filters.minFees24h) > 0) {
-        const fees24h = parseFloat(pair.fees24h || 0);
-        if (fees24h < parseFloat(filters.minFees24h)) {
-          return false;
-        }
-      }
-
-      // Filter by APR
-      if (filters.minApr && parseFloat(filters.minApr) > 0) {
-        const apr = parseFloat(pair.apr || 0);
-        if (apr < parseFloat(filters.minApr)) {
-          return false;
-        }
-      }
-
-      // Filter by bin step
-      if (filters.binStep && filters.binStep !== '') {
-        const binStep = parseInt(pair.binStep || 0);
-        if (binStep !== parseInt(filters.binStep)) {
-          return false;
-        }
-      }
-
-      // Filter by base fee
-      if (filters.baseFee && parseFloat(filters.baseFee) > 0) {
-        const baseFee = parseFloat(pair.baseFee || 0);
-        if (baseFee < parseFloat(filters.baseFee)) {
-          return false;
-        }
-      }
+      // Note: Volume filtering is handled by backend API (min_volume_24h parameter)
+      // No client-side volume filtering needed since backend doesn't return volume24h data yet
 
       return true;
     });

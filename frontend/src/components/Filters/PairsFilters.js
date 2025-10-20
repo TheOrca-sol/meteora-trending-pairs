@@ -81,7 +81,7 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
           bgcolor: 'background.default'
         }}
       >
-        <FilterSection title="Fees & Liquidity">
+        <FilterSection title="Filters">
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={4}>
               <TextField
@@ -99,11 +99,11 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
             <Grid item xs={12} sm={6} md={4}>
               <TextField
                 fullWidth
-                label="Min 24h Fees"
+                label="Min 24h Volume"
                 size="small"
                 type="number"
-                value={filters.minFees24h}
-                onChange={handleFilterChange('minFees24h')}
+                value={filters.minVolume24h}
+                onChange={handleFilterChange('minVolume24h')}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">$</InputAdornment>
                 }}
@@ -119,34 +119,6 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
                 onChange={handleFilterChange('minTotalLiquidity')}
                 InputProps={{
                   startAdornment: <InputAdornment position="start">$</InputAdornment>
-                }}
-              />
-            </Grid>
-          </Grid>
-        </FilterSection>
-
-        <FilterSection title="Pool Parameters">
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Bin Step"
-                size="small"
-                type="number"
-                value={filters.binStep}
-                onChange={handleFilterChange('binStep')}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Base Fee"
-                size="small"
-                type="number"
-                value={filters.baseFee}
-                onChange={handleFilterChange('baseFee')}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>
                 }}
               />
             </Grid>

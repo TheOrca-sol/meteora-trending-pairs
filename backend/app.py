@@ -55,23 +55,23 @@ def get_pools_from_cache(force_refresh=False, limit=None):
         return get_cached_pools(force_refresh=force_refresh)
 CORS(app, resources={r"/*": {"origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000", "http://localhost:5000"]}})
 
-def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0, sort_by='fees_24h'):
+def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0, min_volume_24h=0, sort_by='fees_24h'):
     try:
         # Clear memory
         gc.collect()
-        
-        logger.info(f"Processing {len(data)} pairs with filters: page={page}, limit={limit}, search={search_term}, min_liquidity={min_liquidity}")
-        
+
+        logger.info(f"Processing {len(data)} pairs with filters: page={page}, limit={limit}, search={search_term}, min_liquidity={min_liquidity}, min_volume_24h={min_volume_24h}")
+
         # Apply search filter first (most efficient)
         filtered_data = data
         if search_term:
             search_term = search_term.upper()
             filtered_data = [
-                pair for pair in filtered_data 
+                pair for pair in filtered_data
                 if search_term in str(pair.get('name', '')).upper()
             ]
             logger.info(f"After search filter: {len(filtered_data)} pairs")
-        
+
         # Apply liquidity filter
         if min_liquidity > 0:
             def safe_float(value, default=0.0):
@@ -82,12 +82,29 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
                     return float(value)
                 except (ValueError, TypeError):
                     return default
-            
+
             filtered_data = [
-                pair for pair in filtered_data 
+                pair for pair in filtered_data
                 if safe_float(pair.get('liquidity', 0)) >= min_liquidity
             ]
             logger.info(f"After liquidity filter: {len(filtered_data)} pairs")
+
+        # Apply 24h volume filter
+        if min_volume_24h > 0:
+            def safe_float(value, default=0.0):
+                """Safely convert value to float, handling empty strings and None"""
+                if value is None or value == '':
+                    return default
+                try:
+                    return float(value)
+                except (ValueError, TypeError):
+                    return default
+
+            filtered_data = [
+                pair for pair in filtered_data
+                if safe_float(pair.get('volume', {}).get('hour_24', 0)) >= min_volume_24h
+            ]
+            logger.info(f"After 24h volume filter: {len(filtered_data)} pairs")
         
         # Sort data
         def safe_float(value, default=0.0):
@@ -149,10 +166,11 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
         processed_pairs = []
         for pair in page_data:
             try:
-                # Extract 30min volume and fees
+                # Extract volume and fees
                 volume_obj = pair.get('volume', {})
                 fees_obj = pair.get('fees', {})
                 volume_30min = safe_float(volume_obj.get('min_30', 0))
+                volume_24h = safe_float(volume_obj.get('hour_24', 0))
                 fees_30min = safe_float(fees_obj.get('min_30', 0))
 
                 processed_pair = {
@@ -162,6 +180,7 @@ def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0
                     'fees24h': safe_float(pair.get('fees_24h', 0)),
                     'fees30min': fees_30min,
                     'volume30min': volume_30min,
+                    'volume24h': volume_24h,
                     'apr': safe_float(pair.get('apr', 0)),
                     'totalLiquidity': safe_float(pair.get('liquidity', 0)),
                     'binStep': safe_int(pair.get('bin_step', 0)),
@@ -205,12 +224,16 @@ def get_pairs():
         min_liquidity_param = request.args.get('min_liquidity', '').strip()
         min_liquidity = float(min_liquidity_param) if min_liquidity_param else 0.0
 
+        # Handle empty string for min_volume_24h
+        min_volume_24h_param = request.args.get('min_volume_24h', '').strip()
+        min_volume_24h = float(min_volume_24h_param) if min_volume_24h_param else 0.0
+
         sort_by = request.args.get('sort_by', 'fees_24h')
 
         # Check if user wants to force refresh (bypass cache)
         force_refresh = request.args.get('force_refresh', 'false').lower() == 'true'
 
-        logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, sort_by={sort_by}, force_refresh={force_refresh}")
+        logger.info(f"API request: page={page}, limit={limit}, search='{search_term}', min_liquidity={min_liquidity}, min_volume_24h={min_volume_24h}, sort_by={sort_by}, force_refresh={force_refresh}")
 
         # Fetch data from cache (or Meteora API if cache is stale or force refresh)
         if force_refresh:
@@ -221,7 +244,7 @@ def get_pairs():
         logger.info(f"Received {len(data)} pairs {'(fresh from API)' if force_refresh else '(from cache)'}")
         
         # Process data with pagination and filtering
-        result = process_pairs_data(data, page, limit, search_term, min_liquidity, sort_by)
+        result = process_pairs_data(data, page, limit, search_term, min_liquidity, min_volume_24h, sort_by)
         logger.info(f"Successfully processed page {page} with {len(result['data'])} pairs")
         
         # Clear memory
