@@ -12,6 +12,7 @@ from monitoring_service import monitoring_service
 from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes, create_performance_indexes
 from telegram_bot import telegram_bot_handler, get_bot_link
 from pool_cache import get_cached_pools, pool_cache
+from grouped_pool_cache import get_grouped_cached_pools, grouped_pool_cache
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -28,6 +29,30 @@ logger = logging.getLogger(__name__)
 logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
 app = Flask(__name__)
+
+# Pool cache configuration
+# Set to True to use GroupedPoolCache (/pair/groups API) - NOT RECOMMENDED (slow)
+# Set to False to use PoolDataCache (/pair/all API) - RECOMMENDED (fast)
+# See PHASE_2_ANALYSIS.md for performance comparison
+USE_GROUPED_CACHE = os.getenv('USE_GROUPED_CACHE', 'false').lower() == 'true'
+
+logger.info(f"Cache mode: {'GroupedPoolCache (Phase 2)' if USE_GROUPED_CACHE else 'PoolDataCache (Phase 1)'}")
+
+def get_pools_from_cache(force_refresh=False, limit=None):
+    """
+    Wrapper function to get pools from the configured cache
+
+    Args:
+        force_refresh: Force refresh of cache
+        limit: Max number of groups to load (only for GroupedPoolCache)
+
+    Returns:
+        List of pool data
+    """
+    if USE_GROUPED_CACHE:
+        return get_grouped_cached_pools(force_refresh=force_refresh, limit=limit)
+    else:
+        return get_cached_pools(force_refresh=force_refresh)
 CORS(app, resources={r"/*": {"origins": ["https://www.imded.fun", "https://imded.fun", "http://localhost:3000", "http://localhost:5000"]}})
 
 def process_pairs_data(data, page=1, limit=50, search_term=None, min_liquidity=0, sort_by='fees_24h'):
@@ -192,7 +217,7 @@ def get_pairs():
             logger.info("Force refresh requested - bypassing cache...")
         else:
             logger.info("Fetching pool data from cache...")
-        data = get_cached_pools(force_refresh=force_refresh)
+        data = get_pools_from_cache(force_refresh=force_refresh, limit=50)
         logger.info(f"Received {len(data)} pairs {'(fresh from API)' if force_refresh else '(from cache)'}")
         
         # Process data with pagination and filtering
@@ -247,7 +272,7 @@ def get_wallet_positions():
 
         # Fetch all pools from cache
         logger.info("Fetching pools from cache...")
-        all_pools = get_cached_pools()
+        all_pools = get_pools_from_cache(limit=100)
         logger.info(f"Loaded {len(all_pools)} pools from cache")
 
         # Common quote token addresses
@@ -613,7 +638,7 @@ def analyze_opportunities():
         logger.info(f"Analyzing opportunities for {len(whitelist)} tokens")
 
         # Fetch all pools from cache
-        all_pools = get_cached_pools()
+        all_pools = get_pools_from_cache(limit=200)
         logger.info(f"Loaded {len(all_pools)} pools from cache for opportunities")
 
         # Common quote token addresses
@@ -1030,9 +1055,16 @@ def get_cache_stats():
     Get pool cache statistics
     """
     try:
-        stats = pool_cache.get_stats()
+        if USE_GROUPED_CACHE:
+            stats = grouped_pool_cache.get_stats()
+            cache_type = 'GroupedPoolCache'
+        else:
+            stats = pool_cache.get_stats()
+            cache_type = 'PoolDataCache'
+
         return jsonify({
             'status': 'success',
+            'cache_type': cache_type,
             'cache': stats
         })
     except Exception as e:
