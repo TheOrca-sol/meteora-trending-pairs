@@ -211,11 +211,11 @@ const SecurityReport = ({ pair }) => {
           <Typography variant="caption" color="text.secondary">
             Score:
           </Typography>
-          <Typography 
+          <Typography
             variant="caption"
-            sx={{ 
+            sx={{
               fontWeight: 600,
-              color: reportData.score > 50000 ? 'success.main' : 'error.main'
+              color: reportData.score <= 5000 ? 'success.main' : reportData.score <= 20000 ? 'warning.main' : 'error.main'
             }}
           >
             {reportData.score.toLocaleString()}

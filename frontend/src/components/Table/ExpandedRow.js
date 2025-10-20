@@ -103,7 +103,7 @@ const ExpandedRow = ({ pair }) => {
         </Grid>
 
         {/* Token Information & Security Side by Side */}
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={window.location.hostname === 'localhost' ? 4 : 6}>
           <Paper
             elevation={0}
             sx={{
@@ -119,7 +119,7 @@ const ExpandedRow = ({ pair }) => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} md={window.location.hostname === 'localhost' ? 4 : 6}>
           <Paper
             elevation={0}
             sx={{
@@ -135,37 +135,42 @@ const ExpandedRow = ({ pair }) => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              height: '100%',
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider',
-            }}
-          >
-            <BubbleMaps tokenAddress={pairXToken.address} />
-          </Paper>
-        </Grid>
+        {/* BubbleMaps - Only show on localhost */}
+        {window.location.hostname === 'localhost' && (
+          <Grid item xs={12} md={4}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                height: '100%',
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <BubbleMaps tokenAddress={pairXToken.address} />
+            </Paper>
+          </Grid>
+        )}
 
-        {/* Full Width - Liquidity Distribution */}
-        <Grid item xs={12}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider',
-            }}
-          >
-            <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
-          </Paper>
-        </Grid>
+        {/* Full Width - Liquidity Distribution - Only show on localhost */}
+        {window.location.hostname === 'localhost' && (
+          <Grid item xs={12}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
+            </Paper>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

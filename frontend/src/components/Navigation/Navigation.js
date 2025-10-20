@@ -8,6 +8,11 @@ function Navigation() {
   const location = useLocation();
   const currentPath = location.pathname;
 
+  // Only show navigation on localhost
+  if (window.location.hostname !== 'localhost') {
+    return null;
+  }
+
   return (
     <Box
       sx={{
