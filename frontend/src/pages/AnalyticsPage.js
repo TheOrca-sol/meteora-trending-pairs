@@ -31,7 +31,6 @@ function AnalyticsPage() {
   const [pagination, setPagination] = useState(null);
   const [filters, setFilters] = useState({
     search: '',
-    minVolume30min: '',
     minFees30min: '',
     minFees24h: '',
     minApr: '',
@@ -141,14 +140,6 @@ function AnalyticsPage() {
       if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
         const fees30min = parseFloat(pair.fees30min || 0);
         if (fees30min < parseFloat(filters.minFees30min)) {
-          return false;
-        }
-      }
-
-      // Filter by 30min volume
-      if (filters.minVolume30min && parseFloat(filters.minVolume30min) > 0) {
-        const volume30min = parseFloat(pair.volume30min || 0);
-        if (volume30min < parseFloat(filters.minVolume30min)) {
           return false;
         }
       }
