@@ -513,9 +513,33 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
               <TableCell sx={{ width: 30 }}></TableCell>
               <TableCell>PAIR</TableCell>
               <TableCell align="right">PRICE $</TableCell>
-              <TableCell align="right">TODAY FEES ↗</TableCell>
-              <TableCell align="right">TVL</TableCell>
-              <TableCell align="right">30M FEE RATE</TableCell>
+              <TableCell align="right">
+                <TableSortLabel
+                  active={orderBy === 'fees_24h'}
+                  direction={orderBy === 'fees_24h' ? order : 'desc'}
+                  onClick={() => handleSort('fees_24h')}
+                >
+                  TODAY FEES
+                </TableSortLabel>
+              </TableCell>
+              <TableCell align="right">
+                <TableSortLabel
+                  active={orderBy === 'liquidity'}
+                  direction={orderBy === 'liquidity' ? order : 'desc'}
+                  onClick={() => handleSort('liquidity')}
+                >
+                  TVL
+                </TableSortLabel>
+              </TableCell>
+              <TableCell align="right">
+                <TableSortLabel
+                  active={orderBy === 'fee_rate_30min'}
+                  direction={orderBy === 'fee_rate_30min' ? order : 'desc'}
+                  onClick={() => handleSort('fee_rate_30min')}
+                >
+                  30M FEE RATE
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="right">5M TX</TableCell>
               <TableCell align="right">1H TX</TableCell>
               <TableCell align="right">6H TX</TableCell>
