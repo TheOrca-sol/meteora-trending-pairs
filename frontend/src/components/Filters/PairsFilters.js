@@ -6,8 +6,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Switch,
   InputAdornment,
   Box,
   Typography,
@@ -47,57 +45,33 @@ const FilterSection = ({ title, children }) => (
 const PairsFilters = ({ filters, handleFilterChange }) => {
   return (
     <Box>
-      {/* Search and Quick Filters */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            fullWidth
-            placeholder="Search by pair name or address..."
-            size="small"
-            value={filters.search}
-            onChange={handleFilterChange('search')}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                bgcolor: 'background.default',
-                '&:hover': {
-                  '& > fieldset': {
-                    borderColor: 'primary.main',
-                  }
+      {/* Search */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          placeholder="Search by pair name or address..."
+          size="small"
+          value={filters.search}
+          onChange={handleFilterChange('search')}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="action" />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              bgcolor: 'background.default',
+              '&:hover': {
+                '& > fieldset': {
+                  borderColor: 'primary.main',
                 }
               }
-            }}
-          />
-        </Grid>
-        <Grid item xs={12} md={8}>
-          <Box sx={{ 
-            display: 'flex', 
-            gap: 2,
-            alignItems: 'center',
-            height: '100%'
-          }}>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={filters.hideBlacklisted}
-                  onChange={handleFilterChange('hideBlacklisted')}
-                  color="primary"
-                  size="small"
-                />
-              }
-              label={
-                <Typography variant="body2">Hide Blacklisted</Typography>
-              }
-            />
-          </Box>
-        </Grid>
-      </Grid>
+            }
+          }}
+        />
+      </Box>
 
       {/* Advanced Filters */}
       <Paper 

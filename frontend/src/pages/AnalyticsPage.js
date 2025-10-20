@@ -36,7 +36,6 @@ function AnalyticsPage() {
     minApr: '',
     binStep: '',
     baseFee: '',
-    hideBlacklisted: false,
     minTotalLiquidity: '',
     sortBy: '',
     sortDirection: '',
@@ -121,9 +120,7 @@ function AnalyticsPage() {
   };
 
   const handleFilterChange = (filterName) => (event) => {
-    const value = filterName === 'hideBlacklisted'
-      ? event.target.checked
-      : event.target.value;
+    const value = event.target.value;
 
     setFilters(prev => ({
       ...prev,
@@ -176,13 +173,6 @@ function AnalyticsPage() {
         }
       }
 
-      // Filter blacklisted pairs
-      if (filters.hideBlacklisted) {
-        if (pair.is_blacklisted) {
-          return false;
-        }
-      }
-
       return true;
     });
   }, [pairs, filters]);
@@ -214,8 +204,6 @@ function AnalyticsPage() {
     if (pairs.length > 0) {
       console.log('Total pairs:', pairs.length);
       console.log('Sample pair full data:', pairs[0]);
-      console.log('Blacklisted pairs:', pairs.filter(p => p.is_blacklisted).length);
-      console.log('Non-blacklisted pairs:', pairs.filter(p => !p.is_blacklisted).length);
     }
   }, [pairs]);
 
