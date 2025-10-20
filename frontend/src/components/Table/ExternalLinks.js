@@ -1,6 +1,5 @@
 import React from 'react';
-import { Box, Button, Typography, Grid } from '@mui/material';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { Box, IconButton, Tooltip } from '@mui/material';
 import { getPairXToken } from '../../utils/helpers';
 
 const ExternalLinks = ({ pair }) => {
@@ -12,92 +11,87 @@ const ExternalLinks = ({ pair }) => {
 
   const tokenAddress = pairXToken.address;
   const pairAddress = pair.address;
+  const mintX = pair.mint_x;
+  const mintY = pair.mint_y;
 
   const links = [
     {
       name: 'Meteora',
-      url: `https://app.meteora.ag/pools/${pairAddress}`,
-      color: '#9945FF',
-      bgColor: 'rgba(153, 69, 255, 0.1)',
+      url: `https://app.meteora.ag/dlmm/${pairAddress}`,
+      logo: '/meteora.svg',
     },
     {
       name: 'Jupiter',
-      url: `https://jup.ag/swap/USDC-${tokenAddress}`,
-      color: '#FCC00A',
-      bgColor: 'rgba(252, 192, 10, 0.1)',
+      url: `https://jup.ag/swap?sell=${mintY}&buy=${mintX}`,
+      logo: 'https://jup.ag/svg/jupiter-logo.svg',
     },
     {
       name: 'Bubble Maps',
       url: `https://app.bubblemaps.io/sol/token/${tokenAddress}`,
-      color: '#00D4AA',
-      bgColor: 'rgba(0, 212, 170, 0.1)',
+      logo: '/Bubblemaps_idgHlaD7f9_1.svg',
     },
     {
       name: 'GMGN',
       url: `https://gmgn.ai/sol/token/${tokenAddress}`,
-      color: '#FF6B6B',
-      bgColor: 'rgba(255, 107, 107, 0.1)',
+      logo: 'https://gmgn.ai/static/logo.svg',
     },
     {
       name: 'Birdeye',
       url: `https://birdeye.so/token/${tokenAddress}?chain=solana`,
-      color: '#00A3FF',
-      bgColor: 'rgba(0, 163, 255, 0.1)',
+      logo: '/Birdeye Logo_Black logomark 200x200.png',
     },
   ];
 
   return (
-    <Box>
-      <Typography
-        variant="body1"
-        sx={{
-          color: 'primary.main',
-          mb: 2,
-          fontWeight: 500
-        }}
-      >
-        External Links
-      </Typography>
-
-      <Grid container spacing={1.5}>
-        {links.map((link) => (
-          <Grid item xs={12} sm={6} md={4} key={link.name}>
-            <Button
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              fullWidth
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        flexWrap: 'wrap',
+      }}
+    >
+      {links.map((link) => (
+        <Tooltip
+          key={link.name}
+          title={`View on ${link.name}`}
+          arrow
+          placement="top"
+        >
+          <IconButton
+            component="a"
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2,
+              bgcolor: 'background.paper',
+              border: '1px solid',
+              borderColor: 'divider',
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                transform: 'translateY(-4px) scale(1.05)',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
+                borderColor: 'primary.main',
+                bgcolor: 'action.hover',
+              },
+            }}
+          >
+            <Box
+              component="img"
+              src={link.logo}
+              alt={`${link.name} logo`}
               sx={{
-                justifyContent: 'space-between',
-                textTransform: 'none',
-                bgcolor: link.bgColor,
-                color: link.color,
-                border: `1px solid ${link.color}40`,
-                py: 1.5,
-                px: 2,
-                borderRadius: 2,
-                '&:hover': {
-                  bgcolor: link.bgColor,
-                  borderColor: link.color,
-                  transform: 'translateY(-2px)',
-                  boxShadow: `0 4px 12px ${link.color}30`,
-                },
-                transition: 'all 0.2s ease',
+                width: 28,
+                height: 28,
+                objectFit: 'contain',
               }}
-            >
-              <Typography
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '0.95rem',
-                }}
-              >
-                {link.name}
-              </Typography>
-              <OpenInNewIcon sx={{ fontSize: '1.1rem', opacity: 0.8 }} />
-            </Button>
-          </Grid>
-        ))}
-      </Grid>
+            />
+          </IconButton>
+        </Tooltip>
+      ))}
     </Box>
   );
 };

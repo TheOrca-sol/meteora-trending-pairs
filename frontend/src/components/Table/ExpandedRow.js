@@ -74,26 +74,36 @@ const ExpandedRow = ({ pair }) => {
   }
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Grid container spacing={2}>
-        {/* Top Row - External Links */}
+    <Box sx={{ p: 3, bgcolor: 'background.default' }}>
+      <Grid container spacing={3}>
+        {/* Quick Links Bar */}
         <Grid item xs={12}>
-          <Paper
-            elevation={0}
+          <Box
             sx={{
-              p: 3,
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider'
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2,
+              pb: 2,
+              borderBottom: 1,
+              borderColor: 'divider',
             }}
           >
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: 'text.secondary',
+                fontWeight: 600,
+                mr: 1,
+              }}
+            >
+              Quick Links:
+            </Typography>
             <ExternalLinks pair={pair} />
-          </Paper>
+          </Box>
         </Grid>
 
-        {/* Left Column - Token Information */}
-        <Grid item xs={12} md={3}>
+        {/* Token Information & Security Side by Side */}
+        <Grid item xs={12} md={4}>
           <Paper
             elevation={0}
             sx={{
@@ -102,35 +112,44 @@ const ExpandedRow = ({ pair }) => {
               bgcolor: 'background.paper',
               borderRadius: 2,
               border: 1,
-              borderColor: 'divider'
+              borderColor: 'divider',
             }}
           >
             <TokenInformation tokenAddress={pairXToken.address} />
           </Paper>
         </Grid>
 
-        {/* Middle Column - Market Activity */}
-        
-
-        {/* Right Column - Security Report */}
-        <Grid item xs={12} md={3}>
-          <Paper 
+        <Grid item xs={12} md={4}>
+          <Paper
             elevation={0}
-            sx={{ 
+            sx={{
               p: 3,
               height: '100%',
               bgcolor: 'background.paper',
               borderRadius: 2,
               border: 1,
-              borderColor: 'divider'
+              borderColor: 'divider',
             }}
           >
             <SecurityReport pair={pair} />
           </Paper>
         </Grid>
 
-        {/* Right Column - Token Holders */}
-
+        <Grid item xs={12} md={4}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 3,
+              height: '100%',
+              bgcolor: 'background.paper',
+              borderRadius: 2,
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <BubbleMaps tokenAddress={pairXToken.address} />
+          </Paper>
+        </Grid>
 
         {/* Full Width - Liquidity Distribution */}
         <Grid item xs={12}>
@@ -141,27 +160,10 @@ const ExpandedRow = ({ pair }) => {
               bgcolor: 'background.paper',
               borderRadius: 2,
               border: 1,
-              borderColor: 'divider'
+              borderColor: 'divider',
             }}
           >
             <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
-          </Paper>
-        </Grid>
-
-        {/* Bottom Row - BubbleMaps */}
-        <Grid item xs={6}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: 3,
-              height: '100%',
-              bgcolor: 'background.paper',
-              borderRadius: 2,
-              border: 1,
-              borderColor: 'divider'
-            }}
-          >
-            <BubbleMaps tokenAddress={pairXToken.address} />
           </Paper>
         </Grid>
       </Grid>
