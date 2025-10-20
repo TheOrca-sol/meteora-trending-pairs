@@ -168,7 +168,8 @@ const Row = ({ pair, periodData }) => {
   const volume24h = pairData?.volume?.h24 || (tokenInfo?.stats24h?.buyVolume + tokenInfo?.stats24h?.sellVolume) || 0;
   const volume30m = pairData?.volume?.m30 || pair.volume30min || 0;
   const feePercentage = pair.baseFee || 0.3; // Use backend baseFee
-  const dailyFees = volume24h * (feePercentage / 100);
+  // Always use Meteora's actual 24h fees from backend (more accurate than calculated)
+  const dailyFees = pair.fees24h || 0;
   // Use backend 30min fees if available, otherwise calculate from volume
   const thirtyMinFees = pair.fees30min || (volume30m * (feePercentage / 100));
 
