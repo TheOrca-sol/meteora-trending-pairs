@@ -14,6 +14,7 @@ import {
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PairsTable from '../components/Table/PairsTable';
 import PairsFilters from '../components/Filters/PairsFilters';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { trackUserInteraction } from '../utils/analytics';
 
 function AnalyticsPage() {
@@ -85,13 +86,16 @@ function AnalyticsPage() {
           search: filters.search,
           min_liquidity: filters.minTotalLiquidity,
           min_volume_24h: filters.minVolume24h,
+          min_fees_30min: filters.minFees30min,
           sort_by: orderBy,
           // Force refresh bypasses cache for fresh data when manually refreshing
           force_refresh: isManualRefresh ? 'true' : 'false'
         }
       });
 
-      console.log('API Response:', response.data);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('API Response:', response.data);
+      }
       setPairs(response.data.data);
       setPagination(response.data.pagination);
       setError(null);
@@ -153,26 +157,9 @@ function AnalyticsPage() {
     trackUserInteraction.filterChange(filterName, value);
   };
 
-  // Apply client-side filters to the pairs data
-  const filteredPairs = React.useMemo(() => {
-    return pairs.filter(pair => {
-      // Filter by 30min fees
-      if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
-        const fees30min = parseFloat(pair.fees30min || 0);
-        if (fees30min < parseFloat(filters.minFees30min)) {
-          return false;
-        }
-      }
-
-      // Note: Volume filtering is handled by backend API (min_volume_24h parameter)
-      // No client-side volume filtering needed since backend doesn't return volume24h data yet
-
-      return true;
-    });
-  }, [pairs, filters]);
-
-  const sortedPairs = React.useMemo(() => filteredPairs, [filteredPairs]);
-  const paginatedPairs = React.useMemo(() => filteredPairs, [filteredPairs]);
+  // All filtering is now handled by backend API
+  // Backend filters: search, min_liquidity, min_volume_24h, min_fees_30min
+  // No client-side filtering needed
 
   const handleChangePage = (event, newPage) => {
     setPaginationLoading(true);
@@ -195,15 +182,11 @@ function AnalyticsPage() {
   };
 
   useEffect(() => {
-    if (pairs.length > 0) {
+    if (process.env.NODE_ENV === 'development' && pairs.length > 0) {
       console.log('Total pairs:', pairs.length);
       console.log('Sample pair full data:', pairs[0]);
     }
   }, [pairs]);
-
-  console.log('Filtered pairs:', filteredPairs.length);
-  console.log('Sorted pairs:', sortedPairs.length);
-  console.log('Sample pair:', sortedPairs[0]);
 
   if (loading) {
     return (
@@ -370,26 +353,28 @@ function AnalyticsPage() {
           <Typography>{error.message || error}</Typography>
         </Paper>
       ) : (
-        <Paper
-          elevation={2}
-          sx={{
-            borderRadius: 2,
-            overflow: 'hidden'
-          }}
-        >
-          <PairsTable
-            pairs={paginatedPairs}
-            orderBy={orderBy}
-            order={order}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            handleSort={handleSort}
-            handleChangePage={handleChangePage}
-            handleChangeRowsPerPage={handleChangeRowsPerPage}
-            totalCount={pagination?.total || pairs.length}
-            paginationLoading={paginationLoading}
-          />
-        </Paper>
+        <ErrorBoundary errorMessage="Failed to load pairs table. Please try refreshing the page.">
+          <Paper
+            elevation={2}
+            sx={{
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
+            <PairsTable
+              pairs={pairs}
+              orderBy={orderBy}
+              order={order}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              handleSort={handleSort}
+              handleChangePage={handleChangePage}
+              handleChangeRowsPerPage={handleChangeRowsPerPage}
+              totalCount={pagination?.total || pairs.length}
+              paginationLoading={paginationLoading}
+            />
+          </Paper>
+        </ErrorBoundary>
       )}
     </Container>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import {
   Grid,
   TextField,
@@ -127,6 +128,25 @@ const PairsFilters = ({ filters, handleFilterChange }) => {
       </Paper>
     </Box>
   );
+};
+
+// PropTypes for FilterSection component
+FilterSection.propTypes = {
+  title: PropTypes.string.isRequired,
+  children: PropTypes.node.isRequired,
+};
+
+// PropTypes for PairsFilters component
+PairsFilters.propTypes = {
+  filters: PropTypes.shape({
+    search: PropTypes.string,
+    minFees30min: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    minVolume24h: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    minTotalLiquidity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    sortBy: PropTypes.string,
+    sortDirection: PropTypes.string,
+  }).isRequired,
+  handleFilterChange: PropTypes.func.isRequired,
 };
 
 export default PairsFilters; 

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Grid, 
+import PropTypes from 'prop-types';
+import {
+  Box,
+  Typography,
+  Grid,
   Paper,
   useTheme,
   Link,
@@ -62,6 +63,8 @@ const commonTypographyStyles = {
 // Main ExpandedRow Component
 const ExpandedRow = ({ pair }) => {
   const pairXToken = getPairXToken(pair);
+  // Enable localhost-only features via environment variable
+  const enableLocalhostFeatures = process.env.REACT_APP_ENABLE_LOCALHOST_FEATURES === 'true';
 
   if (!pair || !pairXToken) {
     return (
@@ -103,7 +106,7 @@ const ExpandedRow = ({ pair }) => {
         </Grid>
 
         {/* Token Information & Security Side by Side */}
-        <Grid item xs={12} md={window.location.hostname === 'localhost' ? 4 : 6}>
+        <Grid item xs={12} md={enableLocalhostFeatures ? 4 : 6}>
           <Paper
             elevation={0}
             sx={{
@@ -119,7 +122,7 @@ const ExpandedRow = ({ pair }) => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={window.location.hostname === 'localhost' ? 4 : 6}>
+        <Grid item xs={12} md={enableLocalhostFeatures ? 4 : 6}>
           <Paper
             elevation={0}
             sx={{
@@ -135,8 +138,8 @@ const ExpandedRow = ({ pair }) => {
           </Paper>
         </Grid>
 
-        {/* BubbleMaps - Only show on localhost */}
-        {window.location.hostname === 'localhost' && (
+        {/* BubbleMaps - Only show when localhost features enabled */}
+        {enableLocalhostFeatures && (
           <Grid item xs={12} md={4}>
             <Paper
               elevation={0}
@@ -154,8 +157,8 @@ const ExpandedRow = ({ pair }) => {
           </Grid>
         )}
 
-        {/* Full Width - Liquidity Distribution - Only show on localhost */}
-        {window.location.hostname === 'localhost' && (
+        {/* Full Width - Liquidity Distribution - Only show when localhost features enabled */}
+        {enableLocalhostFeatures && (
           <Grid item xs={12}>
             <Paper
               elevation={0}
@@ -174,6 +177,15 @@ const ExpandedRow = ({ pair }) => {
       </Grid>
     </Box>
   );
+};
+
+ExpandedRow.propTypes = {
+  pair: PropTypes.shape({
+    address: PropTypes.string,
+    pairName: PropTypes.string,
+    mint_x: PropTypes.string,
+    mint_y: PropTypes.string,
+  }).isRequired,
 };
 
 export default ExpandedRow; 

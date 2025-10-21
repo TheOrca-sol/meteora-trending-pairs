@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   Table,
   TableBody,
@@ -26,92 +27,48 @@ import ExpandedRow from './ExpandedRow';
 import { TrendingUp as TrendingUpIcon, TrendingDown as TrendingDownIcon, AttachMoney as AttachMoneyIcon, CalendarToday as CalendarTodayIcon } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { getPairXToken } from '../../utils/helpers';
+import { getPairXToken, formatNumber, formatPrice } from '../../utils/helpers';
 import axios from 'axios';
-
-// Utility functions for number formatting
-const formatNumber = (num) => {
-  // Handle null, undefined, or non-numeric values
-  if (num === null || num === undefined || num === '') {
-    return '0.00';
-  }
-
-  // Convert string numbers to floats
-  const value = typeof num === 'string' ? parseFloat(num) : num;
-
-  // Check if it's a valid number after conversion
-  if (typeof value !== 'number' || isNaN(value)) {
-    return '0.00';
-  }
-
-  try {
-    if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(2)}M`;
-    } else if (value >= 1000) {
-      return `${(value / 1000).toFixed(2)}K`;
-    } else {
-      return value.toFixed(2);
-    }
-  } catch (error) {
-    console.error('Error formatting number:', error, 'Value:', num);
-    return '0.00';
-  }
-};
-
-const formatPrice = (price) => {
-  // Handle null, undefined, or non-numeric values
-  if (price === null || price === undefined || price === '') {
-    return '0.00';
-  }
-
-  // Convert string prices to floats
-  const value = typeof price === 'string' ? parseFloat(price) : price;
-
-  // Check if it's a valid number after conversion
-  if (typeof value !== 'number' || isNaN(value)) {
-    return '0.00';
-  }
-
-  try {
-    if (value < 0.01) {
-      return value.toFixed(8);
-    } else if (value < 1) {
-      return value.toFixed(4);
-    } else {
-      return value.toFixed(2);
-    }
-  } catch (error) {
-    console.error('Error formatting price:', error, 'Value:', price);
-    return '0.00';
-  }
-};
 
 const Row = ({ pair, periodData }) => {
   const [open, setOpen] = useState(false);
   const [pairData, setPairData] = useState(null);
   const [tokenInfo, setTokenInfo] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
   const theme = useTheme();
-  const pairXToken = getPairXToken(pair);
+  const pairXToken = React.useMemo(() => getPairXToken(pair), [pair.mint_x, pair.mint_y]);
 
+  // Only fetch data when row is expanded for the first time
   useEffect(() => {
+    if (!open || hasFetched || !pair.address || !pairXToken?.address) {
+      return;
+    }
+
+    const abortController = new AbortController();
     const fetchPairData = async () => {
+      setIsLoading(true);
       try {
-        console.log('Fetching pair data for:', pair.address, 'pairXToken:', pairXToken);
-        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Fetching pair data for:', pair.address, 'pairXToken:', pairXToken);
+        }
+
         const [dexScreenerResponse, jupiterResponse] = await Promise.all([
-          axios.get(`https://api.dexscreener.com/latest/dex/pairs/solana/${pair.address}`),
-          axios.get(`https://lite-api.jup.ag/tokens/v2/search?query=${pairXToken?.address}`)
+          axios.get(`https://api.dexscreener.com/latest/dex/pairs/solana/${pair.address}`, {
+            signal: abortController.signal
+          }),
+          axios.get(`https://lite-api.jup.ag/tokens/v2/search?query=${pairXToken?.address}`, {
+            signal: abortController.signal
+          })
         ]);
 
-        console.log('DexScreener response:', dexScreenerResponse.data);
-        console.log('Jupiter response:', jupiterResponse.data);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('DexScreener response:', dexScreenerResponse.data);
+          console.log('Jupiter response:', jupiterResponse.data);
+        }
 
         const dexScreenerData = dexScreenerResponse.data.pairs?.[0];
         const jupiterData = jupiterResponse.data?.[0]; // v2 returns an array
-
-        console.log('Processed DexScreener data:', dexScreenerData);
-        console.log('Processed Jupiter data:', jupiterData);
 
         if (dexScreenerData) {
           setPairData(dexScreenerData);
@@ -119,22 +76,22 @@ const Row = ({ pair, periodData }) => {
         if (jupiterData) {
           setTokenInfo(jupiterData);
         }
+        setHasFetched(true);
       } catch (err) {
-        console.error('Error fetching data for pair:', pair.address, 'Error:', err);
+        if (err.name !== 'CanceledError') {
+          console.error('Error fetching data for pair:', pair.address, 'Error:', err);
+        }
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    if (pair.address && pairXToken?.address) {
-      fetchPairData();
-    } else {
-      console.log('Skipping fetch - missing data:', { 
-        address: pair.address, 
-        pairXToken: pairXToken,
-        mint_x: pair.mint_x,
-        mint_y: pair.mint_y
-      });
-    }
-  }, [pair.address, pairXToken?.address]);
+    fetchPairData();
+
+    return () => {
+      abortController.abort();
+    };
+  }, [open, hasFetched, pair.address, pairXToken?.address]);
 
   const handleRowClick = () => {
     setOpen(!open);
@@ -213,19 +170,21 @@ const Row = ({ pair, periodData }) => {
     }
   };
 
-  // Add debug logging
-  console.log('Row data sources:', {
-    pairName: pair?.pairName,
-    dexScreener: pairData ? 'Available' : 'Not loaded',
-    jupiterToken: tokenInfo ? 'Available' : 'Not loaded',
-    dexVolume24h: pairData?.volume?.h24,
-    jupiterVolume24h: tokenInfo?.stats24h ? (tokenInfo.stats24h.buyVolume + tokenInfo.stats24h.sellVolume) : 'N/A',
-    dexLiquidity: pairData?.liquidity?.usd,
-    jupiterLiquidity: tokenInfo?.liquidity,
-    backendPrice: pair?.price,
-    finalVolume24h: volume24h,
-    finalTvl: tvl
-  });
+  // Add debug logging (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Row data sources:', {
+      pairName: pair?.pairName,
+      dexScreener: pairData ? 'Available' : 'Not loaded',
+      jupiterToken: tokenInfo ? 'Available' : 'Not loaded',
+      dexVolume24h: pairData?.volume?.h24,
+      jupiterVolume24h: tokenInfo?.stats24h ? (tokenInfo.stats24h.buyVolume + tokenInfo.stats24h.sellVolume) : 'N/A',
+      dexLiquidity: pairData?.liquidity?.usd,
+      jupiterLiquidity: tokenInfo?.liquidity,
+      backendPrice: pair?.price,
+      finalVolume24h: volume24h,
+      finalTvl: tvl
+    });
+  }
 
   // Don't return null - always show the row, even if DexScreener data is loading
   // if (!pairData) return null;
@@ -480,11 +439,13 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
   // Calculate the current page's data - since backend handles pagination, just use all pairs
   const displayedPairs = pairs;
 
-  console.log('PairsTable received pairs:', pairs.length);
-  console.log('Total count from backend:', totalCount);
-  console.log('Current page:', page);
-  console.log('Rows per page:', rowsPerPage);
-  console.log('Pairs being displayed:', displayedPairs.length);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PairsTable received pairs:', pairs.length);
+    console.log('Total count from backend:', totalCount);
+    console.log('Current page:', page);
+    console.log('Rows per page:', rowsPerPage);
+    console.log('Pairs being displayed:', displayedPairs.length);
+  }
 
   return (
     <Box sx={{ position: 'relative' }}>
@@ -629,6 +590,48 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
       />
     </Box>
   );
+};
+
+// PropTypes for Row component
+Row.propTypes = {
+  pair: PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    address: PropTypes.string,
+    pairName: PropTypes.string,
+    mint_x: PropTypes.string,
+    mint_y: PropTypes.string,
+    binStep: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    baseFee: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    price: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    fees24h: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    fees30min: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    totalLiquidity: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    volume30min: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    is_blacklisted: PropTypes.bool,
+  }).isRequired,
+  periodData: PropTypes.object,
+};
+
+// PropTypes for PairsTable component
+PairsTable.propTypes = {
+  pairs: PropTypes.arrayOf(PropTypes.object),
+  orderBy: PropTypes.string,
+  order: PropTypes.oneOf(['asc', 'desc']),
+  page: PropTypes.number.isRequired,
+  rowsPerPage: PropTypes.number.isRequired,
+  handleSort: PropTypes.func.isRequired,
+  handleChangePage: PropTypes.func.isRequired,
+  handleChangeRowsPerPage: PropTypes.func.isRequired,
+  totalCount: PropTypes.number,
+  paginationLoading: PropTypes.bool,
+};
+
+PairsTable.defaultProps = {
+  pairs: [],
+  orderBy: 'fee_rate_30min',
+  order: 'desc',
+  totalCount: 0,
+  paginationLoading: false,
 };
 
 export default PairsTable; 
