@@ -19,7 +19,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { getPairXToken } from '../../utils/helpers';
+import { getPairXToken, formatNumber } from '../../utils/helpers';
 import axios from 'axios';
 import MarketStats from './MarketStats';
 import SecurityReport from './SecurityReport';
@@ -61,7 +61,7 @@ const commonTypographyStyles = {
 };
 
 // Main ExpandedRow Component
-const ExpandedRow = ({ pair }) => {
+const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   const pairXToken = getPairXToken(pair);
   // Enable localhost-only features via environment variable
   const enableLocalhostFeatures = process.env.REACT_APP_ENABLE_LOCALHOST_FEATURES === 'true';
@@ -138,6 +138,127 @@ const ExpandedRow = ({ pair }) => {
           </Paper>
         </Grid>
 
+        {/* Period Data Section - Transactions, Price Changes, and Volume */}
+        {timeframes && calculateTxnStats && (
+          <Grid item xs={12}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                bgcolor: 'background.paper',
+                borderRadius: 2,
+                border: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  color: 'primary.main',
+                  mb: 2,
+                  fontWeight: 600,
+                  pb: 1,
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                Time Period Analysis
+              </Typography>
+
+              <Grid container spacing={2}>
+                {Object.entries(timeframes).map(([period, data]) => {
+                  const { total, buyPercent, sellPercent } = calculateTxnStats(data.txns);
+                  return (
+                    <Grid item xs={12} sm={6} md={3} key={period}>
+                      <Box sx={{
+                        p: 2,
+                        borderRadius: 1,
+                        bgcolor: 'action.selected',
+                        height: '100%'
+                      }}>
+                        <Typography
+                          variant="overline"
+                          sx={{
+                            color: 'text.secondary',
+                            fontWeight: 600,
+                            display: 'block',
+                            mb: 1
+                          }}
+                        >
+                          {period.toUpperCase()}
+                        </Typography>
+
+                        {/* Transactions */}
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Transactions
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                            {total}
+                          </Typography>
+                          <Box sx={{
+                            width: '100%',
+                            height: '6px',
+                            borderRadius: 1,
+                            display: 'flex',
+                            overflow: 'hidden',
+                            bgcolor: 'background.default',
+                            mb: 0.5
+                          }}>
+                            <Box sx={{
+                              width: `${buyPercent}%`,
+                              bgcolor: 'success.main',
+                            }} />
+                            <Box sx={{
+                              width: `${sellPercent}%`,
+                              bgcolor: 'error.main',
+                            }} />
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                            <Typography variant="caption" sx={{ color: 'success.main' }}>
+                              Buy {buyPercent.toFixed(0)}%
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'error.main' }}>
+                              Sell {sellPercent.toFixed(0)}%
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {/* Price Change */}
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Price Change
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontWeight: 600,
+                              color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main'
+                            }}
+                          >
+                            {(data.priceChange || 0) > 0 ? '+' : ''}
+                            {(data.priceChange || 0)?.toFixed(2)}%
+                          </Typography>
+                        </Box>
+
+                        {/* Volume */}
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            Volume
+                          </Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            ${formatNumber(data.volume || 0)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Paper>
+          </Grid>
+        )}
+
         {/* BubbleMaps - Only show when localhost features enabled */}
         {enableLocalhostFeatures && (
           <Grid item xs={12} md={4}>
@@ -186,6 +307,8 @@ ExpandedRow.propTypes = {
     mint_x: PropTypes.string,
     mint_y: PropTypes.string,
   }).isRequired,
+  timeframes: PropTypes.object,
+  calculateTxnStats: PropTypes.func,
 };
 
 export default ExpandedRow; 

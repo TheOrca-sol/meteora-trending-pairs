@@ -338,95 +338,13 @@ const Row = ({ pair, periodData }) => {
             {feeRate30min.toFixed(4)}%
           </Typography>
         </TableCell>
-
-        {/* Transaction Counts with Buy/Sell bars */}
-        {Object.entries(timeframes).map(([period, data]) => {
-          const { total, buyPercent, sellPercent } = calculateTxnStats(data.txns);
-          return (
-            <TableCell key={`${period}-txns`} align="right">
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                {/* Total transactions */}
-                <Typography sx={{ 
-                  fontWeight: 500,
-                  fontSize: '0.875rem',
-                  color: 'text.primary'
-                }}>
-                  {total}
-                </Typography>
-                
-                {/* Buy/Sell bar */}
-                <Box sx={{ 
-                  width: '100%',
-                  height: '4px',
-                  borderRadius: 1,
-                  display: 'flex',
-                  overflow: 'hidden',
-                  bgcolor: 'background.paper'
-                }}>
-                  <Box sx={{ 
-                    width: `${buyPercent}%`,
-                    bgcolor: 'success.main',
-                    transition: 'width 0.3s ease'
-                  }} />
-                  <Box sx={{ 
-                    width: `${sellPercent}%`,
-                    bgcolor: 'error.main',
-                    transition: 'width 0.3s ease'
-                  }} />
-                </Box>
-
-                {/* Buy/Sell percentages */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  fontSize: '0.75rem'
-                }}>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ color: 'success.main' }}
-                  >
-                    {buyPercent.toFixed(0)}%
-                  </Typography>
-                  <Typography 
-                    variant="caption" 
-                    sx={{ color: 'error.main' }}
-                  >
-                    {sellPercent.toFixed(0)}%
-                  </Typography>
-                </Box>
-              </Box>
-            </TableCell>
-          );
-        })}
-
-        {/* Price Changes */}
-        {Object.entries(timeframes).map(([period, data]) => (
-          <TableCell key={`${period}-price`} align="right">
-            <Typography sx={{ 
-              color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main',
-              fontWeight: 500
-            }}>
-              {(data.priceChange || 0) > 0 ? '+' : ''}
-              {(data.priceChange || 0)?.toFixed(2)}%
-            </Typography>
-          </TableCell>
-        ))}
-
-        {/* Volume */}
-        {Object.entries(timeframes).map(([period, data]) => (
-          <TableCell key={`${period}-volume`} align="right">
-            <Typography sx={{ fontWeight: 500 }}>
-              ${formatNumber(data.volume || 0)}
-            </Typography>
-          </TableCell>
-        ))}
       </TableRow>
 
       {/* Expanded Row */}
       <TableRow>
-        <TableCell colSpan={20} sx={{ p: 0, border: 0 }}>
+        <TableCell colSpan={6} sx={{ p: 0, border: 0 }}>
           <Collapse in={open} timeout="auto" unmountOnExit>
-            <ExpandedRow pair={pair} />
+            <ExpandedRow pair={pair} timeframes={timeframes} calculateTxnStats={calculateTxnStats} />
           </Collapse>
         </TableCell>
       </TableRow>
@@ -484,18 +402,6 @@ const PairsTable = ({ pairs = [], orderBy, order, handleSort }) => {
                   30M FEE RATE
                 </TableSortLabel>
               </TableCell>
-              <TableCell align="right">5M TX</TableCell>
-              <TableCell align="right">1H TX</TableCell>
-              <TableCell align="right">6H TX</TableCell>
-              <TableCell align="right">24H TX</TableCell>
-              <TableCell align="right">5M %</TableCell>
-              <TableCell align="right">1H %</TableCell>
-              <TableCell align="right">6H %</TableCell>
-              <TableCell align="right">24H %</TableCell>
-              <TableCell align="right">5M VOL</TableCell>
-              <TableCell align="right">1H VOL</TableCell>
-              <TableCell align="right">6H VOL</TableCell>
-              <TableCell align="right">24H VOL</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

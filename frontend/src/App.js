@@ -15,10 +15,10 @@ import ThemeToggle from './components/ThemeToggle/ThemeToggle';
 import { Analytics } from '@vercel/analytics/react';
 
 function App() {
-  // Add theme state
+  // Add theme state (default to dark mode)
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode');
-    return saved !== null ? JSON.parse(saved) : false;
+    return saved !== null ? JSON.parse(saved) : true; // Default to dark mode
   });
 
   // Save theme preference
