@@ -86,8 +86,8 @@ function AnalyticsPage() {
           search: filters.search,
           min_liquidity: filters.minTotalLiquidity,
           min_volume_24h: filters.minVolume24h,
-          min_fees_30min: filters.minFees30min,
           sort_by: orderBy,
+          sort_order: order, // Add sort direction (asc/desc)
           // Force refresh bypasses cache for fresh data when manually refreshing
           force_refresh: isManualRefresh ? 'true' : 'false'
         }
@@ -96,7 +96,17 @@ function AnalyticsPage() {
       if (process.env.NODE_ENV === 'development') {
         console.log('API Response:', response.data);
       }
-      setPairs(response.data.data);
+
+      // Apply client-side filtering for 30min fees (backend doesn't support this filter)
+      let filteredData = response.data.data;
+      if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
+        filteredData = filteredData.filter(pair => {
+          const fees30min = parseFloat(pair.fee_rate_30min || 0);
+          return fees30min >= parseFloat(filters.minFees30min);
+        });
+      }
+
+      setPairs(filteredData);
       setPagination(response.data.pagination);
       setError(null);
       setLastUpdated(new Date());
@@ -113,7 +123,7 @@ function AnalyticsPage() {
       setRefreshing(false);
       setPaginationLoading(false);
     }
-  }, [page, rowsPerPage, filters, orderBy]);
+  }, [page, rowsPerPage, filters, orderBy, order]);
 
   useEffect(() => {
     const isPagination = !isInitialLoad.current && !loading && !refreshing;
