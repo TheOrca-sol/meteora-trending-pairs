@@ -31,7 +31,7 @@
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
-    "postinstall": "node -e \"try { require('gopd/gOPD'); console.log('gopd verified'); } catch(e) { console.error('gopd verification failed:', e.message); process.exit(1); }\""
+    "postinstall": "node fix-gopd.js"
   },
   "eslintConfig": {
     "extends": [
