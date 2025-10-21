@@ -75,7 +75,7 @@ function AnalyticsPage() {
 
       const response = await axios({
         method: 'get',
-        url: 'http://localhost:5000/api/pairs',
+        url: `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/pairs`,
         headers: {
           'Content-Type': 'application/json'
         },
