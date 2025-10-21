@@ -16,7 +16,11 @@ import {
   Typography,
   StepIcon,
   CircularProgress,
-  Backdrop
+  Backdrop,
+  Card,
+  CardContent,
+  Chip,
+  useMediaQuery
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -36,6 +40,7 @@ const Row = ({ pair, periodData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const pairXToken = React.useMemo(() => getPairXToken(pair), [pair.mint_x, pair.mint_y]);
 
   // Only fetch data when row is expanded for the first time
@@ -188,6 +193,116 @@ const Row = ({ pair, periodData }) => {
   // Don't return null - always show the row, even if DexScreener data is loading
   // if (!pairData) return null;
 
+  // Mobile Card View
+  if (isMobile) {
+    return (
+      <Box sx={{ mb: 2 }}>
+        <Card
+          sx={{
+            bgcolor: pair.is_blacklisted ? 'error.lighter' : 'background.paper',
+            cursor: 'pointer',
+            '&:hover': {
+              bgcolor: 'rgba(255, 255, 255, 0.05)',
+            }
+          }}
+          onClick={handleRowClick}
+        >
+          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+            {/* Header with Pair Name and Expand Button */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Avatar
+                    src={pairData?.baseToken?.logoURI || tokenInfo?.logoURI}
+                    alt={pairData?.baseToken?.symbol || tokenInfo?.symbol}
+                    sx={{ width: 32, height: 32 }}
+                  />
+                  <Avatar
+                    src={pairData?.quoteToken?.logoURI}
+                    alt={pairData?.quoteToken?.symbol}
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      ml: -1
+                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                    {pairData?.baseToken?.symbol || pair.pairName?.split('-')[0] || 'Unknown'}-{pairData?.quoteToken?.symbol || pair.pairName?.split('-')[1] || 'SOL'}
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
+                    <Chip label="DLMM" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
+                    <Chip label={`${pair.binStep} Bin`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                    <Chip label={`${Number(pair.baseFee || 0).toFixed(2)}% Fee`} size="small" color="info" sx={{ height: 20, fontSize: '0.7rem' }} />
+                  </Box>
+                </Box>
+              </Box>
+              <IconButton
+                size="small"
+                sx={{ color: 'text.secondary' }}
+              >
+                <KeyboardArrowDownIcon
+                  sx={{
+                    transform: open ? 'rotate(180deg)' : 'none',
+                    transition: '0.2s'
+                  }}
+                />
+              </IconButton>
+            </Box>
+
+            {/* Stats Grid */}
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 2,
+            }}>
+              {/* Price */}
+              <Box>
+                <Typography variant="caption" color="text.secondary">Price</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                  ${formatPrice(pairData?.priceUsd || tokenInfo?.usdPrice || pair?.price || 0)}
+                </Typography>
+              </Box>
+
+              {/* 24h Fees */}
+              <Box>
+                <Typography variant="caption" color="text.secondary">24h Fees</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                  ${formatNumber(dailyFees || pair?.fees24h || 0)}
+                </Typography>
+              </Box>
+
+              {/* TVL */}
+              <Box>
+                <Typography variant="caption" color="text.secondary">TVL</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  ${formatNumber(pairData?.liquidity?.usd || tokenInfo?.liquidity || pair?.totalLiquidity || 0)}
+                </Typography>
+              </Box>
+
+              {/* Fee Rate */}
+              <Box>
+                <Typography variant="caption" color="text.secondary">30m Fee Rate</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                  {feeRate30min.toFixed(4)}%
+                </Typography>
+              </Box>
+            </Box>
+          </CardContent>
+
+          {/* Expanded Content */}
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+              <ExpandedRow pair={pair} timeframes={timeframes} calculateTxnStats={calculateTxnStats} />
+            </Box>
+          </Collapse>
+        </Card>
+      </Box>
+    );
+  }
+
+  // Desktop Table View
   return (
     <>
       <TableRow
@@ -353,10 +468,50 @@ const Row = ({ pair, periodData }) => {
 };
 
 const PairsTable = ({ pairs = [], orderBy, order, handleSort }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   if (process.env.NODE_ENV === 'development') {
     console.log('PairsTable received pairs:', pairs.length);
   }
 
+  // Mobile Card Layout
+  if (isMobile) {
+    return (
+      <Box sx={{ px: 1 }}>
+        {pairs.map((pair, index) => (
+          <Row
+            key={pair.id || `pair-${index}`}
+            pair={pair}
+            periodData={{
+              '5m': {
+                transactions: pair.transactions5min,
+                priceChange: pair.priceChange5min,
+                volume: pair.volume5min
+              },
+              '1h': {
+                transactions: pair.transactions1h,
+                priceChange: pair.priceChange1h,
+                volume: pair.volume1h
+              },
+              '6h': {
+                transactions: pair.transactions6h,
+                priceChange: pair.priceChange6h,
+                volume: pair.volume6h
+              },
+              '24h': {
+                transactions: pair.transactions24h,
+                priceChange: pair.priceChange24h,
+                volume: pair.volume24h
+              }
+            }}
+          />
+        ))}
+      </Box>
+    );
+  }
+
+  // Desktop Table Layout
   return (
     <Box sx={{ position: 'relative' }}>
       <TableContainer
@@ -407,7 +562,7 @@ const PairsTable = ({ pairs = [], orderBy, order, handleSort }) => {
           <TableBody>
             {pairs.map((pair, index) => (
               <Row
-                key={pair.id || `pair-${index}`} 
+                key={pair.id || `pair-${index}`}
                 pair={pair}
                 periodData={{
                   '5m': {
