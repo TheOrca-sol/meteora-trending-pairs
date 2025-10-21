@@ -9,7 +9,6 @@ import {
   TableRow,
   TableSortLabel,
   Paper,
-  TablePagination,
   Collapse,
   IconButton,
   Box,
@@ -435,16 +434,9 @@ const Row = ({ pair, periodData }) => {
   );
 };
 
-const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort, handleChangePage, handleChangeRowsPerPage, totalCount, paginationLoading }) => {
-  // Calculate the current page's data - since backend handles pagination, just use all pairs
-  const displayedPairs = pairs;
-
+const PairsTable = ({ pairs = [], orderBy, order, handleSort }) => {
   if (process.env.NODE_ENV === 'development') {
     console.log('PairsTable received pairs:', pairs.length);
-    console.log('Total count from backend:', totalCount);
-    console.log('Current page:', page);
-    console.log('Rows per page:', rowsPerPage);
-    console.log('Pairs being displayed:', displayedPairs.length);
   }
 
   return (
@@ -507,9 +499,9 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
             </TableRow>
           </TableHead>
           <TableBody>
-            {displayedPairs.map((pair, index) => (
-              <Row 
-                key={pair.id || `${page}-${index}`} 
+            {pairs.map((pair, index) => (
+              <Row
+                key={pair.id || `pair-${index}`} 
                 pair={pair}
                 periodData={{
                   '5m': {
@@ -538,56 +530,6 @@ const PairsTable = ({ pairs = [], orderBy, order, page, rowsPerPage, handleSort,
           </TableBody>
         </Table>
       </TableContainer>
-      
-      {/* Pagination Loading Overlay */}
-      {paginationLoading && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 2,
-            zIndex: 1
-          }}
-        >
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-            <CircularProgress size={40} sx={{ color: 'primary.main' }} />
-            <Typography variant="body2" sx={{ color: 'white' }}>
-              Loading page {page + 1}...
-            </Typography>
-          </Box>
-        </Box>
-      )}
-      
-      <TablePagination
-        component="div"
-        count={totalCount}
-        page={page}
-        onPageChange={handleChangePage}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-        rowsPerPageOptions={[5, 10, 25, 50, 100]}
-        disabled={paginationLoading} // Disable during loading
-        sx={{
-          color: 'text.secondary',
-          '.MuiTablePagination-select': {
-            color: 'text.secondary',
-          },
-          '.MuiTablePagination-selectIcon': {
-            color: 'text.secondary',
-          },
-          '.MuiTablePagination-actions button': {
-            opacity: paginationLoading ? 0.5 : 1,
-            pointerEvents: paginationLoading ? 'none' : 'auto',
-          },
-        }}
-      />
     </Box>
   );
 };
@@ -617,21 +559,13 @@ PairsTable.propTypes = {
   pairs: PropTypes.arrayOf(PropTypes.object),
   orderBy: PropTypes.string,
   order: PropTypes.oneOf(['asc', 'desc']),
-  page: PropTypes.number.isRequired,
-  rowsPerPage: PropTypes.number.isRequired,
   handleSort: PropTypes.func.isRequired,
-  handleChangePage: PropTypes.func.isRequired,
-  handleChangeRowsPerPage: PropTypes.func.isRequired,
-  totalCount: PropTypes.number,
-  paginationLoading: PropTypes.bool,
 };
 
 PairsTable.defaultProps = {
   pairs: [],
   orderBy: 'fee_rate_30min',
   order: 'desc',
-  totalCount: 0,
-  paginationLoading: false,
 };
 
 export default PairsTable; 
