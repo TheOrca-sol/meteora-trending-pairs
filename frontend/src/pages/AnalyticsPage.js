@@ -101,7 +101,7 @@ function AnalyticsPage() {
       let filteredData = response.data.data;
       if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
         filteredData = filteredData.filter(pair => {
-          const fees30min = parseFloat(pair.fee_rate_30min || 0);
+          const fees30min = parseFloat(pair.fees30min || 0); // Use fees30min (dollar amount), not fee_rate_30min (percentage)
           return fees30min >= parseFloat(filters.minFees30min);
         });
       }
