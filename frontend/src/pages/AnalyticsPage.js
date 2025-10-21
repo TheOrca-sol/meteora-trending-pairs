@@ -91,6 +91,7 @@ function AnalyticsPage() {
       const { data: cachedData, isStale } = getCachedData(cacheKey);
 
       if (cachedData) {
+        console.log('Using cached data, length:', cachedData.length);
         // Apply client-side filtering for 30min fees
         let filteredData = cachedData;
         if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
@@ -100,25 +101,23 @@ function AnalyticsPage() {
           });
         }
 
+        console.log('After filtering, data length:', filteredData.length);
+
         // Show cached data immediately
         setAllPairs(filteredData);
-        setDisplayedPairs(filteredData.slice(0, displayLimit));
-        setHasMore(filteredData.length > displayLimit);
+        setDisplayedPairs(filteredData.slice(0, 10));
+        setHasMore(filteredData.length > 10);
         setError(null);
         setLoading(false);
 
         // If data is fresh, no need to fetch
         if (!isStale) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('Using fresh cached data');
-          }
+          console.log('Using fresh cached data');
           return;
         }
 
         // Data is stale, fetch in background but don't show loading
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Using stale cached data, fetching fresh data in background');
-        }
+        console.log('Using stale cached data, fetching fresh data in background');
       }
     }
 
@@ -128,6 +127,8 @@ function AnalyticsPage() {
         // Clear all cache on manual refresh
         clearAllCache();
       }
+
+      console.log('Fetching from API with params:', requestParams);
 
       const response = await axios({
         method: 'get',
@@ -141,9 +142,7 @@ function AnalyticsPage() {
         }
       });
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('API Response:', response.data);
-      }
+      console.log('API Response received, data length:', response.data.data?.length);
 
       // Cache the fresh data
       setCachedData(cacheKey, response.data.data);
@@ -157,9 +156,11 @@ function AnalyticsPage() {
         });
       }
 
+      console.log('After filtering, final data length:', filteredData.length);
+
       setAllPairs(filteredData);
-      setDisplayedPairs(filteredData.slice(0, displayLimit));
-      setHasMore(filteredData.length > displayLimit);
+      setDisplayedPairs(filteredData.slice(0, 10));
+      setHasMore(filteredData.length > 10);
       setError(null);
       setLastUpdated(new Date());
 
@@ -177,10 +178,11 @@ function AnalyticsPage() {
         stack: err.stack
       });
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filters, orderBy, order, displayLimit]);
+  }, [filters, orderBy, order]);
 
   // Initial load
   useEffect(() => {
