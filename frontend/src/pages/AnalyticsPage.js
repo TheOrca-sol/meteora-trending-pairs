@@ -17,7 +17,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import PairsTable from '../components/Table/PairsTable';
 import PairsFilters from '../components/Filters/PairsFilters';
 import ErrorBoundary from '../components/ErrorBoundary';
+import TableSkeleton from '../components/Table/TableSkeleton';
 import { trackUserInteraction } from '../utils/analytics';
+import { generateCacheKey, getCachedData, setCachedData, clearAllCache } from '../utils/cache';
 
 function AnalyticsPage() {
   const [allPairs, setAllPairs] = useState([]); // All fetched pairs
@@ -71,9 +73,60 @@ function AnalyticsPage() {
   }, [filters]);
 
   const fetchPairs = useCallback(async (isManualRefresh = false) => {
+    const requestParams = {
+      page: 1,
+      limit: 20,
+      search: filters.search,
+      min_liquidity: filters.minTotalLiquidity,
+      min_volume_24h: filters.minVolume24h,
+      sort_by: orderBy,
+      sort_order: order,
+    };
+
+    // Generate cache key based on request parameters
+    const cacheKey = generateCacheKey(requestParams);
+
+    // Check cache first (unless manual refresh)
+    if (!isManualRefresh) {
+      const { data: cachedData, isStale } = getCachedData(cacheKey);
+
+      if (cachedData) {
+        // Apply client-side filtering for 30min fees
+        let filteredData = cachedData;
+        if (filters.minFees30min && parseFloat(filters.minFees30min) > 0) {
+          filteredData = filteredData.filter(pair => {
+            const fees30min = parseFloat(pair.fees30min || 0);
+            return fees30min >= parseFloat(filters.minFees30min);
+          });
+        }
+
+        // Show cached data immediately
+        setAllPairs(filteredData);
+        setDisplayedPairs(filteredData.slice(0, displayLimit));
+        setHasMore(filteredData.length > displayLimit);
+        setError(null);
+        setLoading(false);
+
+        // If data is fresh, no need to fetch
+        if (!isStale) {
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Using fresh cached data');
+          }
+          return;
+        }
+
+        // Data is stale, fetch in background but don't show loading
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Using stale cached data, fetching fresh data in background');
+        }
+      }
+    }
+
     try {
       if (isManualRefresh) {
         setRefreshing(true);
+        // Clear all cache on manual refresh
+        clearAllCache();
       }
 
       const response = await axios({
@@ -83,13 +136,7 @@ function AnalyticsPage() {
           'Content-Type': 'application/json'
         },
         params: {
-          page: 1,
-          limit: 100, // Fetch more pairs at once for infinite scroll
-          search: filters.search,
-          min_liquidity: filters.minTotalLiquidity,
-          min_volume_24h: filters.minVolume24h,
-          sort_by: orderBy,
-          sort_order: order,
+          ...requestParams,
           force_refresh: isManualRefresh ? 'true' : 'false'
         }
       });
@@ -97,6 +144,9 @@ function AnalyticsPage() {
       if (process.env.NODE_ENV === 'development') {
         console.log('API Response:', response.data);
       }
+
+      // Cache the fresh data
+      setCachedData(cacheKey, response.data.data);
 
       // Apply client-side filtering for 30min fees (backend doesn't support this filter)
       let filteredData = response.data.data;
@@ -245,8 +295,25 @@ function AnalyticsPage() {
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-        <CircularProgress />
+      <Container
+        maxWidth={false}
+        sx={{
+          mt: { xs: 2, md: 4 },
+          mb: 4,
+          flex: 1,
+          px: { xs: 1, sm: 2, md: 3 },
+          maxWidth: '2000px !important',
+        }}
+      >
+        <Paper
+          elevation={2}
+          sx={{
+            borderRadius: 2,
+            overflow: 'hidden'
+          }}
+        >
+          <TableSkeleton rows={10} />
+        </Paper>
       </Container>
     );
   }
