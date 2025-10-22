@@ -53,7 +53,8 @@ const FilterSection = ({ title, children }) => (
 const PairsFilters = ({ filters, handleFilterChange }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  // Collapsed by default on mobile, always expanded on desktop
+  const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
 
   // Count active filters
   const activeFiltersCount = [
