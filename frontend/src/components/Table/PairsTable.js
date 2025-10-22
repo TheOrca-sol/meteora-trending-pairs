@@ -231,6 +231,9 @@ const Row = ({ pair, periodData }) => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                     {pairData?.baseToken?.symbol || pair.pairName?.split('-')[0] || 'Unknown'}-{pairData?.quoteToken?.symbol || pair.pairName?.split('-')[1] || 'SOL'}
                   </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem', display: 'block', mt: 0.25 }}>
+                    Created {formatTimeAgo(pairData?.pairCreatedAt)} ago
+                  </Typography>
                   <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 0.5 }}>
                     <Chip label="DLMM" size="small" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
                     <Chip label={`${pair.binStep} Bin`} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />

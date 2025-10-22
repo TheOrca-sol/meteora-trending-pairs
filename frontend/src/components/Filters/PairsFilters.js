@@ -53,7 +53,7 @@ const FilterSection = ({ title, children }) => (
 const PairsFilters = ({ filters, handleFilterChange }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [filtersExpanded, setFiltersExpanded] = useState(!isMobile);
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
 
   // Count active filters
   const activeFiltersCount = [
