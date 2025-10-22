@@ -27,6 +27,7 @@ import SecurityReport from './SecurityReport';
 import TokenInformation from './TokenInformation';
 import TokenHolders from './TokenHolders';
 import LiquidityDistribution from '../LiquidityDistribution';
+import BubbleMaps from './BubbleMaps';
 import ExternalLinks from './ExternalLinks';
 
 const commonTypographyStyles = {
@@ -108,8 +109,8 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           </Box>
         </Grid>
 
-        {/* Token Information & Security Side by Side */}
-        <Grid item xs={12} md={enableLocalhostFeatures ? 4 : 6}>
+        {/* Token Information */}
+        <Grid item xs={12} md={4}>
           <Paper
             elevation={0}
             sx={{
@@ -125,7 +126,8 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={enableLocalhostFeatures ? 4 : 6}>
+        {/* Security Report */}
+        <Grid item xs={12} md={4}>
           <Paper
             elevation={0}
             sx={{
@@ -141,13 +143,14 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           </Paper>
         </Grid>
 
-        {/* Period Data Section - Transactions, Price Changes, and Volume */}
+        {/* Time Period Analysis - Next to Security Report */}
         {timeframes && calculateTxnStats && (
-          <Grid item xs={12}>
+          <Grid item xs={12} md={4}>
             <Paper
               elevation={0}
               sx={{
                 p: { xs: 1.5, sm: 2, md: 3 },
+                height: '100%',
                 bgcolor: 'background.paper',
                 borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 border: 1,
@@ -173,7 +176,7 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                 {Object.entries(timeframes).map(([period, data]) => {
                   const { total, buyPercent, sellPercent } = calculateTxnStats(data.txns);
                   return (
-                    <Grid item xs={12} sm={6} md={3} key={period}>
+                    <Grid item xs={6} key={period}>
                       <Box sx={{
                         p: { xs: 1.5, sm: 2 },
                         borderRadius: 1,
@@ -265,22 +268,41 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           </Grid>
         )}
 
-        {/* Full Width - Liquidity Distribution - Only show when localhost features enabled */}
+        {/* Localhost-Only Features */}
         {enableLocalhostFeatures && (
-          <Grid item xs={12}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 1.5, sm: 2, md: 3 },
-                bgcolor: 'background.paper',
-                borderRadius: { xs: 1, sm: 1.5, md: 2 },
-                border: 1,
-                borderColor: 'divider',
-              }}
-            >
-              <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
-            </Paper>
-          </Grid>
+          <>
+            {/* Aggregated Liquidity Distribution */}
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 1.5, sm: 2, md: 3 },
+                  bgcolor: 'background.paper',
+                  borderRadius: { xs: 1, sm: 1.5, md: 2 },
+                  border: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
+              </Paper>
+            </Grid>
+
+            {/* BubbleMaps Token Distribution */}
+            <Grid item xs={12}>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 1.5, sm: 2, md: 3 },
+                  bgcolor: 'background.paper',
+                  borderRadius: { xs: 1, sm: 1.5, md: 2 },
+                  border: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <BubbleMaps tokenAddress={pairXToken.address} />
+              </Paper>
+            </Grid>
+          </>
         )}
       </Grid>
     </Box>
