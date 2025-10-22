@@ -7,4 +7,6 @@ APScheduler
 python-telegram-bot
 SQLAlchemy
 psycopg2-binary
-python-dotenv 
+python-dotenv
+cryptography
+solana 

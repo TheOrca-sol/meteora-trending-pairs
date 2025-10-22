@@ -10,7 +10,7 @@ from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.error import TelegramError
 from dotenv import load_dotenv
-from models import get_db, User, TelegramAuthCode, MonitoringConfig
+from models import get_db, User, TelegramAuthCode, MonitoringConfig, DegenConfig
 
 load_dotenv()
 
@@ -38,6 +38,11 @@ class TelegramBotHandler:
         self.application.add_handler(CommandHandler("status", self.status_command))
         self.application.add_handler(CommandHandler("stop", self.stop_command))
         self.application.add_handler(CommandHandler("help", self.help_command))
+
+        # Degen mode command handlers
+        self.application.add_handler(CommandHandler("degen_status", self.degen_status_command))
+        self.application.add_handler(CommandHandler("degen_stop", self.degen_stop_command))
+        self.application.add_handler(CommandHandler("degen_threshold", self.degen_threshold_command))
 
         logger.info("Telegram bot initialized")
 
@@ -227,10 +232,14 @@ class TelegramBotHandler:
         """Handle /help command - show available commands"""
         help_text = (
             "🤖 Meteora Capital Rotation Bot\n\n"
-            "Available Commands:\n\n"
+            "📊 Capital Rotation Commands:\n"
             "/start CODE - Link your wallet using auth code\n"
             "/status - Check your monitoring status\n"
-            "/stop - Unlink your wallet and stop monitoring\n"
+            "/stop - Unlink your wallet and stop monitoring\n\n"
+            "🚀 Degen Mode Commands:\n"
+            "/degen_status - Check degen mode status\n"
+            "/degen_threshold X - Set fee rate threshold (%)\n"
+            "/degen_stop - Stop degen mode monitoring\n\n"
             "/help - Show this help message\n\n"
             "💡 How it works:\n"
             "1. Generate an auth code in the web app\n"
@@ -241,6 +250,180 @@ class TelegramBotHandler:
         )
 
         await update.message.reply_text(help_text)
+
+    async def degen_status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /degen_status command - show degen mode status"""
+        chat_id = update.effective_chat.id
+
+        db = get_db()
+        try:
+            user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+
+            if not user:
+                await update.message.reply_text(
+                    "❌ You haven't linked your wallet yet.\n\n"
+                    "Use /start with an auth code from the web app to get started."
+                )
+                return
+
+            config = db.query(DegenConfig).filter(
+                DegenConfig.wallet_address == user.wallet_address
+            ).first()
+
+            if not config:
+                await update.message.reply_text(
+                    "⏸ Degen Mode Not Set Up\n\n"
+                    f"💰 Wallet: `{user.wallet_address[:8]}...{user.wallet_address[-6:]}`\n\n"
+                    "Set up degen mode in the web app to start monitoring high fee rate pools!"
+                )
+                return
+
+            degen_wallet_short = f"{config.degen_wallet_address[:8]}...{config.degen_wallet_address[-6:]}"
+
+            if config.enabled:
+                status_msg = (
+                    f"🚀 Degen Mode Active\n\n"
+                    f"💰 Main Wallet: `{user.wallet_address[:8]}...{user.wallet_address[-6:]}`\n"
+                    f"🎯 Degen Wallet: `{degen_wallet_short}`\n"
+                    f"📊 Fee Rate Threshold: {float(config.min_fee_rate_threshold)}%\n"
+                    f"⏱ Check Interval: Every {config.check_interval_minutes} minute(s)\n"
+                )
+
+                if config.last_check:
+                    last_check = config.last_check.strftime("%Y-%m-%d %H:%M UTC")
+                    status_msg += f"🕐 Last Check: {last_check}\n"
+
+                if config.next_check:
+                    next_check = config.next_check.strftime("%Y-%m-%d %H:%M UTC")
+                    status_msg += f"🕐 Next Check: {next_check}\n"
+
+                status_msg += "\nYou'll receive notifications when high fee rate pools are found!"
+            else:
+                status_msg = (
+                    f"⏸ Degen Mode Inactive\n\n"
+                    f"💰 Main Wallet: `{user.wallet_address[:8]}...{user.wallet_address[-6:]}`\n"
+                    f"🎯 Degen Wallet: `{degen_wallet_short}`\n\n"
+                    f"Enable degen mode in the web app to start receiving notifications."
+                )
+
+            await update.message.reply_text(status_msg)
+
+        except Exception as e:
+            logger.error(f"Error in degen_status command: {e}")
+            await update.message.reply_text("❌ An error occurred. Please try again.")
+        finally:
+            db.close()
+
+    async def degen_stop_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /degen_stop command - stop degen mode monitoring"""
+        chat_id = update.effective_chat.id
+
+        db = get_db()
+        try:
+            user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+
+            if not user:
+                await update.message.reply_text("❌ You haven't linked your wallet yet.")
+                return
+
+            config = db.query(DegenConfig).filter(
+                DegenConfig.wallet_address == user.wallet_address
+            ).first()
+
+            if not config:
+                await update.message.reply_text("You don't have degen mode set up.")
+                return
+
+            if not config.enabled:
+                await update.message.reply_text("Degen mode is already stopped.")
+                return
+
+            # Stop monitoring via the monitoring service
+            try:
+                from services.monitoring.degen_monitoring import degen_monitoring_service
+                degen_monitoring_service.stop_monitoring(user.wallet_address)
+            except Exception as e:
+                logger.error(f"Error stopping degen monitoring service: {e}")
+
+            await update.message.reply_text(
+                f"✅ Degen mode monitoring stopped.\n\n"
+                f"You can restart it anytime from the web app."
+            )
+
+            logger.info(f"Degen mode stopped for {user.wallet_address} via Telegram")
+
+        except Exception as e:
+            logger.error(f"Error in degen_stop command: {e}")
+            await update.message.reply_text("❌ An error occurred. Please try again.")
+        finally:
+            db.close()
+
+    async def degen_threshold_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /degen_threshold command - set fee rate threshold"""
+        chat_id = update.effective_chat.id
+
+        db = get_db()
+        try:
+            user = db.query(User).filter(User.telegram_chat_id == chat_id).first()
+
+            if not user:
+                await update.message.reply_text(
+                    "❌ You haven't linked your wallet yet.\n\n"
+                    "Use /start with an auth code from the web app to get started."
+                )
+                return
+
+            config = db.query(DegenConfig).filter(
+                DegenConfig.wallet_address == user.wallet_address
+            ).first()
+
+            if not config:
+                await update.message.reply_text(
+                    "❌ Degen mode not set up.\n\n"
+                    "Set up degen mode in the web app first."
+                )
+                return
+
+            # Check if threshold value was provided
+            if not context.args or len(context.args) == 0:
+                await update.message.reply_text(
+                    f"Current fee rate threshold: {float(config.min_fee_rate_threshold)}%\n\n"
+                    f"Usage: /degen_threshold <percentage>\n"
+                    f"Example: /degen_threshold 5"
+                )
+                return
+
+            # Parse threshold value
+            try:
+                new_threshold = float(context.args[0])
+                if new_threshold <= 0 or new_threshold > 100:
+                    await update.message.reply_text("❌ Threshold must be between 0.1 and 100%.")
+                    return
+            except ValueError:
+                await update.message.reply_text(
+                    "❌ Invalid threshold value. Please provide a number.\n"
+                    "Example: /degen_threshold 5"
+                )
+                return
+
+            # Update threshold
+            config.min_fee_rate_threshold = new_threshold
+            config.updated_at = datetime.utcnow()
+            db.commit()
+
+            await update.message.reply_text(
+                f"✅ Fee rate threshold updated to {new_threshold}%\n\n"
+                f"You'll now receive alerts for pools with fee rates ≥ {new_threshold}%."
+            )
+
+            logger.info(f"Degen threshold updated to {new_threshold}% for {user.wallet_address} via Telegram")
+
+        except Exception as e:
+            logger.error(f"Error in degen_threshold command: {e}")
+            await update.message.reply_text("❌ An error occurred. Please try again.")
+            db.rollback()
+        finally:
+            db.close()
 
     def start_polling(self):
         """Start the bot with polling (for background thread)"""
