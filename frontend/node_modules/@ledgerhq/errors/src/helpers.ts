@@ -12,14 +12,14 @@ export const addCustomErrorDeserializer = (name: string, deserializer: (obj: any
 
 export interface LedgerErrorConstructor<F extends { [key: string]: unknown }>
   extends ErrorConstructor {
-  new (message?: string, fields?: F, options?: any): Error;
-  (message?: string, fields?: F, options?: any): Error;
-  readonly prototype: Error;
+  new (message?: string, fields?: F, options?: any): Error & F;
+  (message?: string, fields?: F, options?: any): Error & F;
+  readonly prototype: Error & F;
 }
 
 export const createCustomErrorClass = <
   F extends { [key: string]: unknown },
-  T extends LedgerErrorConstructor<F>,
+  T extends LedgerErrorConstructor<F> = LedgerErrorConstructor<F>,
 >(
   name: string,
 ): T => {
@@ -39,7 +39,8 @@ export const createCustomErrorClass = <
           this[k] = fields[k];
         }
       }
-      if (options && isObject(options) && "cause" in options && !("cause" in this)) {
+
+      if (options && isObject(options) && "cause" in options && !this.cause) {
         // .cause was specified but the superconstructor
         // did not create an instance property.
         const cause = options.cause;

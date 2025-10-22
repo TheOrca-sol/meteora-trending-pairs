@@ -26,7 +26,6 @@ import MarketStats from './MarketStats';
 import SecurityReport from './SecurityReport';
 import TokenInformation from './TokenInformation';
 import TokenHolders from './TokenHolders';
-import BubbleMaps from './BubbleMaps';
 import LiquidityDistribution from '../LiquidityDistribution';
 import ExternalLinks from './ExternalLinks';
 
@@ -262,25 +261,6 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                   );
                 })}
               </Grid>
-            </Paper>
-          </Grid>
-        )}
-
-        {/* BubbleMaps - Only show when localhost features enabled */}
-        {enableLocalhostFeatures && (
-          <Grid item xs={12} md={4}>
-            <Paper
-              elevation={0}
-              sx={{
-                p: { xs: 1.5, sm: 2, md: 3 },
-                height: '100%',
-                bgcolor: 'background.paper',
-                borderRadius: { xs: 1, sm: 1.5, md: 2 },
-                border: 1,
-                borderColor: 'divider',
-              }}
-            >
-              <BubbleMaps tokenAddress={pairXToken.address} />
             </Paper>
           </Grid>
         )}

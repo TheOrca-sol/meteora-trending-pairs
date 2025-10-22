@@ -4,8 +4,6 @@ import {
   Box,
   ThemeProvider,
   CssBaseline,
-  useMediaQuery,
-  useTheme as useMuiTheme,
 } from '@mui/material';
 import Navigation from './components/Navigation/Navigation';
 import AnalyticsPage from './pages/AnalyticsPage';
