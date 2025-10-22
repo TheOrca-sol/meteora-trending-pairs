@@ -9,8 +9,8 @@ const Footer = () => {
     <Box
       component="footer"
       sx={{
-        py: 3,
-        px: 2,
+        py: { xs: 2, sm: 2.5, md: 3 },
+        px: { xs: 1.5, sm: 2 },
         mt: 'auto',
         backgroundColor: 'background.paper',
         borderTop: '1px solid',
@@ -18,10 +18,11 @@ const Footer = () => {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        gap: 1
+        gap: 1,
+        flexWrap: 'wrap'
       }}
     >
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
         Created by
       </Typography>
       <Link
@@ -39,10 +40,10 @@ const Footer = () => {
           }
         }}
       >
-        <Typography variant="body2">
+        <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
           TheOrca.sol
         </Typography>
-        <TwitterIcon sx={{ fontSize: '1rem' }} />
+        <TwitterIcon sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }} />
       </Link>
     </Box>
   );

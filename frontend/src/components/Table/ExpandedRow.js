@@ -11,7 +11,8 @@ import {
   IconButton,
   Tooltip,
   Snackbar,
-  Button
+  Button,
+  useMediaQuery
 } from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -68,8 +69,8 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
 
   if (!pair || !pairXToken) {
     return (
-      <Box sx={{ p: 2, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary">
+      <Box sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
           No pair data available
         </Typography>
       </Box>
@@ -77,18 +78,19 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   }
 
   return (
-    <Box sx={{ p: 3, bgcolor: 'background.default' }}>
-      <Grid container spacing={3}>
+    <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, bgcolor: 'background.default' }}>
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         {/* Quick Links Bar */}
         <Grid item xs={12}>
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 2,
-              pb: 2,
+              gap: { xs: 1, sm: 1.5, md: 2 },
+              pb: { xs: 1.5, sm: 2 },
               borderBottom: 1,
               borderColor: 'divider',
+              flexWrap: 'wrap'
             }}
           >
             <Typography
@@ -96,7 +98,9 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
               sx={{
                 color: 'text.secondary',
                 fontWeight: 600,
-                mr: 1,
+                mr: { xs: 0, sm: 1 },
+                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                display: { xs: 'none', sm: 'block' }
               }}
             >
               Quick Links:
@@ -110,10 +114,10 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: { xs: 1.5, sm: 2, md: 3 },
               height: '100%',
               bgcolor: 'background.paper',
-              borderRadius: 2,
+              borderRadius: { xs: 1, sm: 1.5, md: 2 },
               border: 1,
               borderColor: 'divider',
             }}
@@ -126,10 +130,10 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           <Paper
             elevation={0}
             sx={{
-              p: 3,
+              p: { xs: 1.5, sm: 2, md: 3 },
               height: '100%',
               bgcolor: 'background.paper',
-              borderRadius: 2,
+              borderRadius: { xs: 1, sm: 1.5, md: 2 },
               border: 1,
               borderColor: 'divider',
             }}
@@ -144,9 +148,9 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
             <Paper
               elevation={0}
               sx={{
-                p: 3,
+                p: { xs: 1.5, sm: 2, md: 3 },
                 bgcolor: 'background.paper',
-                borderRadius: 2,
+                borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 border: 1,
                 borderColor: 'divider',
               }}
@@ -155,23 +159,24 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                 variant="subtitle1"
                 sx={{
                   color: 'primary.main',
-                  mb: 2,
+                  mb: { xs: 1.5, sm: 2 },
                   fontWeight: 600,
-                  pb: 1,
+                  pb: { xs: 0.75, sm: 1 },
                   borderBottom: 1,
                   borderColor: 'divider',
+                  fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' }
                 }}
               >
                 Time Period Analysis
               </Typography>
 
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
                 {Object.entries(timeframes).map(([period, data]) => {
                   const { total, buyPercent, sellPercent } = calculateTxnStats(data.txns);
                   return (
                     <Grid item xs={12} sm={6} md={3} key={period}>
                       <Box sx={{
-                        p: 2,
+                        p: { xs: 1.5, sm: 2 },
                         borderRadius: 1,
                         bgcolor: 'action.selected',
                         height: '100%'
@@ -182,18 +187,19 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                             color: 'text.secondary',
                             fontWeight: 600,
                             display: 'block',
-                            mb: 1
+                            mb: { xs: 0.75, sm: 1 },
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
                           }}
                         >
                           {period.toUpperCase()}
                         </Typography>
 
                         {/* Transactions */}
-                        <Box sx={{ mb: 1.5 }}>
-                          <Typography variant="caption" color="text.secondary" display="block">
+                        <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                             Transactions
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
                             {total}
                           </Typography>
                           <Box sx={{
@@ -225,14 +231,15 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                         </Box>
 
                         {/* Price Change */}
-                        <Box sx={{ mb: 1.5 }}>
-                          <Typography variant="caption" color="text.secondary" display="block">
+                        <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                             Price Change
                           </Typography>
                           <Typography
                             variant="h6"
                             sx={{
                               fontWeight: 600,
+                              fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
                               color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main'
                             }}
                           >
@@ -243,10 +250,10 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
 
                         {/* Volume */}
                         <Box>
-                          <Typography variant="caption" color="text.secondary" display="block">
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
                             Volume
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
                             ${formatNumber(data.volume || 0)}
                           </Typography>
                         </Box>
@@ -265,10 +272,10 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
             <Paper
               elevation={0}
               sx={{
-                p: 3,
+                p: { xs: 1.5, sm: 2, md: 3 },
                 height: '100%',
                 bgcolor: 'background.paper',
-                borderRadius: 2,
+                borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 border: 1,
                 borderColor: 'divider',
               }}
@@ -284,9 +291,9 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
             <Paper
               elevation={0}
               sx={{
-                p: 3,
+                p: { xs: 1.5, sm: 2, md: 3 },
                 bgcolor: 'background.paper',
-                borderRadius: 2,
+                borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 border: 1,
                 borderColor: 'divider',
               }}

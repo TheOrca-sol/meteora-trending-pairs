@@ -332,10 +332,10 @@ function AnalyticsPage() {
     <Container
       maxWidth={false}
       sx={{
-        mt: { xs: 2, md: 4 },
-        mb: 4,
+        mt: { xs: 1.5, sm: 2, md: 3, lg: 4 },
+        mb: { xs: 3, sm: 3.5, md: 4 },
         flex: 1,
-        px: { xs: 1, sm: 2, md: 3 },
+        px: { xs: 1, sm: 1.5, md: 2, lg: 3 },
         maxWidth: '2000px !important',
       }}
       ref={scrollContainerRef}
@@ -376,17 +376,18 @@ function AnalyticsPage() {
           flexDirection: { xs: 'column', md: 'row' },
           justifyContent: 'space-between',
           alignItems: { xs: 'flex-start', md: 'center' },
-          mb: 4,
-          gap: 2,
+          mb: { xs: 3, sm: 3.5, md: 4 },
+          gap: { xs: 1.5, sm: 2 },
           borderBottom: 1,
           borderColor: 'divider',
-          pb: 3
+          pb: { xs: 2, sm: 2.5, md: 3 }
         }}
       >
         <Typography
           variant="h4"
           sx={{
             fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
             background: theme => `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
             backgroundClip: 'text',
             WebkitBackgroundClip: 'text',
@@ -399,23 +400,25 @@ function AnalyticsPage() {
         <Box sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 3,
-          flexWrap: 'wrap'
+          gap: { xs: 2, sm: 2.5, md: 3 },
+          flexWrap: 'wrap',
+          width: { xs: '100%', md: 'auto' }
         }}>
           {lastUpdated && (
             <Box sx={{
               display: 'flex',
               alignItems: 'center',
-              gap: 1,
+              gap: { xs: 0.75, sm: 1 },
               bgcolor: 'background.paper',
-              p: 1,
+              p: { xs: 0.75, sm: 1 },
               borderRadius: 1,
-              boxShadow: 1
+              boxShadow: 1,
+              flex: { xs: '1 1 auto', sm: '0 0 auto' }
             }}>
-              <Typography variant="body2" color="text.secondary">
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 Last updated:
               </Typography>
-              <Typography variant="body2" color="primary">
+              <Typography variant="body2" color="primary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                 {lastUpdated.toLocaleTimeString()}
               </Typography>
             </Box>
@@ -424,11 +427,12 @@ function AnalyticsPage() {
           <Box sx={{
             display: 'flex',
             alignItems: 'center',
-            gap: 2,
+            gap: { xs: 1.5, sm: 2 },
             bgcolor: 'background.paper',
-            p: 1,
+            p: { xs: 0.75, sm: 1 },
             borderRadius: 1,
-            boxShadow: 1
+            boxShadow: 1,
+            flex: { xs: '1 1 auto', sm: '0 0 auto' }
           }}>
             <FormControlLabel
               control={
@@ -440,8 +444,9 @@ function AnalyticsPage() {
                 />
               }
               label={
-                <Typography variant="body2">Auto-refresh</Typography>
+                <Typography variant="body2" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>Auto-refresh</Typography>
               }
+              sx={{ m: 0 }}
             />
             <Tooltip title="Refresh data">
               <IconButton
@@ -452,6 +457,8 @@ function AnalyticsPage() {
                   animation: refreshing ? 'spin 1s linear infinite' : 'none',
                   bgcolor: 'primary.main',
                   color: 'white',
+                  minWidth: { xs: 40, sm: 36 },
+                  minHeight: { xs: 40, sm: 36 },
                   '&:hover': {
                     bgcolor: 'primary.dark',
                   },
@@ -472,9 +479,9 @@ function AnalyticsPage() {
       <Paper
         elevation={2}
         sx={{
-          mb: 4,
-          p: { xs: 2, md: 3 },
-          borderRadius: 2,
+          mb: { xs: 3, sm: 3.5, md: 4 },
+          p: { xs: 1.5, sm: 2, md: 3 },
+          borderRadius: { xs: 1, sm: 1.5, md: 2 },
           bgcolor: 'background.paper',
         }}
       >
@@ -512,7 +519,7 @@ function AnalyticsPage() {
             <Paper
               elevation={2}
               sx={{
-                borderRadius: 2,
+                borderRadius: { xs: 1, sm: 1.5, md: 2 },
                 overflow: 'hidden'
               }}
             >
@@ -527,15 +534,15 @@ function AnalyticsPage() {
 
           {/* Loading more indicator */}
           {loadingMore && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: { xs: 2, sm: 2.5, md: 3 }, mb: { xs: 1.5, sm: 2 } }}>
               <CircularProgress size={30} />
             </Box>
           )}
 
           {/* End of results message */}
           {!hasMore && displayedPairs.length > 0 && (
-            <Box sx={{ textAlign: 'center', mt: 3, mb: 2 }}>
-              <Typography variant="body2" color="text.secondary">
+            <Box sx={{ textAlign: 'center', mt: { xs: 2, sm: 2.5, md: 3 }, mb: { xs: 1.5, sm: 2 } }}>
+              <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                 No more pairs to load
               </Typography>
             </Box>
