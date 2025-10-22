@@ -1203,6 +1203,15 @@ if __name__ == '__main__':
     else:
         logger.info("Skipping database initialization (analytics-only mode)")
 
+    # Warm up the cache on startup to avoid cold start delays
+    logger.info("Warming up pool cache on startup...")
+    try:
+        pools = get_pools_from_cache(force_refresh=True)
+        logger.info(f"✅ Cache warmed successfully with {len(pools)} pools")
+    except Exception as e:
+        logger.error(f"⚠️ Failed to warm cache on startup: {e}")
+        logger.warning("App will start anyway, but first request may be slow")
+
     # Start Flask server
     port = int(os.environ.get('PORT', 5000))
     # Note: use_reloader=False to avoid Telegram bot threading issues
