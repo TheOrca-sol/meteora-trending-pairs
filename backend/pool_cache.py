@@ -33,7 +33,7 @@ class PoolDataCache:
         """Initialize cache state"""
         self.pools_data = None
         self.last_fetch = None
-        self.cache_duration_seconds = 300  # 5 minutes
+        self.cache_duration_seconds = 60  # 1 minute
         self.fetch_lock = threading.Lock()
 
         # Filtering configuration
