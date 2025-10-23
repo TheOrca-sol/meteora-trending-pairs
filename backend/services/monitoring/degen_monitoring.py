@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from models import get_db, User, DegenConfig
 from telegram_bot import telegram_bot_handler
-from pool_cache import get_pools_from_cache
+from pool_cache import get_cached_pools
 
 logger = logging.getLogger(__name__)
 
@@ -268,7 +268,7 @@ class DegenMonitoringService:
                 return
 
             # Fetch all pools from cache
-            pools = get_pools_from_cache()
+            pools = get_cached_pools()
             if not pools:
                 logger.error("Failed to fetch pools from cache")
                 return
