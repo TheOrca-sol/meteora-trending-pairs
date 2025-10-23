@@ -19,6 +19,14 @@ from pool_cache import get_cached_pools
 logger = logging.getLogger(__name__)
 
 
+def safe_float(value, default=0.0):
+    """Safely convert value to float, returning default if conversion fails"""
+    try:
+        return float(value) if value is not None else default
+    except (ValueError, TypeError):
+        return default
+
+
 class DegenMonitoringService:
     def __init__(self):
         """Initialize the degen monitoring service"""
@@ -278,11 +286,12 @@ class DegenMonitoringService:
             high_fee_pools = []
 
             for pool in pools:
-                # Calculate fee rate (30min fees / TVL * 100)
-                tvl = pool.get('tvl', 0)
-                fees_30min = pool.get('fees_30min', 0)
+                # Calculate fee rate (30min fees / TVL * 100) - same pattern as app.py
+                fees_obj = pool.get('fees', {})
+                tvl = safe_float(pool.get('liquidity', 0))
+                fees_30min = safe_float(fees_obj.get('min_30', 0))
 
-                if tvl > 0:
+                if tvl > 0 and fees_30min > 0:
                     fee_rate = (fees_30min / tvl) * 100
 
                     if fee_rate >= threshold:
