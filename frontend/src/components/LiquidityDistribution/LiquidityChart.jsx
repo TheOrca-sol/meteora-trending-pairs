@@ -9,6 +9,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Bar } from 'react-chartjs-2';
 
 // Register Chart.js components
@@ -19,7 +20,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
+  annotationPlugin
 );
 
 const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => {
@@ -52,18 +54,11 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
   const backgroundColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
-    const inSuggestedRange = isInSuggestedRange(bin);
 
     if (binValue < activeValue) {
-      // Buy side (below current price)
-      return inSuggestedRange
-        ? 'rgba(16, 185, 129, 1)' // Brighter emerald for suggested range
-        : 'rgba(16, 185, 129, 0.5)'; // Dimmer emerald for other buy walls
+      return 'rgba(16, 185, 129, 0.8)'; // Emerald green for buy walls
     } else if (binValue > activeValue) {
-      // Sell side (above current price)
-      return inSuggestedRange
-        ? 'rgba(239, 68, 68, 1)' // Brighter red for suggested range
-        : 'rgba(239, 68, 68, 0.5)'; // Dimmer red for other sell walls
+      return 'rgba(239, 68, 68, 0.8)'; // Red for sell walls
     } else {
       return 'rgba(59, 130, 246, 1)'; // Bright blue for active bin
     }
@@ -72,11 +67,6 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
   const borderColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
-    const inSuggestedRange = isInSuggestedRange(bin);
-
-    if (inSuggestedRange) {
-      return 'rgb(251, 191, 36)'; // Gold/yellow border for suggested range
-    }
 
     if (binValue < activeValue) {
       return 'rgb(5, 150, 105)';
@@ -87,10 +77,6 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
     }
   });
 
-  const borderWidth = bins.map(bin => {
-    return isInSuggestedRange(bin) ? 3 : 1; // Thicker border for suggested range
-  });
-
   const data = {
     labels,
     datasets: [
@@ -99,7 +85,7 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
         data: liquidityData,
         backgroundColor,
         borderColor,
-        borderWidth,
+        borderWidth: 1,
       },
     ],
   };
@@ -196,6 +182,38 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
           },
         },
       },
+      annotation: {
+        annotations: suggestedRange ? {
+          suggestedRangeBox: {
+            type: 'box',
+            xMin: bins.findIndex(b => b.price >= suggestedRange.lowerBound),
+            xMax: bins.findIndex(b => b.price >= suggestedRange.upperBound) !== -1
+              ? bins.findIndex(b => b.price >= suggestedRange.upperBound)
+              : bins.length - 1,
+            backgroundColor: suggestedRange.side === 'BUY'
+              ? 'rgba(16, 185, 129, 0.15)' // Emerald with low opacity for buy side
+              : 'rgba(239, 68, 68, 0.15)', // Red with low opacity for sell side
+            borderColor: suggestedRange.side === 'BUY'
+              ? 'rgba(16, 185, 129, 0.5)' // Emerald border for buy side
+              : 'rgba(239, 68, 68, 0.5)', // Red border for sell side
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              display: true,
+              content: `🎯 Suggested Range (${suggestedRange.name})`,
+              position: 'start',
+              backgroundColor: 'rgba(17, 24, 39, 0.9)',
+              color: '#fbbf24',
+              font: {
+                size: 11,
+                weight: 'bold'
+              },
+              padding: 6,
+              borderRadius: 4
+            }
+          }
+        } : {}
+      }
     },
     scales: {
       x: {
