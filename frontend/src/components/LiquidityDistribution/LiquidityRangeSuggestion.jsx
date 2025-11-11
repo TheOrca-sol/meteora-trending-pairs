@@ -70,13 +70,13 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice }) => {
         </div>
 
         {/* Current Imbalance Info */}
-        <div className={`${getSideBg(currentImbalance.side)} backdrop-blur-sm rounded-xl p-5 border ${getSideBorder(currentImbalance.side)} mb-6`}>
+        <div className={`${getSideBg(currentImbalance.sideWithMore)} backdrop-blur-sm rounded-xl p-5 border ${getSideBorder(currentImbalance.sideWithMore)} mb-6`}>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Current Market Imbalance</div>
               <div className="flex items-center gap-2">
-                <span className={`text-2xl font-bold ${getSideText(currentImbalance.side)}`}>
-                  {currentImbalance.ratio.toFixed(2)}x more {currentImbalance.side} liquidity
+                <span className={`text-2xl font-bold ${getSideText(currentImbalance.sideWithMore)}`}>
+                  {currentImbalance.ratio.toFixed(2)}x more {currentImbalance.sideWithMore} liquidity
                 </span>
               </div>
             </div>
@@ -88,10 +88,10 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice }) => {
           <div className="mt-3 pt-3 border-t border-slate-700/30">
             <p className="text-sm text-slate-300">
               <span className="font-semibold">Recommendation:</span> Add{' '}
-              <span className={getSideText(currentImbalance.side === 'BUY' ? 'BUY' : 'SELL')}>
-                {currentImbalance.side} support
+              <span className={getSideText(currentImbalance.sideToAdd)}>
+                {currentImbalance.sideToAdd} support
               </span>{' '}
-              {currentImbalance.side === 'BUY' ? 'below' : 'above'} current price to balance the market
+              {currentImbalance.sideToAdd === 'BUY' ? 'below' : 'above'} current price to balance the market
             </p>
           </div>
         </div>

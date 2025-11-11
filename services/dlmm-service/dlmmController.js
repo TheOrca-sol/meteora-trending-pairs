@@ -51,9 +51,10 @@ async function getTokenPricesInUSD(mints) {
  * @returns {Object} Suggested ranges for different strategies
  */
 function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio) {
-  // Determine which side needs liquidity
+  // Determine which side has MORE liquidity (for display) and which side NEEDS liquidity (for recommendations)
   const needsBuySupport = totalSellLiquidity > totalBuyLiquidity;
-  const side = needsBuySupport ? 'BUY' : 'SELL';
+  const sideWithMore = needsBuySupport ? 'SELL' : 'BUY'; // Which side currently has MORE liquidity
+  const sideToAdd = needsBuySupport ? 'BUY' : 'SELL'; // Which side we should ADD liquidity to
 
   // Calculate the imbalance ratio (always > 1)
   const imbalanceRatio = needsBuySupport
@@ -67,7 +68,7 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   const fullCorrection = {
     name: 'Full Imbalance Correction',
     description: 'Widest range - Protects from volatility, set and forget',
-    side: side,
+    side: sideToAdd,
     lowerBound: needsBuySupport ? currentPrice / imbalanceRatio : currentPrice,
     upperBound: needsBuySupport ? currentPrice : currentPrice * imbalanceRatio,
     expectedRatio: 1.0,
@@ -79,7 +80,7 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   const deficitTargeting = {
     name: 'Liquidity Deficit Targeting',
     description: 'Moderate range - Targets 50% balance improvement',
-    side: side,
+    side: sideToAdd,
     lowerBound: needsBuySupport ? currentPrice * 0.95 : currentPrice,
     upperBound: needsBuySupport ? currentPrice : currentPrice * 1.05,
     expectedRatio: needsBuySupport
@@ -95,7 +96,7 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   const proportionalScaling = {
     name: 'Proportional Range Scaling',
     description: 'Scaled range - Proportional to imbalance, max 10%',
-    side: side,
+    side: sideToAdd,
     lowerBound: needsBuySupport ? currentPrice * (1 - rangeWidth) : currentPrice,
     upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + rangeWidth),
     expectedRatio: needsBuySupport
@@ -111,7 +112,7 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   const simplePercentage = {
     name: 'Simple Percentage-Based',
     description: 'Tight range - Maximum fee capture, needs active management',
-    side: side,
+    side: sideToAdd,
     lowerBound: needsBuySupport ? currentPrice * (1 - percentageRange) : currentPrice,
     upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + percentageRange),
     expectedRatio: needsBuySupport
@@ -123,7 +124,8 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
 
   return {
     currentImbalance: {
-      side: side,
+      sideWithMore: sideWithMore, // Which side has MORE liquidity (for display)
+      sideToAdd: sideToAdd, // Which side to ADD liquidity to (for recommendations)
       ratio: imbalanceRatio,
       deficit: deficit
     },
