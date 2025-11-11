@@ -22,7 +22,7 @@ ChartJS.register(
   Filler
 );
 
-const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
+const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => {
   if (!bins || bins.length === 0) {
     return <div className="text-center text-gray-400 py-8">No liquidity data available</div>;
   }
@@ -38,15 +38,32 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
   console.log('LiquidityChart - Use Price Mode:', usePrice);
   console.log('LiquidityChart - Bins count:', bins.length);
   console.log('LiquidityChart - Price range:', bins[0]?.price, 'to', bins[bins.length - 1]?.price);
+  if (suggestedRange) {
+    console.log('LiquidityChart - Suggested Range:', suggestedRange.lowerBound, 'to', suggestedRange.upperBound);
+  }
+
+  // Helper function to check if a bin is within the suggested range
+  const isInSuggestedRange = (bin) => {
+    if (!suggestedRange) return false;
+    const binPrice = bin.price;
+    return binPrice >= suggestedRange.lowerBound && binPrice <= suggestedRange.upperBound;
+  };
 
   const backgroundColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
+    const inSuggestedRange = isInSuggestedRange(bin);
 
     if (binValue < activeValue) {
-      return 'rgba(16, 185, 129, 0.8)'; // Emerald green for buy walls
+      // Buy side (below current price)
+      return inSuggestedRange
+        ? 'rgba(16, 185, 129, 1)' // Brighter emerald for suggested range
+        : 'rgba(16, 185, 129, 0.5)'; // Dimmer emerald for other buy walls
     } else if (binValue > activeValue) {
-      return 'rgba(239, 68, 68, 0.8)'; // Red for sell walls
+      // Sell side (above current price)
+      return inSuggestedRange
+        ? 'rgba(239, 68, 68, 1)' // Brighter red for suggested range
+        : 'rgba(239, 68, 68, 0.5)'; // Dimmer red for other sell walls
     } else {
       return 'rgba(59, 130, 246, 1)'; // Bright blue for active bin
     }
@@ -55,6 +72,11 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
   const borderColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
+    const inSuggestedRange = isInSuggestedRange(bin);
+
+    if (inSuggestedRange) {
+      return 'rgb(251, 191, 36)'; // Gold/yellow border for suggested range
+    }
 
     if (binValue < activeValue) {
       return 'rgb(5, 150, 105)';
@@ -65,6 +87,10 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
     }
   });
 
+  const borderWidth = bins.map(bin => {
+    return isInSuggestedRange(bin) ? 3 : 1; // Thicker border for suggested range
+  });
+
   const data = {
     labels,
     datasets: [
@@ -73,7 +99,7 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
         data: liquidityData,
         backgroundColor,
         borderColor,
-        borderWidth: 1,
+        borderWidth,
       },
     ],
   };
@@ -123,20 +149,36 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
           title: (context) => {
             const label = context[0].label;
             const bin = bins[context[0].dataIndex];
+            const inRange = isInSuggestedRange(bin);
+
+            let title = '';
             if (bin.binId !== undefined) {
-              return `Bin ${label}${bin.isActive ? ' ⚡ Active' : ''}`;
+              title = `Bin ${label}${bin.isActive ? ' ⚡ Active' : ''}`;
             } else {
-              return `Price Level: $${label}`;
+              title = `Price Level: $${label}`;
             }
+
+            if (inRange) {
+              title += ' 🎯 Suggested Range';
+            }
+
+            return title;
           },
           label: (context) => {
             const bin = bins[context.dataIndex];
+            const inRange = isInSuggestedRange(bin);
+
             const labels = [
               `Price: $${bin.price.toFixed(6)}`,
               `Total Liquidity: $${bin.liquidityUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
               `Token X: ${bin.liquidityX.toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
               `Token Y: ${bin.liquidityY.toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
             ];
+
+            if (inRange) {
+              labels.push('');
+              labels.push('✨ Within suggested liquidity range');
+            }
 
             // If this is aggregated data, show contributing pools
             if (bin.pools && bin.pools.length > 0) {

@@ -7,6 +7,7 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedStrategy, setSelectedStrategy] = useState(0);
 
   useEffect(() => {
     const fetchLiquidityData = async () => {
@@ -175,6 +176,7 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
             bins={data.bins}
             activeBinId={data.activeBin}
             currentPrice={data.currentPrice}
+            suggestedRange={data.stats?.suggestedRanges?.strategies[selectedStrategy]}
           />
         </div>
 
@@ -183,6 +185,8 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
           <LiquidityRangeSuggestion
             suggestedRanges={data.stats.suggestedRanges}
             currentPrice={data.currentPrice}
+            selectedStrategy={selectedStrategy}
+            setSelectedStrategy={setSelectedStrategy}
           />
         )}
 

@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice }) => {
-  const [selectedStrategy, setSelectedStrategy] = useState(0);
+const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy }) => {
 
   if (!suggestedRanges || !suggestedRanges.strategies) {
     return null;
