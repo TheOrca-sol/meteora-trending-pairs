@@ -45,7 +45,7 @@ const LiquidityStats = ({ stats }) => {
   return (
     <div className="space-y-6">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <StatCard
           label="Total Liquidity"
           value={formatUsd(stats.totalLiquidityUsd)}
@@ -68,6 +68,12 @@ const LiquidityStats = ({ stats }) => {
           label="Sell Side Liquidity"
           value={formatUsd(stats.totalSellLiquidity)}
           subValue={`${stats.sellWallsCount || 0} bins above price`}
+        />
+
+        <StatCard
+          label="Buy/Sell Ratio"
+          value={stats.buySellRatio ? `${stats.buySellRatio.toFixed(2)}x` : 'N/A'}
+          subValue={stats.buySellRatio > 1 ? 'Buy pressure' : stats.buySellRatio < 1 ? 'Sell pressure' : 'Balanced'}
         />
 
         <StatCard

@@ -129,6 +129,9 @@ async function getLiquidityDistribution(pairAddress) {
     const totalBuyLiquidity = buyWalls.reduce((sum, b) => sum + b.liquidityUsd, 0);
     const totalSellLiquidity = sellWalls.reduce((sum, b) => sum + b.liquidityUsd, 0);
 
+    // Calculate buy/sell ratio (handle division by zero)
+    const buySellRatio = totalSellLiquidity > 0 ? totalBuyLiquidity / totalSellLiquidity : 0;
+
     const stats = {
       totalBins: bins.length,
       totalLiquidityUsd,
@@ -140,7 +143,8 @@ async function getLiquidityDistribution(pairAddress) {
       buyWallsCount: buyWalls.length,
       sellWallsCount: sellWalls.length,
       totalBuyLiquidity: totalBuyLiquidity,
-      totalSellLiquidity: totalSellLiquidity
+      totalSellLiquidity: totalSellLiquidity,
+      buySellRatio: buySellRatio
     };
 
     return {
@@ -354,9 +358,12 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
     const totalBuyLiquidity = buyWalls.reduce((sum, b) => sum + b.liquidityUsd, 0);
     const totalSellLiquidity = sellWalls.reduce((sum, b) => sum + b.liquidityUsd, 0);
 
+    // Calculate buy/sell ratio (handle division by zero)
+    const buySellRatio = totalSellLiquidity > 0 ? totalBuyLiquidity / totalSellLiquidity : 0;
+
     console.log(`Buy walls: ${buyWalls.length} bins with $${totalBuyLiquidity.toFixed(2)} total liquidity (below ${marketPrice})`);
     console.log(`Sell walls: ${sellWalls.length} bins with $${totalSellLiquidity.toFixed(2)} total liquidity (above ${marketPrice})`);
-    console.log(`Buy/Sell ratio: ${(totalBuyLiquidity / totalSellLiquidity).toFixed(2)}x`);
+    console.log(`Buy/Sell ratio: ${buySellRatio.toFixed(2)}x`);
 
     const stats = {
       totalBins: aggregatedBins.length,
@@ -368,7 +375,8 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
       buyWallsCount: buyWalls.length,
       sellWallsCount: sellWalls.length,
       totalBuyLiquidity: totalBuyLiquidity,
-      totalSellLiquidity: totalSellLiquidity
+      totalSellLiquidity: totalSellLiquidity,
+      buySellRatio: buySellRatio
     };
 
     return {
