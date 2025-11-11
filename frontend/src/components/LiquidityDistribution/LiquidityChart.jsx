@@ -7,6 +7,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 
@@ -17,7 +18,8 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
@@ -31,16 +33,22 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
   const labels = bins.map(bin => bin.binId !== undefined ? bin.binId : bin.price.toFixed(4));
   const liquidityData = bins.map(bin => bin.liquidityUsd);
 
+  // Debug logging
+  console.log('LiquidityChart - Current Price:', currentPrice);
+  console.log('LiquidityChart - Use Price Mode:', usePrice);
+  console.log('LiquidityChart - Bins count:', bins.length);
+  console.log('LiquidityChart - Price range:', bins[0]?.price, 'to', bins[bins.length - 1]?.price);
+
   const backgroundColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
 
     if (binValue < activeValue) {
-      return 'rgba(34, 197, 94, 0.7)'; // Green for buy walls
+      return 'rgba(16, 185, 129, 0.8)'; // Emerald green for buy walls
     } else if (binValue > activeValue) {
-      return 'rgba(239, 68, 68, 0.7)'; // Red for sell walls
+      return 'rgba(239, 68, 68, 0.8)'; // Red for sell walls
     } else {
-      return 'rgba(59, 130, 246, 0.9)'; // Blue for active bin
+      return 'rgba(59, 130, 246, 1)'; // Bright blue for active bin
     }
   });
 
@@ -49,11 +57,11 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
     const activeValue = usePrice ? currentPrice : activeBinId;
 
     if (binValue < activeValue) {
-      return 'rgb(34, 197, 94)';
+      return 'rgb(5, 150, 105)';
     } else if (binValue > activeValue) {
-      return 'rgb(239, 68, 68)';
+      return 'rgb(220, 38, 38)';
     } else {
-      return 'rgb(59, 130, 246)';
+      return 'rgb(37, 99, 235)';
     }
   });
 
@@ -73,38 +81,58 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false,
+    },
     plugins: {
       legend: {
         display: false,
       },
       title: {
         display: true,
-        text: 'Liquidity Distribution Across Bins',
-        color: '#fff',
+        text: 'Liquidity Distribution Across Price Bins',
+        color: '#e5e7eb',
         font: {
           size: 16,
+          weight: '600',
         },
+        padding: {
+          top: 10,
+          bottom: 20
+        }
       },
       tooltip: {
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        titleColor: '#fff',
-        bodyColor: '#fff',
-        borderColor: '#444',
+        enabled: true,
+        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+        titleColor: '#f3f4f6',
+        bodyColor: '#e5e7eb',
+        borderColor: '#374151',
         borderWidth: 1,
+        cornerRadius: 8,
+        padding: 12,
+        displayColors: false,
+        titleFont: {
+          size: 14,
+          weight: 'bold',
+        },
+        bodyFont: {
+          size: 13,
+        },
         callbacks: {
           title: (context) => {
             const label = context[0].label;
             const bin = bins[context[0].dataIndex];
             if (bin.binId !== undefined) {
-              return `Bin ${label} ${bin.isActive ? '(Active)' : ''}`;
+              return `Bin ${label}${bin.isActive ? ' ⚡ Active' : ''}`;
             } else {
-              return `Price Level $${label}`;
+              return `Price Level: $${label}`;
             }
           },
           label: (context) => {
             const bin = bins[context.dataIndex];
             const labels = [
-              `Price: $${bin.price.toFixed(4)}`,
+              `Price: $${bin.price.toFixed(6)}`,
               `Total Liquidity: $${bin.liquidityUsd.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
               `Token X: ${bin.liquidityX.toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
               `Token Y: ${bin.liquidityY.toLocaleString(undefined, { maximumFractionDigits: 4 })}`,
@@ -113,12 +141,12 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
             // If this is aggregated data, show contributing pools
             if (bin.pools && bin.pools.length > 0) {
               labels.push('');
-              labels.push(`Pools: ${bin.pools.length}`);
+              labels.push(`━━━ Aggregated from ${bin.pools.length} pool(s) ━━━`);
               bin.pools.slice(0, 3).forEach(p => {
-                labels.push(`  • ${p.pairName} (${p.binStep})`);
+                labels.push(`  ▸ ${p.pairName} (Bin Step: ${p.binStep})`);
               });
               if (bin.pools.length > 3) {
-                labels.push(`  ... and ${bin.pools.length - 3} more`);
+                labels.push(`  ⋯ and ${bin.pools.length - 3} more pool(s)`);
               }
             }
 
@@ -131,15 +159,23 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
       x: {
         title: {
           display: true,
-          text: usePrice ? 'Price Level' : 'Bin ID',
+          text: usePrice ? 'Price Level ($)' : 'Bin ID',
           color: '#9ca3af',
+          font: {
+            size: 12,
+            weight: '600',
+          },
         },
         ticks: {
           color: '#9ca3af',
-          maxTicksLimit: 20,
+          maxTicksLimit: 25,
+          font: {
+            size: 11,
+          },
         },
         grid: {
-          color: 'rgba(75, 85, 99, 0.2)',
+          color: 'rgba(75, 85, 99, 0.15)',
+          drawBorder: false,
         },
       },
       y: {
@@ -147,22 +183,35 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice }) => {
           display: true,
           text: 'Liquidity (USD)',
           color: '#9ca3af',
+          font: {
+            size: 12,
+            weight: '600',
+          },
         },
         ticks: {
           color: '#9ca3af',
+          font: {
+            size: 11,
+          },
           callback: function(value) {
+            if (value >= 1_000_000) {
+              return '$' + (value / 1_000_000).toFixed(1) + 'M';
+            } else if (value >= 1_000) {
+              return '$' + (value / 1_000).toFixed(1) + 'K';
+            }
             return '$' + value.toLocaleString();
           },
         },
         grid: {
-          color: 'rgba(75, 85, 99, 0.2)',
+          color: 'rgba(75, 85, 99, 0.15)',
+          drawBorder: false,
         },
       },
     },
   };
 
   return (
-    <div style={{ height: '400px', width: '100%' }}>
+    <div className="w-full bg-gray-800/30 rounded-lg p-4 border border-gray-700/50" style={{ height: '500px' }}>
       <Bar data={data} options={options} />
     </div>
   );
