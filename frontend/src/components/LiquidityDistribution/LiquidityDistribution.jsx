@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import LiquidityChart from './LiquidityChart';
 import LiquidityStats from './LiquidityStats';
+import LiquidityRangeSuggestion from './LiquidityRangeSuggestion';
 
 const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
   const [data, setData] = useState(null);
@@ -176,6 +177,14 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
             currentPrice={data.currentPrice}
           />
         </div>
+
+        {/* Suggested Ranges Section */}
+        {data.stats?.suggestedRanges && (
+          <LiquidityRangeSuggestion
+            suggestedRanges={data.stats.suggestedRanges}
+            currentPrice={data.currentPrice}
+          />
+        )}
 
         {/* Footer */}
         <div className="mt-6 pt-4 border-t border-slate-700/30">

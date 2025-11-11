@@ -43,6 +43,100 @@ async function getTokenPricesInUSD(mints) {
 }
 
 /**
+ * Calculate suggested liquidity ranges based on buy/sell imbalance
+ * @param {number} currentPrice - Current market price
+ * @param {number} totalBuyLiquidity - Total liquidity on buy side (below price)
+ * @param {number} totalSellLiquidity - Total liquidity on sell side (above price)
+ * @param {number} buySellRatio - Buy/Sell liquidity ratio
+ * @returns {Object} Suggested ranges for different strategies
+ */
+function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio) {
+  // Determine which side needs liquidity
+  const needsBuySupport = totalSellLiquidity > totalBuyLiquidity;
+  const side = needsBuySupport ? 'BUY' : 'SELL';
+
+  // Calculate the imbalance ratio (always > 1)
+  const imbalanceRatio = needsBuySupport
+    ? totalSellLiquidity / (totalBuyLiquidity || 1)
+    : totalBuyLiquidity / (totalSellLiquidity || 1);
+
+  // Calculate liquidity deficit
+  const deficit = Math.abs(totalBuyLiquidity - totalSellLiquidity);
+
+  // Strategy 1: Full Imbalance Correction (User's Original - Conservative for memecoins)
+  const fullCorrection = {
+    name: 'Full Imbalance Correction',
+    description: 'Widest range - Protects from volatility, set and forget',
+    side: side,
+    lowerBound: needsBuySupport ? currentPrice / imbalanceRatio : currentPrice,
+    upperBound: needsBuySupport ? currentPrice : currentPrice * imbalanceRatio,
+    expectedRatio: 1.0,
+    suggestedLiquidityUsd: deficit,
+    rangePercentage: ((imbalanceRatio - 1) * 100).toFixed(1)
+  };
+
+  // Strategy 2: Liquidity Deficit Targeting
+  const deficitTargeting = {
+    name: 'Liquidity Deficit Targeting',
+    description: 'Moderate range - Targets 50% balance improvement',
+    side: side,
+    lowerBound: needsBuySupport ? currentPrice * 0.95 : currentPrice,
+    upperBound: needsBuySupport ? currentPrice : currentPrice * 1.05,
+    expectedRatio: needsBuySupport
+      ? (totalBuyLiquidity + deficit / 2) / totalSellLiquidity
+      : totalBuyLiquidity / (totalSellLiquidity + deficit / 2),
+    suggestedLiquidityUsd: deficit / 2,
+    rangePercentage: '5.0'
+  };
+
+  // Strategy 3: Proportional Range Scaling
+  const imbalance = Math.abs(1 - buySellRatio);
+  const rangeWidth = Math.min(0.10, imbalance * 0.10); // Max 10%
+  const proportionalScaling = {
+    name: 'Proportional Range Scaling',
+    description: 'Scaled range - Proportional to imbalance, max 10%',
+    side: side,
+    lowerBound: needsBuySupport ? currentPrice * (1 - rangeWidth) : currentPrice,
+    upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + rangeWidth),
+    expectedRatio: needsBuySupport
+      ? (totalBuyLiquidity + deficit * rangeWidth) / totalSellLiquidity
+      : totalBuyLiquidity / (totalSellLiquidity + deficit * rangeWidth),
+    suggestedLiquidityUsd: deficit * rangeWidth,
+    rangePercentage: (rangeWidth * 100).toFixed(1)
+  };
+
+  // Strategy 4: Simple Percentage-Based (Most Aggressive)
+  const percentageMultiplier = Math.max(1 - buySellRatio, buySellRatio - 1);
+  const percentageRange = 0.05 * percentageMultiplier; // 5% base * imbalance
+  const simplePercentage = {
+    name: 'Simple Percentage-Based',
+    description: 'Tight range - Maximum fee capture, needs active management',
+    side: side,
+    lowerBound: needsBuySupport ? currentPrice * (1 - percentageRange) : currentPrice,
+    upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + percentageRange),
+    expectedRatio: needsBuySupport
+      ? (totalBuyLiquidity + deficit * percentageRange) / totalSellLiquidity
+      : totalBuyLiquidity / (totalSellLiquidity + deficit * percentageRange),
+    suggestedLiquidityUsd: deficit * percentageRange,
+    rangePercentage: (percentageRange * 100).toFixed(1)
+  };
+
+  return {
+    currentImbalance: {
+      side: side,
+      ratio: imbalanceRatio,
+      deficit: deficit
+    },
+    strategies: [
+      fullCorrection,
+      deficitTargeting,
+      proportionalScaling,
+      simplePercentage
+    ]
+  };
+}
+
+/**
  * Get liquidity distribution for a DLMM pair
  * @param {string} pairAddress - The DLMM pair address
  * @returns {Promise<Object>} Liquidity distribution data
@@ -132,11 +226,21 @@ async function getLiquidityDistribution(pairAddress) {
     // Calculate buy/sell ratio (handle division by zero)
     const buySellRatio = totalSellLiquidity > 0 ? totalBuyLiquidity / totalSellLiquidity : 0;
 
+    const currentPriceValue = parseFloat(binData.bins.find(b => b.binId === activeBin)?.price || '0');
+
+    // Calculate suggested liquidity ranges based on imbalance
+    const suggestedRanges = calculateLiquidityRanges(
+      currentPriceValue,
+      totalBuyLiquidity,
+      totalSellLiquidity,
+      buySellRatio
+    );
+
     const stats = {
       totalBins: bins.length,
       totalLiquidityUsd,
       activeBinId: activeBin,
-      currentPrice: parseFloat(binData.bins.find(b => b.binId === activeBin)?.price || '0'),
+      currentPrice: currentPriceValue,
       binStep,
       largestBuyWall: buyWalls.length > 0 ? Math.max(...buyWalls.map(b => b.liquidityUsd)) : 0,
       largestSellWall: sellWalls.length > 0 ? Math.max(...sellWalls.map(b => b.liquidityUsd)) : 0,
@@ -144,7 +248,8 @@ async function getLiquidityDistribution(pairAddress) {
       sellWallsCount: sellWalls.length,
       totalBuyLiquidity: totalBuyLiquidity,
       totalSellLiquidity: totalSellLiquidity,
-      buySellRatio: buySellRatio
+      buySellRatio: buySellRatio,
+      suggestedRanges: suggestedRanges
     };
 
     return {
@@ -365,6 +470,14 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
     console.log(`Sell walls: ${sellWalls.length} bins with $${totalSellLiquidity.toFixed(2)} total liquidity (above ${marketPrice})`);
     console.log(`Buy/Sell ratio: ${buySellRatio.toFixed(2)}x`);
 
+    // Calculate suggested liquidity ranges based on imbalance
+    const suggestedRanges = calculateLiquidityRanges(
+      marketPrice,
+      totalBuyLiquidity,
+      totalSellLiquidity,
+      buySellRatio
+    );
+
     const stats = {
       totalBins: aggregatedBins.length,
       totalLiquidityUsd,
@@ -376,7 +489,8 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
       sellWallsCount: sellWalls.length,
       totalBuyLiquidity: totalBuyLiquidity,
       totalSellLiquidity: totalSellLiquidity,
-      buySellRatio: buySellRatio
+      buySellRatio: buySellRatio,
+      suggestedRanges: suggestedRanges
     };
 
     return {
