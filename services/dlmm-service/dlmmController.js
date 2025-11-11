@@ -65,61 +65,85 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   const deficit = Math.abs(totalBuyLiquidity - totalSellLiquidity);
 
   // Strategy 1: Full Imbalance Correction (User's Original - Conservative for memecoins)
+  const fullCorrectionLower = needsBuySupport ? currentPrice / imbalanceRatio : currentPrice;
+  const fullCorrectionUpper = needsBuySupport ? currentPrice : currentPrice * imbalanceRatio;
+  const fullCorrectionRangeWidth = needsBuySupport
+    ? ((currentPrice - fullCorrectionLower) / currentPrice) * 100
+    : ((fullCorrectionUpper - currentPrice) / currentPrice) * 100;
+
   const fullCorrection = {
     name: 'Full Imbalance Correction',
     description: 'Widest range - Protects from volatility, set and forget',
     side: sideToAdd,
-    lowerBound: needsBuySupport ? currentPrice / imbalanceRatio : currentPrice,
-    upperBound: needsBuySupport ? currentPrice : currentPrice * imbalanceRatio,
+    lowerBound: fullCorrectionLower,
+    upperBound: fullCorrectionUpper,
     expectedRatio: 1.0,
     suggestedLiquidityUsd: deficit,
-    rangePercentage: ((imbalanceRatio - 1) * 100).toFixed(1)
+    rangePercentage: fullCorrectionRangeWidth.toFixed(1)
   };
 
   // Strategy 2: Liquidity Deficit Targeting
+  const deficitLower = needsBuySupport ? currentPrice * 0.95 : currentPrice;
+  const deficitUpper = needsBuySupport ? currentPrice : currentPrice * 1.05;
+  const deficitRangeWidth = needsBuySupport
+    ? ((currentPrice - deficitLower) / currentPrice) * 100
+    : ((deficitUpper - currentPrice) / currentPrice) * 100;
+
   const deficitTargeting = {
     name: 'Liquidity Deficit Targeting',
     description: 'Moderate range - Targets 50% balance improvement',
     side: sideToAdd,
-    lowerBound: needsBuySupport ? currentPrice * 0.95 : currentPrice,
-    upperBound: needsBuySupport ? currentPrice : currentPrice * 1.05,
+    lowerBound: deficitLower,
+    upperBound: deficitUpper,
     expectedRatio: needsBuySupport
       ? (totalBuyLiquidity + deficit / 2) / totalSellLiquidity
       : totalBuyLiquidity / (totalSellLiquidity + deficit / 2),
     suggestedLiquidityUsd: deficit / 2,
-    rangePercentage: '5.0'
+    rangePercentage: deficitRangeWidth.toFixed(1)
   };
 
   // Strategy 3: Proportional Range Scaling
   const imbalance = Math.abs(1 - buySellRatio);
   const rangeWidth = Math.min(0.10, imbalance * 0.10); // Max 10%
+  const proportionalLower = needsBuySupport ? currentPrice * (1 - rangeWidth) : currentPrice;
+  const proportionalUpper = needsBuySupport ? currentPrice : currentPrice * (1 + rangeWidth);
+  const proportionalRangeWidth = needsBuySupport
+    ? ((currentPrice - proportionalLower) / currentPrice) * 100
+    : ((proportionalUpper - currentPrice) / currentPrice) * 100;
+
   const proportionalScaling = {
     name: 'Proportional Range Scaling',
     description: 'Scaled range - Proportional to imbalance, max 10%',
     side: sideToAdd,
-    lowerBound: needsBuySupport ? currentPrice * (1 - rangeWidth) : currentPrice,
-    upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + rangeWidth),
+    lowerBound: proportionalLower,
+    upperBound: proportionalUpper,
     expectedRatio: needsBuySupport
       ? (totalBuyLiquidity + deficit * rangeWidth) / totalSellLiquidity
       : totalBuyLiquidity / (totalSellLiquidity + deficit * rangeWidth),
     suggestedLiquidityUsd: deficit * rangeWidth,
-    rangePercentage: (rangeWidth * 100).toFixed(1)
+    rangePercentage: proportionalRangeWidth.toFixed(1)
   };
 
   // Strategy 4: Simple Percentage-Based (Most Aggressive)
   const percentageMultiplier = Math.max(1 - buySellRatio, buySellRatio - 1);
   const percentageRange = 0.05 * percentageMultiplier; // 5% base * imbalance
+  const simpleLower = needsBuySupport ? currentPrice * (1 - percentageRange) : currentPrice;
+  const simpleUpper = needsBuySupport ? currentPrice : currentPrice * (1 + percentageRange);
+  const simpleRangeWidth = needsBuySupport
+    ? ((currentPrice - simpleLower) / currentPrice) * 100
+    : ((simpleUpper - currentPrice) / currentPrice) * 100;
+
   const simplePercentage = {
     name: 'Simple Percentage-Based',
     description: 'Tight range - Maximum fee capture, needs active management',
     side: sideToAdd,
-    lowerBound: needsBuySupport ? currentPrice * (1 - percentageRange) : currentPrice,
-    upperBound: needsBuySupport ? currentPrice : currentPrice * (1 + percentageRange),
+    lowerBound: simpleLower,
+    upperBound: simpleUpper,
     expectedRatio: needsBuySupport
       ? (totalBuyLiquidity + deficit * percentageRange) / totalSellLiquidity
       : totalBuyLiquidity / (totalSellLiquidity + deficit * percentageRange),
     suggestedLiquidityUsd: deficit * percentageRange,
-    rangePercentage: (percentageRange * 100).toFixed(1)
+    rangePercentage: simpleRangeWidth.toFixed(1)
   };
 
   return {
