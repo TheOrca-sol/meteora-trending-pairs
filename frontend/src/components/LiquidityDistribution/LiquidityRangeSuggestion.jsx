@@ -29,10 +29,6 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
     }
   };
 
-  const getSideColor = (side) => {
-    return side === 'BUY' ? 'emerald' : 'rose';
-  };
-
   const getSideBg = (side) => {
     return side === 'BUY' ? 'bg-emerald-500/10' : 'bg-rose-500/10';
   };
@@ -51,158 +47,97 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
   };
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl border border-slate-700/50 shadow-2xl mt-8">
-      {/* Ambient background effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
-
-      <div className="relative z-10 p-8">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              💡 Suggested Liquidity Ranges
-            </h3>
-          </div>
-          <p className="text-slate-400 text-sm">
-            Based on current market imbalance • Choose your strategy
-          </p>
+    <div className="mt-4 space-y-3" style={{ border: '3px solid lime' }}>
+      {/* Modern Header with Strategy Tabs Inline */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div className="flex items-baseline gap-3">
+          <h3 className="text-base font-semibold text-white" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
+            🔥 NEW UI LOADED 🔥 Suggested Ranges
+          </h3>
+          <span className="text-xs text-gray-500">Position optimization</span>
         </div>
 
-        {/* Current Imbalance Info */}
-        <div className={`${getSideBg(currentImbalance.sideWithMore)} backdrop-blur-sm rounded-xl p-5 border ${getSideBorder(currentImbalance.sideWithMore)} mb-6`}>
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Current Market Imbalance</div>
-              <div className="flex items-center gap-2">
-                <span className={`text-2xl font-bold ${getSideText(currentImbalance.sideWithMore)}`}>
-                  {currentImbalance.ratio.toFixed(2)}x more {currentImbalance.sideWithMore} liquidity
-                </span>
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Liquidity Deficit</div>
-              <div className="text-xl font-bold text-white">{formatUsd(currentImbalance.deficit)}</div>
-            </div>
+        {/* Modern Tab Pills - Horizontal on all screens */}
+        <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1">
+          {strategies.map((strat, idx) => (
+            <button
+              key={idx}
+              onClick={() => setSelectedStrategy(idx)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap ${
+                selectedStrategy === idx
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-400 hover:text-gray-300'
+              }`}
+              style={{ fontFamily: "'Inter', sans-serif" }}
+            >
+              {strat.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Compact Info Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Price Range */}
+        <div className="col-span-2 lg:col-span-2 bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1.5">Price Range</div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-semibold text-emerald-400">{formatPrice(strategy.lowerBound)}</span>
+            <span className="text-gray-600">→</span>
+            <span className="text-sm font-semibold text-rose-400">{formatPrice(strategy.upperBound)}</span>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-700/30">
-            <p className="text-sm text-slate-300">
-              <span className="font-semibold">Recommendation:</span> Add{' '}
-              <span className={getSideText(currentImbalance.sideToAdd)}>
-                {currentImbalance.sideToAdd} support
-              </span>{' '}
-              {currentImbalance.sideToAdd === 'BUY' ? 'below' : 'above'} current price to balance the market
-            </p>
-          </div>
+          <div className="text-xs text-gray-600">Width: {strategy.rangePercentage}%</div>
         </div>
 
-        {/* Strategy Selector */}
-        <div className="mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {strategies.map((strat, idx) => (
-              <button
-                key={idx}
-                onClick={() => setSelectedStrategy(idx)}
-                className={`relative group p-4 rounded-xl border-2 transition-all duration-300 text-left ${
-                  selectedStrategy === idx
-                    ? 'border-blue-500 bg-blue-500/10'
-                    : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600/80 hover:bg-slate-800/50'
-                }`}
-              >
-                <div className="text-sm font-bold text-white mb-1">{strat.name}</div>
-                <div className="text-xs text-slate-400">{strat.description.split(' - ')[0]}</div>
-                {selectedStrategy === idx && (
-                  <div className="absolute top-2 right-2">
-                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                  </div>
-                )}
-              </button>
-            ))}
-          </div>
+        {/* Liquidity */}
+        <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1.5">Liquidity</div>
+          <div className="text-sm font-semibold text-white">{formatUsd(strategy.suggestedLiquidityUsd)}</div>
         </div>
 
-        {/* Selected Strategy Details */}
-        <div className="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 border border-slate-700/30">
-          <div className="space-y-6">
-            {/* Strategy Info */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-bold text-white">{strategy.name}</h4>
-                <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getSideBg(strategy.side)} ${getSideText(strategy.side)} border ${getSideBorder(strategy.side)}`}>
-                  {strategy.side} SIDE
-                </span>
-              </div>
-              <p className="text-sm text-slate-300">{strategy.description}</p>
-            </div>
+        {/* Balance Ratio */}
+        <div className="bg-gray-800/30 rounded-lg p-3 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1.5">Balance</div>
+          <div className="text-sm font-semibold text-blue-400">{strategy.expectedRatio.toFixed(2)}x</div>
+        </div>
 
-            {/* Range Display */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/30">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Price Range</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <div className="text-xs text-slate-500 mb-1">Lower Bound</div>
-                    <div className="text-lg font-bold text-emerald-400">{formatPrice(strategy.lowerBound)}</div>
-                  </div>
-                  <div className="text-slate-600">→</div>
-                  <div className="flex-1 text-right">
-                    <div className="text-xs text-slate-500 mb-1">Upper Bound</div>
-                    <div className="text-lg font-bold text-rose-400">{formatPrice(strategy.upperBound)}</div>
-                  </div>
-                </div>
-                <div className="mt-3 pt-3 border-t border-slate-700/30">
-                  <div className="text-xs text-slate-400">Range Width: <span className="font-bold text-white">{strategy.rangePercentage}%</span></div>
-                </div>
-              </div>
-
-              <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700/30">
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Expected Outcome</div>
-                <div className="space-y-3">
-                  <div>
-                    <div className="text-xs text-slate-500 mb-1">Suggested Liquidity</div>
-                    <div className="text-lg font-bold text-white">{formatUsd(strategy.suggestedLiquidityUsd)}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-slate-500 mb-1">Target Balance Ratio</div>
-                    <div className="text-lg font-bold text-blue-400">{strategy.expectedRatio.toFixed(2)}x</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Button */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={copyRange}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-500/50"
-              >
-                📋 Copy Range to Clipboard
-              </button>
-              <a
-                href="https://app.meteora.ag/pools"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-slate-700/50 hover:bg-slate-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 border border-slate-600/50"
-              >
-                🚀 Add on Meteora
-              </a>
-            </div>
-
-            {/* Strategy-specific tips */}
-            <div className="bg-slate-900/50 rounded-lg p-4 border border-yellow-500/20">
-              <div className="flex items-start gap-3">
-                <div className="text-yellow-500 text-xl">💡</div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-yellow-400 mb-1">Strategy Tip</div>
-                  <div className="text-xs text-slate-300">
-                    {selectedStrategy === 0 && "Best for volatile memecoins - wide range means you stay in position longer through pumps and dumps."}
-                    {selectedStrategy === 1 && "Balanced approach - adds 50% of needed liquidity in a moderate 5% range around current price."}
-                    {selectedStrategy === 2 && "Adaptive range scaling - adjusts width based on imbalance severity, capped at 10%."}
-                    {selectedStrategy === 3 && "Tight concentrated range - maximum fees per dollar but requires active rebalancing."}
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Imbalance */}
+        <div className={`rounded-lg p-3 border ${getSideBorder(currentImbalance.sideWithMore)} ${getSideBg(currentImbalance.sideWithMore)}`}>
+          <div className="text-xs text-gray-500 mb-1.5">Imbalance</div>
+          <div className={`text-sm font-semibold ${getSideText(currentImbalance.sideWithMore)}`}>
+            {currentImbalance.ratio.toFixed(2)}x {currentImbalance.sideWithMore}
           </div>
+        </div>
+      </div>
+
+      {/* Action Bar */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-gray-800/20 rounded-lg p-3 border border-gray-700/30">
+        <div className="flex-1">
+          <div className="text-xs text-gray-500 mb-0.5">{strategy.description.split(' - ')[0]}</div>
+          <div className="text-xs text-gray-400">
+            {selectedStrategy === 0 && "Wide range keeps you in position longer through pumps and dumps."}
+            {selectedStrategy === 1 && "Adds 50% of needed liquidity in a moderate 5% range."}
+            {selectedStrategy === 2 && "Adjusts width based on imbalance severity, capped at 10%."}
+            {selectedStrategy === 3 && "Maximum fees per dollar but requires active rebalancing."}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={copyRange}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
+            Copy Range
+          </button>
+          <a
+            href="https://app.meteora.ag/pools"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
+            Add Liquidity →
+          </a>
         </div>
       </div>
     </div>

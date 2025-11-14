@@ -1,22 +1,5 @@
 import React from 'react';
 
-const StatCard = ({ label, value, subValue, gradient }) => (
-  <div className="relative group">
-    {/* Background with gradient border effect */}
-    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-purple-500/10 to-pink-500/20 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
-    <div className="relative bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm rounded-xl p-5 border border-slate-700/50 hover:border-slate-600/80 transition-all duration-300">
-      <div className="space-y-2">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
-        <div className="text-2xl font-bold text-white">{value}</div>
-        {subValue && (
-          <div className="text-xs text-slate-500 font-medium">{subValue}</div>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
 const LiquidityStats = ({ stats }) => {
   if (!stats) {
     return null;
@@ -43,72 +26,73 @@ const LiquidityStats = ({ stats }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <StatCard
-          label="Total Liquidity"
-          value={formatUsd(stats.totalLiquidityUsd)}
-          subValue={`${stats.totalBins || 0} price bins`}
-        />
+    <div className="space-y-3">
+      {/* Compact Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-2.5">
+        {/* Total Liquidity */}
+        <div className="bg-gray-800/30 rounded-lg p-2.5 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1">Total Liquidity</div>
+          <div className="text-base font-semibold text-white">{formatUsd(stats.totalLiquidityUsd)}</div>
+          <div className="text-xs text-gray-600 mt-0.5">{stats.totalBins || 0} bins</div>
+        </div>
 
-        <StatCard
-          label="Current Price"
-          value={formatPrice(stats.currentPrice)}
-          subValue={stats.activeBinId ? `Active Bin: ${stats.activeBinId}` : 'Live market price'}
-        />
+        {/* Current Price */}
+        <div className="bg-gray-800/30 rounded-lg p-2.5 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1">Current Price</div>
+          <div className="text-base font-semibold text-white">{formatPrice(stats.currentPrice)}</div>
+          <div className="text-xs text-gray-600 mt-0.5">Live market</div>
+        </div>
 
-        <StatCard
-          label="Buy Side Liquidity"
-          value={formatUsd(stats.totalBuyLiquidity)}
-          subValue={`${stats.buyWallsCount || 0} bins below price`}
-        />
+        {/* Buy Liquidity */}
+        <div className="bg-emerald-500/5 rounded-lg p-2.5 border border-emerald-500/20">
+          <div className="text-xs text-emerald-400/70 mb-1">Buy Liquidity</div>
+          <div className="text-base font-semibold text-emerald-400">{formatUsd(stats.totalBuyLiquidity)}</div>
+          <div className="text-xs text-emerald-400/50 mt-0.5">{stats.buyWallsCount || 0} bins</div>
+        </div>
 
-        <StatCard
-          label="Sell Side Liquidity"
-          value={formatUsd(stats.totalSellLiquidity)}
-          subValue={`${stats.sellWallsCount || 0} bins above price`}
-        />
+        {/* Sell Liquidity */}
+        <div className="bg-rose-500/5 rounded-lg p-2.5 border border-rose-500/20">
+          <div className="text-xs text-rose-400/70 mb-1">Sell Liquidity</div>
+          <div className="text-base font-semibold text-rose-400">{formatUsd(stats.totalSellLiquidity)}</div>
+          <div className="text-xs text-rose-400/50 mt-0.5">{stats.sellWallsCount || 0} bins</div>
+        </div>
 
-        <StatCard
-          label="Buy/Sell Ratio"
-          value={stats.buySellRatio ? `${stats.buySellRatio.toFixed(2)}x` : 'N/A'}
-          subValue={stats.buySellRatio > 1 ? 'Buy pressure' : stats.buySellRatio < 1 ? 'Sell pressure' : 'Balanced'}
-        />
+        {/* Buy/Sell Ratio */}
+        <div className="bg-gray-800/30 rounded-lg p-2.5 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1">Buy/Sell Ratio</div>
+          <div className={`text-base font-semibold ${stats.buySellRatio > 1 ? 'text-emerald-400' : stats.buySellRatio < 1 ? 'text-rose-400' : 'text-gray-400'}`}>
+            {stats.buySellRatio ? `${stats.buySellRatio.toFixed(2)}x` : 'N/A'}
+          </div>
+          <div className="text-xs text-gray-600 mt-0.5">
+            {stats.buySellRatio > 1 ? 'Buy side' : stats.buySellRatio < 1 ? 'Sell side' : 'Balanced'}
+          </div>
+        </div>
 
-        <StatCard
-          label="Largest Wall"
-          value={formatUsd(Math.max(stats.largestBuyWall || 0, stats.largestSellWall || 0))}
-          subValue={stats.largestBuyWall > stats.largestSellWall ? 'Buy side' : 'Sell side'}
-        />
+        {/* Largest Wall */}
+        <div className="bg-gray-800/30 rounded-lg p-2.5 border border-gray-700/50">
+          <div className="text-xs text-gray-500 mb-1">Largest Wall</div>
+          <div className="text-base font-semibold text-white">
+            {formatUsd(Math.max(stats.largestBuyWall || 0, stats.largestSellWall || 0))}
+          </div>
+          <div className="text-xs text-gray-600 mt-0.5">
+            {stats.largestBuyWall > stats.largestSellWall ? 'Buy side' : 'Sell side'}
+          </div>
+        </div>
       </div>
 
-      {/* Legend */}
-      <div className="relative">
-        <div className="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/30">
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-                <div className="absolute inset-0 w-3 h-3 bg-emerald-500 rounded-full animate-ping opacity-20"></div>
-              </div>
-              <span className="text-sm text-slate-300 font-medium">Buy Support</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <div className="absolute inset-0 w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-20"></div>
-              </div>
-              <span className="text-sm text-slate-300 font-medium">Active Bin</span>
-            </div>
-            <div className="flex items-center gap-2.5">
-              <div className="relative">
-                <div className="w-3 h-3 bg-rose-500 rounded-full"></div>
-                <div className="absolute inset-0 w-3 h-3 bg-rose-500 rounded-full animate-ping opacity-20"></div>
-              </div>
-              <span className="text-sm text-slate-300 font-medium">Sell Resistance</span>
-            </div>
-          </div>
+      {/* Compact Legend */}
+      <div className="flex items-center justify-center gap-4 text-xs">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+          <span className="text-gray-400">Buy Support</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+          <span className="text-gray-400">Active Bin</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 bg-rose-500 rounded-full"></div>
+          <span className="text-gray-400">Sell Resistance</span>
         </div>
       </div>
     </div>

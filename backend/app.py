@@ -936,6 +936,12 @@ def get_monitoring_status():
     """
     Get monitoring status for a wallet
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
@@ -965,6 +971,12 @@ def generate_telegram_code():
     """
     Generate a temporary 6-digit code for Telegram authentication
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
@@ -1018,6 +1030,12 @@ def check_telegram_connection():
     """
     Check if a wallet has linked their Telegram account
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
