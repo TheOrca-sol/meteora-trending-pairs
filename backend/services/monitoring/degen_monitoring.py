@@ -291,7 +291,8 @@ class DegenMonitoringService:
                 tvl = safe_float(pool.get('liquidity', 0))
                 fees_30min = safe_float(fees_obj.get('min_30', 0))
 
-                if tvl > 0 and fees_30min > 0:
+                # Match Analytics table filtering: only pools with TVL >= $1,000
+                if tvl >= 1000 and fees_30min > 0:
                     fee_rate = (fees_30min / tvl) * 100
 
                     if fee_rate >= threshold:
