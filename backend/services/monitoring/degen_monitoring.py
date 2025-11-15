@@ -286,13 +286,19 @@ class DegenMonitoringService:
             high_fee_pools = []
 
             for pool in pools:
-                # Calculate fee rate (30min fees / TVL * 100) - same pattern as app.py
+                # Extract pool data
                 fees_obj = pool.get('fees', {})
+                volume_obj = pool.get('volume', {})
                 tvl = safe_float(pool.get('liquidity', 0))
                 fees_30min = safe_float(fees_obj.get('min_30', 0))
+                volume_24h = safe_float(volume_obj.get('hour_24', 0))
 
-                # Match Analytics table filtering: only pools with TVL >= $1,000
-                if tvl >= 1000 and fees_30min > 0:
+                # Match Analytics table default filters:
+                # - TVL >= $10,000
+                # - Volume 24h >= $25,000
+                # - Fees 30min >= $100
+                if tvl >= 10000 and volume_24h >= 25000 and fees_30min >= 100:
+                    # Calculate 30-minute fee rate (same as Analytics table)
                     fee_rate = (fees_30min / tvl) * 100
 
                     if fee_rate >= threshold:
@@ -301,6 +307,7 @@ class DegenMonitoringService:
                             'name': pool['name'],
                             'tvl': tvl,
                             'fees_30min': fees_30min,
+                            'volume_24h': volume_24h,
                             'fee_rate': round(fee_rate, 2)
                         })
 
@@ -369,6 +376,7 @@ class DegenMonitoringService:
                 message += f"   Fee Rate: <b>{pool['fee_rate']}%</b>\n"
                 message += f"   TVL: ${pool['tvl']:,.0f}\n"
                 message += f"   30min Fees: ${pool['fees_30min']:,.2f}\n"
+                message += f"   24h Volume: ${pool['volume_24h']:,.0f}\n"
                 message += f"   🔗 <a href='https://app.meteora.ag/pools/{pool['address']}'>Trade on Meteora</a>\n\n"
 
             message += f"⚡️ Act fast! High fee rates won't last long.\n"
