@@ -401,7 +401,7 @@ function MonitoringPanel({ walletAddress, whitelist, quotePreferences, minFees30
                 </Alert>
               ) : (
                 <Alert severity="info">
-                  Connect your Telegram account to receive notifications
+                  Connect your Telegram account to receive notifications. You can also manage connections in Settings (⚙️ in navbar).
                 </Alert>
               )}
             </Box>

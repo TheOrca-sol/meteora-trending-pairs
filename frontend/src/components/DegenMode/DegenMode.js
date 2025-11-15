@@ -9,10 +9,13 @@ import {
   Alert,
   CircularProgress,
   Fade,
+  Button,
 } from '@mui/material';
+import { Settings as SettingsIcon } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 import WalletSetup from './WalletSetup';
 import MonitoringControls from './MonitoringControls';
+import SettingsModal from '../Settings/SettingsModal';
 
 const DegenMode = () => {
   const { publicKey } = useWallet();
@@ -22,6 +25,7 @@ const DegenMode = () => {
   const [degenWallet, setDegenWallet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const steps = ['Connect Telegram', 'Setup Wallet', 'Start Monitoring'];
 
@@ -172,9 +176,21 @@ const DegenMode = () => {
               You need to connect your Telegram account before using Degen Mode. This is required to receive
               real-time notifications.
             </Typography>
-            <Alert severity="info">
-              Go to the Capital Rotation page to connect your Telegram account first.
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Open Settings to connect your Telegram account and get started.
             </Alert>
+            <Button
+              variant="contained"
+              startIcon={<SettingsIcon />}
+              onClick={() => setSettingsOpen(true)}
+              sx={{
+                bgcolor: '#0088cc',
+                '&:hover': { bgcolor: '#006699' },
+                fontFamily: "'Inter', sans-serif"
+              }}
+            >
+              Open Settings
+            </Button>
           </Paper>
         )}
 
@@ -195,6 +211,16 @@ const DegenMode = () => {
             onError={setError}
           />
         )}
+
+        {/* Settings Modal */}
+        <SettingsModal
+          open={settingsOpen}
+          onClose={() => {
+            setSettingsOpen(false);
+            // Refresh status after settings are closed
+            checkStatus();
+          }}
+        />
       </Box>
     </Fade>
   );

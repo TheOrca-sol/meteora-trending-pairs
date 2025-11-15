@@ -47,7 +47,7 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
   };
 
   return (
-    <div className="mt-4 space-y-3" style={{ border: '3px solid lime' }}>
+    <div className="mt-4 space-y-3">
       {/* Modern Header with Strategy Tabs Inline */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
         <div className="flex items-baseline gap-3">
