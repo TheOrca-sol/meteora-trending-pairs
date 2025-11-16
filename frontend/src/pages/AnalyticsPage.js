@@ -477,14 +477,12 @@ function AnalyticsPage() {
       </Box>
 
       {/* Filters Section */}
-      {/* Degen Mode Section (localhost only) */}
-      {process.env.REACT_APP_ENABLE_DEGEN_MODE === 'true' && (
-        <Box sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
-          <ErrorBoundary>
-            <DegenMode />
-          </ErrorBoundary>
-        </Box>
-      )}
+      {/* Degen Mode Section */}
+      <Box sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
+        <ErrorBoundary>
+          <DegenMode />
+        </ErrorBoundary>
+      </Box>
 
       <Paper
         elevation={2}

@@ -64,8 +64,8 @@ const commonTypographyStyles = {
 // Main ExpandedRow Component
 const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   const pairXToken = getPairXToken(pair);
-  // Enable localhost-only features via environment variable
-  const enableLocalhostFeatures = process.env.REACT_APP_ENABLE_LOCALHOST_FEATURES === 'true';
+  // Enable all features in production
+  const enableLocalhostFeatures = true;
 
   if (!pair || !pairXToken) {
     return (
