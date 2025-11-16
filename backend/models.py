@@ -2,7 +2,7 @@
 Database models for Capital Rotation Monitoring
 """
 
-from sqlalchemy import create_engine, Column, String, Integer, Boolean, DECIMAL, BigInteger, TIMESTAMP, ForeignKey, Index, text
+from sqlalchemy import create_engine, Column, String, Integer, Boolean, DECIMAL, BigInteger, TIMESTAMP, ForeignKey, Index, text, LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy.dialects.postgresql import JSONB
@@ -43,6 +43,7 @@ class User(Base):
 
     # Relationships
     monitoring_config = relationship("MonitoringConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    degen_config = relationship("DegenConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
     opportunity_snapshots = relationship("OpportunitySnapshot", back_populates="user", cascade="all, delete-orphan")
 
     def to_dict(self):
@@ -131,6 +132,50 @@ class OpportunitySnapshot(Base):
             'wallet_address': self.wallet_address,
             'opportunities': self.opportunities,
             'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class DegenConfig(Base):
+    """
+    Degen Mode Configuration
+    Stores wallet and monitoring settings for high-frequency fee rate monitoring
+    """
+    __tablename__ = 'degen_configs'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    wallet_address = Column(String(44), ForeignKey('users.wallet_address', ondelete='CASCADE'), unique=True, nullable=False)
+    wallet_type = Column(String(20), nullable=False)  # 'imported' or 'generated'
+    degen_wallet_address = Column(String(44), nullable=False)  # The wallet used for degen mode
+    encrypted_private_key = Column(LargeBinary, nullable=False)  # Encrypted private key
+    min_fee_rate_threshold = Column(DECIMAL(10, 2), default=5.0)  # Fee rate threshold percentage
+    check_interval_minutes = Column(Integer, default=1)  # Check interval (default 1 minute)
+    enabled = Column(Boolean, default=False, index=True)
+    automation_enabled = Column(Boolean, default=False)  # For Phase 2: automated LP provision
+    max_position_size = Column(DECIMAL(10, 2), nullable=True)  # For Phase 2: max SOL per position
+    last_check = Column(TIMESTAMP(timezone=True), nullable=True)
+    next_check = Column(TIMESTAMP(timezone=True), nullable=True)
+    last_notified_pools = Column(JSONB, default=dict)  # Track recently notified pools to avoid spam
+    created_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow)
+    updated_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="degen_config")
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'wallet_address': self.wallet_address,
+            'wallet_type': self.wallet_type,
+            'degen_wallet_address': self.degen_wallet_address,
+            'min_fee_rate_threshold': float(self.min_fee_rate_threshold),
+            'check_interval_minutes': self.check_interval_minutes,
+            'enabled': self.enabled,
+            'automation_enabled': self.automation_enabled,
+            'max_position_size': float(self.max_position_size) if self.max_position_size else None,
+            'last_check': self.last_check.isoformat() if self.last_check else None,
+            'next_check': self.next_check.isoformat() if self.next_check else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
 

@@ -18,6 +18,7 @@ import PairsTable from '../components/Table/PairsTable';
 import PairsFilters from '../components/Filters/PairsFilters';
 import ErrorBoundary from '../components/ErrorBoundary';
 import TableSkeleton from '../components/Table/TableSkeleton';
+import DegenMode from '../components/DegenMode';
 import { trackUserInteraction } from '../utils/analytics';
 import { generateCacheKey, getCachedData, setCachedData, clearAllCache } from '../utils/cache';
 
@@ -476,6 +477,15 @@ function AnalyticsPage() {
       </Box>
 
       {/* Filters Section */}
+      {/* Degen Mode Section (localhost only) */}
+      {process.env.REACT_APP_ENABLE_DEGEN_MODE === 'true' && (
+        <Box sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
+          <ErrorBoundary>
+            <DegenMode />
+          </ErrorBoundary>
+        </Box>
+      )}
+
       <Paper
         elevation={2}
         sx={{

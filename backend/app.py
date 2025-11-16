@@ -29,11 +29,13 @@ DATABASE_ENABLED = os.getenv('DATABASE_URL') is not None
 if DATABASE_ENABLED:
     try:
         from monitoring_service import monitoring_service
-        from models import get_db, User, TelegramAuthCode, MonitoringConfig, cleanup_expired_auth_codes, create_performance_indexes
+        from models import get_db, User, TelegramAuthCode, MonitoringConfig, DegenConfig, cleanup_expired_auth_codes, create_performance_indexes
         from telegram_bot import telegram_bot_handler, get_bot_link
+        from wallet_manager import WalletManager
+        from services.monitoring.degen_monitoring import degen_monitoring_service
         # Enable APScheduler logging
         logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-        logger.info("Database features enabled (Capital Rotation)")
+        logger.info("Database features enabled (Capital Rotation + Degen Mode)")
     except Exception as e:
         logger.warning(f"Failed to load database features: {e}")
         DATABASE_ENABLED = False
@@ -934,6 +936,12 @@ def get_monitoring_status():
     """
     Get monitoring status for a wallet
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
@@ -963,6 +971,12 @@ def generate_telegram_code():
     """
     Generate a temporary 6-digit code for Telegram authentication
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
@@ -1016,6 +1030,12 @@ def check_telegram_connection():
     """
     Check if a wallet has linked their Telegram account
     """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
     try:
         data = request.get_json()
         wallet_address = data.get('walletAddress')
@@ -1158,6 +1178,346 @@ def disconnect_telegram():
         }), 500
 
 
+# ============================================
+# DEGEN MODE API ENDPOINTS
+# ============================================
+
+@app.route('/api/degen/wallet/generate', methods=['POST'])
+def generate_degen_wallet():
+    """
+    Generate a new Solana wallet for degen mode
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Verify user exists and has Telegram linked
+        db = get_db()
+        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+
+        if not user:
+            db.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'User not found. Please link Telegram first.'
+            }), 404
+
+        # Generate new wallet
+        wallet_data = WalletManager.generate_wallet()
+
+        # Check if degen config already exists
+        existing_config = db.query(DegenConfig).filter(
+            DegenConfig.wallet_address == wallet_address
+        ).first()
+
+        if existing_config:
+            # Update existing config
+            existing_config.wallet_type = 'generated'
+            existing_config.degen_wallet_address = wallet_data['public_key']
+            existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
+            existing_config.updated_at = datetime.utcnow()
+        else:
+            # Create new config
+            config = DegenConfig(
+                wallet_address=wallet_address,
+                wallet_type='generated',
+                degen_wallet_address=wallet_data['public_key'],
+                encrypted_private_key=wallet_data['encrypted_private_key']
+            )
+            db.add(config)
+
+        db.commit()
+        db.close()
+
+        logger.info(f"Generated degen wallet for {wallet_address}")
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Wallet generated successfully',
+            'publicKey': wallet_data['public_key'],
+            'privateKey': wallet_data['private_key']  # Return only once for user to save
+        })
+
+    except Exception as e:
+        logger.error(f"Error generating degen wallet: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/degen/wallet/import', methods=['POST'])
+def import_degen_wallet():
+    """
+    Import an existing Solana wallet for degen mode
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        private_key = data.get('privateKey')
+
+        if not wallet_address or not private_key:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address and private key are required'
+            }), 400
+
+        # Verify user exists and has Telegram linked
+        db = get_db()
+        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+
+        if not user:
+            db.close()
+            return jsonify({
+                'status': 'error',
+                'message': 'User not found. Please link Telegram first.'
+            }), 404
+
+        # Import wallet
+        try:
+            wallet_data = WalletManager.import_wallet(private_key)
+        except ValueError as ve:
+            db.close()
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid private key: {str(ve)}'
+            }), 400
+
+        # Check if degen config already exists
+        existing_config = db.query(DegenConfig).filter(
+            DegenConfig.wallet_address == wallet_address
+        ).first()
+
+        if existing_config:
+            # Update existing config
+            existing_config.wallet_type = 'imported'
+            existing_config.degen_wallet_address = wallet_data['public_key']
+            existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
+            existing_config.updated_at = datetime.utcnow()
+        else:
+            # Create new config
+            config = DegenConfig(
+                wallet_address=wallet_address,
+                wallet_type='imported',
+                degen_wallet_address=wallet_data['public_key'],
+                encrypted_private_key=wallet_data['encrypted_private_key']
+            )
+            db.add(config)
+
+        db.commit()
+        db.close()
+
+        logger.info(f"Imported degen wallet for {wallet_address}")
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Wallet imported successfully',
+            'publicKey': wallet_data['public_key']
+        })
+
+    except Exception as e:
+        logger.error(f"Error importing degen wallet: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/degen/monitoring/start', methods=['POST'])
+def start_degen_monitoring():
+    """
+    Start degen mode monitoring
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        threshold = data.get('threshold', 5.0)
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Start monitoring
+        success = degen_monitoring_service.start_monitoring(wallet_address, threshold)
+
+        if success:
+            logger.info(f"Started degen monitoring for {wallet_address} with threshold {threshold}%")
+            return jsonify({
+                'status': 'success',
+                'message': 'Degen monitoring started'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to start degen monitoring. Check if wallet is set up.'
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Error starting degen monitoring: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/degen/monitoring/stop', methods=['POST'])
+def stop_degen_monitoring():
+    """
+    Stop degen mode monitoring
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Stop monitoring
+        success = degen_monitoring_service.stop_monitoring(wallet_address)
+
+        if success:
+            logger.info(f"Stopped degen monitoring for {wallet_address}")
+            return jsonify({
+                'status': 'success',
+                'message': 'Degen monitoring stopped'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to stop degen monitoring'
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Error stopping degen monitoring: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/degen/monitoring/status', methods=['GET'])
+def get_degen_monitoring_status():
+    """
+    Get degen mode monitoring status
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        wallet_address = request.args.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        # Get status
+        status = degen_monitoring_service.get_monitoring_status(wallet_address)
+
+        return jsonify({
+            'status': 'success',
+            'data': status
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting degen monitoring status: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/degen/config', methods=['PATCH'])
+def update_degen_config():
+    """
+    Update degen mode configuration (threshold)
+    """
+    if not DATABASE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Database features not enabled'
+        }), 503
+
+    try:
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        threshold = data.get('threshold')
+
+        if not wallet_address or threshold is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address and threshold are required'
+            }), 400
+
+        # Validate threshold
+        if threshold <= 0 or threshold > 100:
+            return jsonify({
+                'status': 'error',
+                'message': 'Threshold must be between 0.1 and 100'
+            }), 400
+
+        # Update threshold
+        success = degen_monitoring_service.update_threshold(wallet_address, threshold)
+
+        if success:
+            logger.info(f"Updated degen threshold to {threshold}% for {wallet_address}")
+            return jsonify({
+                'status': 'success',
+                'message': 'Threshold updated successfully'
+            })
+        else:
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to update threshold'
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Error updating degen config: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 def start_telegram_bot():
     """Start Telegram bot in background thread"""
     try:
@@ -1175,9 +1535,13 @@ def initialize_app():
         create_performance_indexes(db)
         db.close()
 
-        # Load active monitors from database
-        logger.info("Loading active monitors from database...")
+        # Load active capital rotation monitors from database
+        logger.info("Loading active capital rotation monitors from database...")
         monitoring_service.load_active_monitors()
+
+        # Load active degen mode monitors from database
+        logger.info("Loading active degen mode monitors from database...")
+        degen_monitoring_service.load_active_monitors()
 
         # Start Telegram bot in background thread
         # Note: This only works with use_reloader=False (see bottom of file)
