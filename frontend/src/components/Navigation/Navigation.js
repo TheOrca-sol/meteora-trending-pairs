@@ -13,11 +13,6 @@ function Navigation() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Only show navigation on localhost
-  if (window.location.hostname !== 'localhost') {
-    return null;
-  }
-
   return (
     <>
       <Box
