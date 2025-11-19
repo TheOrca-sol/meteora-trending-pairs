@@ -83,7 +83,10 @@ export const WalletProvider = ({ children }) => {
     <WalletContext.Provider value={value}>
       <ConnectionProvider endpoint={endpoint}>
         <SolanaWalletProvider wallets={wallets} autoConnect>
-          <WalletModalProvider>
+          <WalletModalProvider
+            className="wallet-adapter-modal-custom"
+            style={{ zIndex: 99999 }}
+          >
             {children}
           </WalletModalProvider>
         </SolanaWalletProvider>

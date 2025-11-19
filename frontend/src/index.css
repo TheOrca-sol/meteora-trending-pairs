@@ -32,9 +32,33 @@ code {
 
 /* Ensure wallet adapter modal appears above all other modals */
 .wallet-adapter-modal-wrapper {
-  z-index: 9999 !important;
+  z-index: 99999 !important;
 }
 
 .wallet-adapter-modal-overlay {
-  z-index: 9999 !important;
+  z-index: 99998 !important;
+  /* Make overlay non-blocking */
+  pointer-events: none !important;
+}
+
+.wallet-adapter-modal-container {
+  z-index: 99999 !important;
+  pointer-events: auto !important;
+}
+
+.wallet-adapter-modal {
+  pointer-events: auto !important;
+}
+
+/* Ensure wallet items are clickable */
+.wallet-adapter-modal-list,
+.wallet-adapter-modal-list button,
+.wallet-adapter-modal-list li {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Wallet buttons should work */
+.wallet-adapter-button {
+  pointer-events: auto !important;
 }
