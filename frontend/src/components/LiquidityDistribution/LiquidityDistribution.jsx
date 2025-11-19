@@ -11,10 +11,13 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
 
   useEffect(() => {
     const fetchLiquidityData = async () => {
+      // Get DLMM service URL from environment variable
+      const dlmmServiceUrl = process.env.REACT_APP_DLMM_SERVICE_URL || 'http://localhost:3001';
+
       // Prefer aggregated view if both mints available, otherwise single pair
       const endpoint = (mintX && mintY)
-        ? `http://localhost:3001/api/aggregated-liquidity?mint_x=${mintX}&mint_y=${mintY}`
-        : `http://localhost:3001/api/liquidity-distribution/${pairAddress}`;
+        ? `${dlmmServiceUrl}/api/aggregated-liquidity?mint_x=${mintX}&mint_y=${mintY}`
+        : `${dlmmServiceUrl}/api/liquidity-distribution/${pairAddress}`;
 
       if (!mintX && !mintY && !pairAddress) {
         setError('No pair address or token mints provided');
