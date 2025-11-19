@@ -53,6 +53,41 @@ module.exports = function ToObject(value) {
 `
     },
     verify: 'es-object-atoms/isObject'
+  },
+  'webpack-sources': {
+    files: {
+      'helpers/stringBufferUtils.js': `'use strict';
+
+const { Buffer } = require('buffer');
+
+function contentToString(content) {
+\tif (typeof content === 'string') {
+\t\treturn content;
+\t}
+\tif (Buffer.isBuffer(content)) {
+\t\treturn content.toString('utf-8');
+\t}
+\tif (content && typeof content === 'object' && typeof content.toString === 'function') {
+\t\treturn content.toString();
+\t}
+\treturn String(content);
+}
+
+function contentToBuffer(content) {
+\tif (Buffer.isBuffer(content)) {
+\t\treturn content;
+\t}
+\tif (typeof content === 'string') {
+\t\treturn Buffer.from(content, 'utf-8');
+\t}
+\treturn Buffer.from(String(content), 'utf-8');
+}
+
+exports.contentToString = contentToString;
+exports.contentToBuffer = contentToBuffer;
+`
+    },
+    verify: 'webpack-sources/lib/CachedSource'
   }
 };
 
@@ -63,9 +98,14 @@ for (const [packageName, config] of Object.entries(packages)) {
   // Create files if missing
   for (const [fileName, content] of Object.entries(config.files)) {
     const filePath = path.join(packagePath, fileName);
+    const dirPath = path.dirname(filePath);
 
     if (!fs.existsSync(filePath)) {
       console.log(`⚠️  ${packageName}/${fileName} missing, creating it...`);
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
       fs.writeFileSync(filePath, content, 'utf8');
       console.log(`✅ Created ${packageName}/${fileName}`);
     }
