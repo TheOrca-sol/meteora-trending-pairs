@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -41,11 +41,6 @@ const SettingsModal = ({ open, onClose }) => {
     setTabValue(newValue);
   };
 
-  const handleWalletButtonClick = () => {
-    // Close Settings modal entirely to allow wallet modal to work
-    onClose();
-  };
-
   return (
     <Dialog
       open={open}
@@ -53,7 +48,7 @@ const SettingsModal = ({ open, onClose }) => {
       maxWidth="md"
       fullWidth
       sx={{
-        zIndex: 1200
+        zIndex: 1000  // Lower than wallet modal (99999)
       }}
       PaperProps={{
         sx: {
@@ -175,16 +170,14 @@ const SettingsModal = ({ open, onClose }) => {
                   </Box>
 
                   <Box sx={{ mt: 3 }}>
-                    <Box onClick={handleWalletButtonClick}>
-                      <WalletMultiButton
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid rgba(255, 255, 255, 0.23)',
-                          color: '#f44336',
-                          fontFamily: "'Inter', sans-serif"
-                        }}
-                      />
-                    </Box>
+                    <WalletMultiButton
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255, 255, 255, 0.23)',
+                        color: '#f44336',
+                        fontFamily: "'Inter', sans-serif"
+                      }}
+                    />
                   </Box>
                 </Box>
               ) : (
@@ -210,13 +203,11 @@ const SettingsModal = ({ open, onClose }) => {
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                     Connect a Solana wallet to get started
                   </Typography>
-                  <Box onClick={handleWalletButtonClick}>
-                    <WalletMultiButton
-                      style={{
-                        fontFamily: "'Inter', sans-serif"
-                      }}
-                    />
-                  </Box>
+                  <WalletMultiButton
+                    style={{
+                      fontFamily: "'Inter', sans-serif"
+                    }}
+                  />
                 </Box>
               )}
             </Box>
