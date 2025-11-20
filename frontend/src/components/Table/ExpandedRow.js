@@ -29,6 +29,7 @@ import TokenHolders from './TokenHolders';
 import LiquidityDistribution from '../LiquidityDistribution';
 import BubbleMaps from './BubbleMaps';
 import ExternalLinks from './ExternalLinks';
+import TradingViewChart from '../TradingViewChart';
 
 const commonTypographyStyles = {
   sectionTitle: {
@@ -172,13 +173,13 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                 Time Period Analysis
               </Typography>
 
-              <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+              <Grid container spacing={1}>
                 {Object.entries(timeframes).map(([period, data]) => {
                   const { total, buyPercent, sellPercent } = calculateTxnStats(data.txns);
                   return (
                     <Grid item xs={6} key={period}>
                       <Box sx={{
-                        p: { xs: 1.5, sm: 2 },
+                        p: 1,
                         borderRadius: 1,
                         bgcolor: 'action.selected',
                         height: '100%'
@@ -189,29 +190,29 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                             color: 'text.secondary',
                             fontWeight: 600,
                             display: 'block',
-                            mb: { xs: 0.75, sm: 1 },
-                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
+                            mb: 0.5,
+                            fontSize: '0.6rem'
                           }}
                         >
                           {period.toUpperCase()}
                         </Typography>
 
                         {/* Transactions */}
-                        <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        <Box sx={{ mb: 0.75 }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
                             Transactions
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5, fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.3, fontSize: '0.85rem' }}>
                             {total}
                           </Typography>
                           <Box sx={{
                             width: '100%',
-                            height: '6px',
+                            height: '4px',
                             borderRadius: 1,
                             display: 'flex',
                             overflow: 'hidden',
                             bgcolor: 'background.default',
-                            mb: 0.5
+                            mb: 0.3
                           }}>
                             <Box sx={{
                               width: `${buyPercent}%`,
@@ -222,26 +223,26 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                               bgcolor: 'error.main',
                             }} />
                           </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                            <Typography variant="caption" sx={{ color: 'success.main' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="caption" sx={{ color: 'success.main', fontSize: '0.6rem' }}>
                               Buy {buyPercent.toFixed(0)}%
                             </Typography>
-                            <Typography variant="caption" sx={{ color: 'error.main' }}>
+                            <Typography variant="caption" sx={{ color: 'error.main', fontSize: '0.6rem' }}>
                               Sell {sellPercent.toFixed(0)}%
                             </Typography>
                           </Box>
                         </Box>
 
                         {/* Price Change */}
-                        <Box sx={{ mb: { xs: 1, sm: 1.5 } }}>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                        <Box sx={{ mb: 0.75 }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
                             Price Change
                           </Typography>
                           <Typography
-                            variant="h6"
+                            variant="body2"
                             sx={{
                               fontWeight: 600,
-                              fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+                              fontSize: '0.85rem',
                               color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main'
                             }}
                           >
@@ -252,10 +253,10 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
 
                         {/* Volume */}
                         <Box>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
                             Volume
                           </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 600, fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' } }}>
+                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
                             ${formatNumber(data.volume || 0)}
                           </Typography>
                         </Box>
@@ -264,6 +265,35 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                   );
                 })}
               </Grid>
+
+              {/* TradingView Chart */}
+              <Box sx={{ mt: 3 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: 'text.secondary',
+                    mb: 2,
+                    fontWeight: 600,
+                    fontSize: { xs: '0.85rem', sm: '0.9rem' }
+                  }}
+                >
+                  Price Chart
+                </Typography>
+                <Box
+                  sx={{
+                    borderRadius: 2,
+                    overflow: 'hidden',
+                    bgcolor: 'background.default',
+                    border: 1,
+                    borderColor: 'divider'
+                  }}
+                >
+                  <TradingViewChart
+                    pairAddress={pair.address}
+                    pairName={pair.name}
+                  />
+                </Box>
+              </Box>
             </Paper>
           </Grid>
         )}
