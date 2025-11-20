@@ -1106,6 +1106,39 @@ def debug_monitoring_status():
         }), 500
 
 
+@app.route('/api/degen/debug', methods=['GET'])
+def debug_degen_monitoring():
+    """
+    Debug endpoint to check Degen Mode scheduler status
+    """
+    try:
+        jobs = degen_monitoring_service.scheduler.get_jobs()
+        jobs_info = []
+
+        for job in jobs:
+            jobs_info.append({
+                'id': job.id,
+                'next_run': job.next_run_time.isoformat() if job.next_run_time else None,
+                'trigger': str(job.trigger),
+                'func_name': job.func.__name__
+            })
+
+        return jsonify({
+            'status': 'success',
+            'scheduler_running': degen_monitoring_service.scheduler.running,
+            'scheduler_state': degen_monitoring_service.scheduler.state,
+            'total_jobs': len(jobs),
+            'jobs': jobs_info
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting degen debug info: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 @app.route('/api/cache/stats', methods=['GET'])
 def get_cache_stats():
     """
