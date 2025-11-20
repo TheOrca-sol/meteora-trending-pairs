@@ -303,9 +303,13 @@ class MonitoringService:
     def _fetch_opportunities(self, wallet_address: str, config: MonitoringConfig) -> list:
         """Fetch opportunities from backend"""
         try:
+            # Use PORT environment variable (same as Flask app)
+            port = int(os.environ.get('PORT', 5000))
+            base_url = f'http://localhost:{port}'
+
             # Fetch positions
             positions_response = requests.post(
-                'http://localhost:5000/api/wallet/positions',
+                f'{base_url}/api/wallet/positions',
                 json={
                     'walletAddress': wallet_address,
                     'whitelist': config.whitelist,
@@ -322,7 +326,7 @@ class MonitoringService:
 
             # Fetch opportunities
             opportunities_response = requests.post(
-                'http://localhost:5000/api/opportunities/analyze',
+                f'{base_url}/api/opportunities/analyze',
                 json={
                     'walletAddress': wallet_address,
                     'whitelist': config.whitelist,
