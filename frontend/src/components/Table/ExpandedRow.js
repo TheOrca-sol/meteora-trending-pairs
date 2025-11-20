@@ -197,67 +197,72 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                           {period.toUpperCase()}
                         </Typography>
 
-                        {/* Transactions */}
-                        <Box sx={{ mb: 0.75 }}>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
-                            Transactions
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.3, fontSize: '0.85rem' }}>
-                            {total}
-                          </Typography>
+                        {/* Horizontal layout for metrics */}
+                        <Box sx={{ display: 'flex', gap: 1, mb: 0.5 }}>
+                          {/* Transactions */}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block' }}>
+                              Txns
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                              {total}
+                            </Typography>
+                          </Box>
+
+                          {/* Price Change */}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block' }}>
+                              Price
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 600,
+                                fontSize: '0.8rem',
+                                color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main'
+                              }}
+                            >
+                              {(data.priceChange || 0) > 0 ? '+' : ''}
+                              {(data.priceChange || 0)?.toFixed(1)}%
+                            </Typography>
+                          </Box>
+
+                          {/* Volume */}
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem', display: 'block' }}>
+                              Vol
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.75rem' }}>
+                              ${formatNumber(data.volume || 0)}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        {/* Buy/Sell Bar */}
+                        <Box sx={{
+                          width: '100%',
+                          height: '3px',
+                          borderRadius: 1,
+                          display: 'flex',
+                          overflow: 'hidden',
+                          bgcolor: 'background.default',
+                          mb: 0.25
+                        }}>
                           <Box sx={{
-                            width: '100%',
-                            height: '4px',
-                            borderRadius: 1,
-                            display: 'flex',
-                            overflow: 'hidden',
-                            bgcolor: 'background.default',
-                            mb: 0.3
-                          }}>
-                            <Box sx={{
-                              width: `${buyPercent}%`,
-                              bgcolor: 'success.main',
-                            }} />
-                            <Box sx={{
-                              width: `${sellPercent}%`,
-                              bgcolor: 'error.main',
-                            }} />
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography variant="caption" sx={{ color: 'success.main', fontSize: '0.6rem' }}>
-                              Buy {buyPercent.toFixed(0)}%
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'error.main', fontSize: '0.6rem' }}>
-                              Sell {sellPercent.toFixed(0)}%
-                            </Typography>
-                          </Box>
+                            width: `${buyPercent}%`,
+                            bgcolor: 'success.main',
+                          }} />
+                          <Box sx={{
+                            width: `${sellPercent}%`,
+                            bgcolor: 'error.main',
+                          }} />
                         </Box>
-
-                        {/* Price Change */}
-                        <Box sx={{ mb: 0.75 }}>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
-                            Price Change
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography variant="caption" sx={{ color: 'success.main', fontSize: '0.55rem' }}>
+                            Buy {buyPercent.toFixed(0)}%
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            sx={{
-                              fontWeight: 600,
-                              fontSize: '0.85rem',
-                              color: (data.priceChange || 0) >= 0 ? 'success.main' : 'error.main'
-                            }}
-                          >
-                            {(data.priceChange || 0) > 0 ? '+' : ''}
-                            {(data.priceChange || 0)?.toFixed(2)}%
-                          </Typography>
-                        </Box>
-
-                        {/* Volume */}
-                        <Box>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>
-                            Volume
-                          </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                            ${formatNumber(data.volume || 0)}
+                          <Typography variant="caption" sx={{ color: 'error.main', fontSize: '0.55rem' }}>
+                            Sell {sellPercent.toFixed(0)}%
                           </Typography>
                         </Box>
                       </Box>
