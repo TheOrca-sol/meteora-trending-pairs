@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Box, Typography, CircularProgress, Alert, AlertTitle } from '@mui/material';
 import LiquidityChart from './LiquidityChart';
 import LiquidityStats from './LiquidityStats';
 import LiquidityRangeSuggestion from './LiquidityRangeSuggestion';
@@ -54,53 +55,63 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
     fetchLiquidityData();
   }, [pairAddress, mintX, mintY]);
 
+  // Loading State
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <div className="flex items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-gray-700 border-t-blue-500"></div>
-          <div className="text-sm text-gray-400" style={{ fontFamily: "'Inter', sans-serif" }}>
-            Loading liquidity data...
-          </div>
-        </div>
-      </div>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          py: 6,
+          gap: 2
+        }}
+      >
+        <CircularProgress size={40} />
+        <Typography variant="body2" color="text.secondary">
+          Loading liquidity data...
+        </Typography>
+      </Box>
     );
   }
 
+  // Error State
   if (error) {
     return (
-      <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <div className="text-sm font-medium text-red-400 mb-1">Failed to load liquidity data</div>
-            <div className="text-xs text-red-300/70">{error}</div>
-            <div className="mt-2 text-xs text-gray-500 bg-gray-800/50 rounded p-2">
-              Make sure DLMM service is running: <code className="text-gray-400">cd services/dlmm-service && npm start</code>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Alert severity="error" variant="outlined">
+        <AlertTitle>Failed to load liquidity data</AlertTitle>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Make sure DLMM service is running: <code>cd services/dlmm-service && npm start</code>
+        </Typography>
+      </Alert>
     );
   }
 
+  // Empty State
   if (!data || !data.bins || data.bins.length === 0) {
     return (
-      <div className="bg-gray-800/20 border border-gray-700/50 rounded-lg p-6 text-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-10 h-10 bg-gray-700/20 rounded-lg flex items-center justify-center">
-            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-          </div>
-          <div className="text-sm font-medium text-gray-400">No liquidity data available</div>
-          <div className="text-xs text-gray-500">This pair doesn't have any liquidity bins yet</div>
-        </div>
-      </div>
+      <Box
+        sx={{
+          textAlign: 'center',
+          py: 6,
+          px: 3,
+          bgcolor: 'action.hover',
+          borderRadius: 2,
+          border: 1,
+          borderColor: 'divider'
+        }}
+      >
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          No liquidity data available
+        </Typography>
+        <Typography variant="caption" color="text.disabled">
+          This pair doesn't have any liquidity bins yet
+        </Typography>
+      </Box>
     );
   }
 
@@ -108,58 +119,107 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
   const poolCount = data.stats?.poolCount || data.pools?.length || 1;
 
   return (
-    <div className="space-y-4">
-      {/* Compact Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <h2 className="text-lg font-semibold text-white" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* Header Section */}
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+          <Typography variant="h6" component="h2" sx={{ fontWeight: 600 }}>
             {isAggregated ? 'Aggregated Liquidity' : 'Liquidity Distribution'}
-          </h2>
+          </Typography>
+
           {isAggregated && poolCount > 1 && (
-            <span className="px-2 py-0.5 text-xs font-medium bg-blue-500/10 text-blue-400 rounded border border-blue-500/30">
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.5,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                borderRadius: 1,
+                fontSize: '0.75rem',
+                fontWeight: 600
+              }}
+            >
               {poolCount} Pools
-            </span>
+            </Box>
           )}
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-            {isAggregated
-              ? `${data.bins.length} levels across ${poolCount} pool${poolCount > 1 ? 's' : ''}`
-              : `${data.bins.length} bins`
-            }
-          </span>
-        </div>
-      </div>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box
+              sx={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: 'success.main'
+              }}
+            />
+            <Typography variant="caption" color="text.secondary">
+              {isAggregated
+                ? `${data.bins.length} levels across ${poolCount} pool${poolCount > 1 ? 's' : ''}`
+                : `${data.bins.length} bins`
+              }
+            </Typography>
+          </Box>
+        </Box>
+      </Box>
 
       {/* Pool Details Chips - Only for aggregated view */}
       {isAggregated && data.pools && data.pools.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {data.pools.slice(0, 8).map((pool, idx) => (
-            <div key={idx} className="px-2.5 py-1 bg-gray-800/40 rounded text-xs border border-gray-700/50">
-              <span className="text-gray-300 font-medium">{pool.pairName}</span>
-              <span className="text-gray-600 ml-1.5">•</span>
-              <span className="text-gray-500 ml-1.5">Step {pool.binStep}</span>
-            </div>
+            <Box
+              key={idx}
+              sx={{
+                px: 1.5,
+                py: 0.75,
+                bgcolor: 'action.hover',
+                borderRadius: 1,
+                border: 1,
+                borderColor: 'divider',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              <Typography variant="caption" sx={{ fontWeight: 500 }}>
+                {pool.pairName}
+              </Typography>
+              <Typography variant="caption" color="text.disabled">
+                •
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Step {pool.binStep}
+              </Typography>
+            </Box>
           ))}
           {data.pools.length > 8 && (
-            <div className="px-2.5 py-1 bg-gray-800/20 rounded text-xs border border-gray-700/30">
-              <span className="text-gray-500">+{data.pools.length - 8} more</span>
-            </div>
+            <Box
+              sx={{
+                px: 1.5,
+                py: 0.75,
+                bgcolor: 'action.selected',
+                borderRadius: 1,
+                border: 1,
+                borderColor: 'divider'
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                +{data.pools.length - 8} more
+              </Typography>
+            </Box>
           )}
-        </div>
+        </Box>
       )}
 
       {/* Stats Section */}
       <LiquidityStats stats={data.stats} />
 
       {/* Chart Section */}
-      <div className="mt-4">
-        <LiquidityChart
-          bins={data.bins}
-          activeBinId={data.activeBin}
-          currentPrice={data.currentPrice}
-          suggestedRange={data.stats?.suggestedRanges?.strategies[selectedStrategy]}
-        />
-      </div>
+      <LiquidityChart
+        bins={data.bins}
+        activeBinId={data.activeBin}
+        currentPrice={data.currentPrice}
+        suggestedRange={data.stats?.suggestedRanges?.strategies[selectedStrategy]}
+      />
 
       {/* Suggested Ranges Section */}
       {data.stats?.suggestedRanges && (
@@ -170,7 +230,7 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
           setSelectedStrategy={setSelectedStrategy}
         />
       )}
-    </div>
+    </Box>
   );
 };
 

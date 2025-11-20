@@ -1,4 +1,5 @@
 import React from 'react';
+import { Box, Typography, useTheme } from '@mui/material';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -25,24 +26,31 @@ ChartJS.register(
 );
 
 const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => {
+  const theme = useTheme();
+
   if (!bins || bins.length === 0) {
-    return <div className="text-center text-gray-400 py-8">No liquidity data available</div>;
+    return (
+      <Box
+        sx={{
+          textAlign: 'center',
+          py: 6,
+          bgcolor: 'action.hover',
+          borderRadius: 2,
+          border: 1,
+          borderColor: 'divider'
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          No liquidity data available
+        </Typography>
+      </Box>
+    );
   }
 
   // Prepare chart data
-  // Use binId if available (single pool), otherwise use price (aggregated)
   const usePrice = bins[0]?.binId === undefined;
   const labels = bins.map(bin => bin.binId !== undefined ? bin.binId : bin.price.toFixed(4));
   const liquidityData = bins.map(bin => bin.liquidityUsd);
-
-  // Debug logging
-  console.log('LiquidityChart - Current Price:', currentPrice);
-  console.log('LiquidityChart - Use Price Mode:', usePrice);
-  console.log('LiquidityChart - Bins count:', bins.length);
-  console.log('LiquidityChart - Price range:', bins[0]?.price, 'to', bins[bins.length - 1]?.price);
-  if (suggestedRange) {
-    console.log('LiquidityChart - Suggested Range:', suggestedRange.lowerBound, 'to', suggestedRange.upperBound);
-  }
 
   // Helper function to check if a bin is within the suggested range
   const isInSuggestedRange = (bin) => {
@@ -51,16 +59,21 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
     return binPrice >= suggestedRange.lowerBound && binPrice <= suggestedRange.upperBound;
   };
 
+  // Color palette from theme
+  const successColor = theme.palette.success.main;
+  const errorColor = theme.palette.error.main;
+  const primaryColor = theme.palette.primary.main;
+
   const backgroundColor = bins.map(bin => {
     const binValue = usePrice ? bin.price : bin.binId;
     const activeValue = usePrice ? currentPrice : activeBinId;
 
     if (binValue < activeValue) {
-      return 'rgba(16, 185, 129, 0.8)'; // Emerald green for buy walls
+      return successColor; // Buy walls
     } else if (binValue > activeValue) {
-      return 'rgba(239, 68, 68, 0.8)'; // Red for sell walls
+      return errorColor; // Sell walls
     } else {
-      return 'rgba(59, 130, 246, 1)'; // Bright blue for active bin
+      return primaryColor; // Active bin
     }
   });
 
@@ -69,11 +82,11 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
     const activeValue = usePrice ? currentPrice : activeBinId;
 
     if (binValue < activeValue) {
-      return 'rgb(5, 150, 105)';
+      return theme.palette.success.dark;
     } else if (binValue > activeValue) {
-      return 'rgb(220, 38, 38)';
+      return theme.palette.error.dark;
     } else {
-      return 'rgb(37, 99, 235)';
+      return theme.palette.primary.dark;
     }
   });
 
@@ -104,7 +117,7 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
       title: {
         display: true,
         text: 'Liquidity Distribution Across Price Bins',
-        color: '#e5e7eb',
+        color: theme.palette.text.primary,
         font: {
           size: 16,
           weight: '600',
@@ -116,10 +129,10 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(17, 24, 39, 0.95)',
-        titleColor: '#f3f4f6',
-        bodyColor: '#e5e7eb',
-        borderColor: '#374151',
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(17, 24, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: theme.palette.text.primary,
+        bodyColor: theme.palette.text.secondary,
+        borderColor: theme.palette.divider,
         borderWidth: 1,
         cornerRadius: 8,
         padding: 12,
@@ -191,19 +204,19 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
               ? bins.findIndex(b => b.price >= suggestedRange.upperBound)
               : bins.length - 1,
             backgroundColor: suggestedRange.side === 'BUY'
-              ? 'rgba(16, 185, 129, 0.15)' // Emerald with low opacity for buy side
-              : 'rgba(239, 68, 68, 0.15)', // Red with low opacity for sell side
+              ? 'rgba(46, 160, 67, 0.1)'
+              : 'rgba(211, 47, 47, 0.1)',
             borderColor: suggestedRange.side === 'BUY'
-              ? 'rgba(16, 185, 129, 0.5)' // Emerald border for buy side
-              : 'rgba(239, 68, 68, 0.5)', // Red border for sell side
+              ? theme.palette.success.main
+              : theme.palette.error.main,
             borderWidth: 2,
             borderDash: [5, 5],
             label: {
               display: true,
               content: `🎯 Suggested Range (${suggestedRange.name})`,
               position: 'start',
-              backgroundColor: 'rgba(17, 24, 39, 0.9)',
-              color: '#fbbf24',
+              backgroundColor: theme.palette.background.paper,
+              color: theme.palette.warning.main,
               font: {
                 size: 11,
                 weight: 'bold'
@@ -220,21 +233,21 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
         title: {
           display: true,
           text: usePrice ? 'Price Level ($)' : 'Bin ID',
-          color: '#9ca3af',
+          color: theme.palette.text.secondary,
           font: {
             size: 12,
             weight: '600',
           },
         },
         ticks: {
-          color: '#9ca3af',
+          color: theme.palette.text.secondary,
           maxTicksLimit: 25,
           font: {
             size: 11,
           },
         },
         grid: {
-          color: 'rgba(75, 85, 99, 0.15)',
+          color: theme.palette.divider,
           drawBorder: false,
         },
       },
@@ -242,14 +255,14 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
         title: {
           display: true,
           text: 'Liquidity (USD)',
-          color: '#9ca3af',
+          color: theme.palette.text.secondary,
           font: {
             size: 12,
             weight: '600',
           },
         },
         ticks: {
-          color: '#9ca3af',
+          color: theme.palette.text.secondary,
           font: {
             size: 11,
           },
@@ -263,7 +276,7 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
           },
         },
         grid: {
-          color: 'rgba(75, 85, 99, 0.15)',
+          color: theme.palette.divider,
           drawBorder: false,
         },
       },
@@ -271,9 +284,19 @@ const LiquidityChart = ({ bins, activeBinId, currentPrice, suggestedRange }) => 
   };
 
   return (
-    <div className="w-full bg-gray-800/30 rounded-lg p-4 border border-gray-700/50" style={{ height: '500px' }}>
+    <Box
+      sx={{
+        width: '100%',
+        height: 500,
+        bgcolor: 'action.hover',
+        borderRadius: 2,
+        p: 2,
+        border: 1,
+        borderColor: 'divider'
+      }}
+    >
       <Bar data={data} options={options} />
-    </div>
+    </Box>
   );
 };
 
