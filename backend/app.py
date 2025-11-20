@@ -1109,9 +1109,10 @@ def debug_monitoring_status():
 @app.route('/api/degen/debug', methods=['GET'])
 def debug_degen_monitoring():
     """
-    Debug endpoint to check Degen Mode scheduler status
+    Debug endpoint to check Degen Mode scheduler status and database configs
     """
     try:
+        # Get scheduler jobs
         jobs = degen_monitoring_service.scheduler.get_jobs()
         jobs_info = []
 
@@ -1123,12 +1124,40 @@ def debug_degen_monitoring():
                 'func_name': job.func.__name__
             })
 
+        # Get database configs
+        db = get_db()
+        try:
+            configs = db.query(DegenConfig).all()
+            configs_info = []
+
+            for config in configs:
+                configs_info.append({
+                    'wallet_address': f"{config.wallet_address[:8]}...{config.wallet_address[-6:]}",
+                    'degen_wallet': f"{config.degen_wallet_address[:8]}...{config.degen_wallet_address[-6:]}",
+                    'enabled': config.enabled,
+                    'threshold': float(config.min_fee_rate_threshold),
+                    'interval_minutes': config.check_interval_minutes,
+                    'last_check': config.last_check.isoformat() if config.last_check else None,
+                    'next_check': config.next_check.isoformat() if config.next_check else None
+                })
+
+            enabled_count = sum(1 for c in configs if c.enabled)
+        finally:
+            db.close()
+
         return jsonify({
             'status': 'success',
-            'scheduler_running': degen_monitoring_service.scheduler.running,
-            'scheduler_state': degen_monitoring_service.scheduler.state,
-            'total_jobs': len(jobs),
-            'jobs': jobs_info
+            'scheduler': {
+                'running': degen_monitoring_service.scheduler.running,
+                'state': degen_monitoring_service.scheduler.state,
+                'total_jobs': len(jobs),
+                'jobs': jobs_info
+            },
+            'database': {
+                'total_configs': len(configs),
+                'enabled_configs': enabled_count,
+                'configs': configs_info
+            }
         })
 
     except Exception as e:
