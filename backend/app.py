@@ -992,18 +992,20 @@ def generate_telegram_code():
 
         # Check if code already exists (very unlikely)
         db = get_db()
-        while db.query(TelegramAuthCode).filter(TelegramAuthCode.code == code).first():
-            code = ''.join(random.choices(string.digits, k=6))
+        try:
+            while db.query(TelegramAuthCode).filter(TelegramAuthCode.code == code).first():
+                code = ''.join(random.choices(string.digits, k=6))
 
-        # Create auth code entry (expires in 5 minutes)
-        auth_code = TelegramAuthCode(
-            code=code,
-            wallet_address=wallet_address,
-            expires_at=datetime.utcnow() + timedelta(minutes=5)
-        )
-        db.add(auth_code)
-        db.commit()
-        db.close()
+            # Create auth code entry (expires in 5 minutes)
+            auth_code = TelegramAuthCode(
+                code=code,
+                wallet_address=wallet_address,
+                expires_at=datetime.utcnow() + timedelta(minutes=5)
+            )
+            db.add(auth_code)
+            db.commit()
+        finally:
+            db.close()
 
         # Generate bot link
         bot_link = get_bot_link(code)
@@ -1205,50 +1207,51 @@ def generate_degen_wallet():
 
         # Verify user exists and has Telegram linked
         db = get_db()
-        user = db.query(User).filter(User.wallet_address == wallet_address).first()
+        try:
+            user = db.query(User).filter(User.wallet_address == wallet_address).first()
 
-        if not user:
-            db.close()
+            if not user:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'User not found. Please link Telegram first.'
+                }), 404
+
+            # Generate new wallet
+            wallet_data = WalletManager.generate_wallet()
+
+            # Check if degen config already exists
+            existing_config = db.query(DegenConfig).filter(
+                DegenConfig.wallet_address == wallet_address
+            ).first()
+
+            if existing_config:
+                # Update existing config
+                existing_config.wallet_type = 'generated'
+                existing_config.degen_wallet_address = wallet_data['public_key']
+                existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
+                existing_config.updated_at = datetime.utcnow()
+            else:
+                # Create new config
+                config = DegenConfig(
+                    wallet_address=wallet_address,
+                    wallet_type='generated',
+                    degen_wallet_address=wallet_data['public_key'],
+                    encrypted_private_key=wallet_data['encrypted_private_key']
+                )
+                db.add(config)
+
+            db.commit()
+
+            logger.info(f"Generated degen wallet for {wallet_address}")
+
             return jsonify({
-                'status': 'error',
-                'message': 'User not found. Please link Telegram first.'
-            }), 404
-
-        # Generate new wallet
-        wallet_data = WalletManager.generate_wallet()
-
-        # Check if degen config already exists
-        existing_config = db.query(DegenConfig).filter(
-            DegenConfig.wallet_address == wallet_address
-        ).first()
-
-        if existing_config:
-            # Update existing config
-            existing_config.wallet_type = 'generated'
-            existing_config.degen_wallet_address = wallet_data['public_key']
-            existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
-            existing_config.updated_at = datetime.utcnow()
-        else:
-            # Create new config
-            config = DegenConfig(
-                wallet_address=wallet_address,
-                wallet_type='generated',
-                degen_wallet_address=wallet_data['public_key'],
-                encrypted_private_key=wallet_data['encrypted_private_key']
-            )
-            db.add(config)
-
-        db.commit()
-        db.close()
-
-        logger.info(f"Generated degen wallet for {wallet_address}")
-
-        return jsonify({
-            'status': 'success',
-            'message': 'Wallet generated successfully',
-            'publicKey': wallet_data['public_key'],
-            'privateKey': wallet_data['private_key']  # Return only once for user to save
-        })
+                'status': 'success',
+                'message': 'Wallet generated successfully',
+                'publicKey': wallet_data['public_key'],
+                'privateKey': wallet_data['private_key']  # Return only once for user to save
+            })
+        finally:
+            db.close()
 
     except Exception as e:
         logger.error(f"Error generating degen wallet: {str(e)}")
@@ -1282,56 +1285,56 @@ def import_degen_wallet():
 
         # Verify user exists and has Telegram linked
         db = get_db()
-        user = db.query(User).filter(User.wallet_address == wallet_address).first()
-
-        if not user:
-            db.close()
-            return jsonify({
-                'status': 'error',
-                'message': 'User not found. Please link Telegram first.'
-            }), 404
-
-        # Import wallet
         try:
-            wallet_data = WalletManager.import_wallet(private_key)
-        except ValueError as ve:
-            db.close()
+            user = db.query(User).filter(User.wallet_address == wallet_address).first()
+
+            if not user:
+                return jsonify({
+                    'status': 'error',
+                    'message': 'User not found. Please link Telegram first.'
+                }), 404
+
+            # Import wallet
+            try:
+                wallet_data = WalletManager.import_wallet(private_key)
+            except ValueError as ve:
+                return jsonify({
+                    'status': 'error',
+                    'message': f'Invalid private key: {str(ve)}'
+                }), 400
+
+            # Check if degen config already exists
+            existing_config = db.query(DegenConfig).filter(
+                DegenConfig.wallet_address == wallet_address
+            ).first()
+
+            if existing_config:
+                # Update existing config
+                existing_config.wallet_type = 'imported'
+                existing_config.degen_wallet_address = wallet_data['public_key']
+                existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
+                existing_config.updated_at = datetime.utcnow()
+            else:
+                # Create new config
+                config = DegenConfig(
+                    wallet_address=wallet_address,
+                    wallet_type='imported',
+                    degen_wallet_address=wallet_data['public_key'],
+                    encrypted_private_key=wallet_data['encrypted_private_key']
+                )
+                db.add(config)
+
+            db.commit()
+
+            logger.info(f"Imported degen wallet for {wallet_address}")
+
             return jsonify({
-                'status': 'error',
-                'message': f'Invalid private key: {str(ve)}'
-            }), 400
-
-        # Check if degen config already exists
-        existing_config = db.query(DegenConfig).filter(
-            DegenConfig.wallet_address == wallet_address
-        ).first()
-
-        if existing_config:
-            # Update existing config
-            existing_config.wallet_type = 'imported'
-            existing_config.degen_wallet_address = wallet_data['public_key']
-            existing_config.encrypted_private_key = wallet_data['encrypted_private_key']
-            existing_config.updated_at = datetime.utcnow()
-        else:
-            # Create new config
-            config = DegenConfig(
-                wallet_address=wallet_address,
-                wallet_type='imported',
-                degen_wallet_address=wallet_data['public_key'],
-                encrypted_private_key=wallet_data['encrypted_private_key']
-            )
-            db.add(config)
-
-        db.commit()
-        db.close()
-
-        logger.info(f"Imported degen wallet for {wallet_address}")
-
-        return jsonify({
-            'status': 'success',
-            'message': 'Wallet imported successfully',
-            'publicKey': wallet_data['public_key']
-        })
+                'status': 'success',
+                'message': 'Wallet imported successfully',
+                'publicKey': wallet_data['public_key']
+            })
+        finally:
+            db.close()
 
     except Exception as e:
         logger.error(f"Error importing degen wallet: {str(e)}")

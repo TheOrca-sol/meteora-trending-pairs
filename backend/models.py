@@ -20,7 +20,17 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=10, max_overflow=20)
+# Configure connection pool for Supabase Session mode limits
+# Supabase Session mode has strict connection limits, so we use a smaller pool
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,        # Verify connections before using
+    pool_size=5,                # Reduced from 10 to fit Supabase limits
+    max_overflow=5,             # Reduced from 20 to fit Supabase limits
+    pool_recycle=300,           # Recycle connections after 5 minutes to prevent stale connections
+    pool_timeout=30,            # Wait up to 30 seconds for a connection
+    echo_pool=False             # Set to True for connection pool debugging
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
