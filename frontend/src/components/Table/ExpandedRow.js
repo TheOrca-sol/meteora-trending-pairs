@@ -287,21 +287,23 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
               </Paper>
             </Grid>
 
-            {/* BubbleMaps Token Distribution */}
-            <Grid item xs={12}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 1.5, sm: 2, md: 3 },
-                  bgcolor: 'background.paper',
-                  borderRadius: { xs: 1, sm: 1.5, md: 2 },
-                  border: 1,
-                  borderColor: 'divider',
-                }}
-              >
-                <BubbleMaps tokenAddress={pairXToken.address} />
-              </Paper>
-            </Grid>
+            {/* BubbleMaps Token Distribution - Only in localhost/development */}
+            {(window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
+              <Grid item xs={12}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: { xs: 1.5, sm: 2, md: 3 },
+                    bgcolor: 'background.paper',
+                    borderRadius: { xs: 1, sm: 1.5, md: 2 },
+                    border: 1,
+                    borderColor: 'divider',
+                  }}
+                >
+                  <BubbleMaps tokenAddress={pairXToken.address} />
+                </Paper>
+              </Grid>
+            )}
           </>
         )}
       </Grid>
