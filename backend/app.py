@@ -1625,13 +1625,15 @@ def initialize_app():
         logger.error(f"Error initializing application: {e}")
 
 
-if __name__ == '__main__':
-    # Initialize app (only if database features are enabled)
-    if DATABASE_ENABLED:
-        initialize_app()
-    else:
-        logger.info("Skipping database initialization (analytics-only mode)")
+# Initialize app when module is imported (works with Gunicorn)
+# This ensures monitoring services and Telegram bot start correctly
+if DATABASE_ENABLED:
+    initialize_app()
+else:
+    logger.info("Skipping database initialization (analytics-only mode)")
 
+
+if __name__ == '__main__':
     # Warm up the cache on startup to avoid cold start delays
     logger.info("Warming up pool cache on startup...")
     try:
