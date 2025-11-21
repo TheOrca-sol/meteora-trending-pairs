@@ -238,6 +238,8 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
           currentPrice={data.currentPrice}
           selectedStrategy={selectedStrategy}
           setSelectedStrategy={setSelectedStrategy}
+          poolAddress={isAggregated ? (data.pools?.[0]?.address || null) : pairAddress}
+          pools={isAggregated ? data.pools : null}
         />
       )}
     </Box>

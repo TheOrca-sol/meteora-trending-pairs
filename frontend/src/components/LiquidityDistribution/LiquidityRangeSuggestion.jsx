@@ -13,7 +13,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 
-const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy }) => {
+const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
 
   if (!suggestedRanges || !suggestedRanges.strategies) {
@@ -253,7 +253,7 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
             variant="contained"
             size="small"
             endIcon={<OpenInNewIcon />}
-            href="https://app.meteora.ag/pools"
+            href={poolAddress ? `https://app.meteora.ag/dlmm/${poolAddress}` : 'https://app.meteora.ag/pools'}
             target="_blank"
             rel="noopener noreferrer"
             sx={{ textTransform: 'none' }}
