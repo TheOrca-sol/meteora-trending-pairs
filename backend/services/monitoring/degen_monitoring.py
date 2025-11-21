@@ -377,7 +377,7 @@ class DegenMonitoringService:
                 message += f"   TVL: ${pool['tvl']:,.0f}\n"
                 message += f"   30min Fees: ${pool['fees_30min']:,.2f}\n"
                 message += f"   24h Volume: ${pool['volume_24h']:,.0f}\n"
-                message += f"   🔗 <a href='https://app.meteora.ag/pools/{pool['address']}'>Trade on Meteora</a>\n\n"
+                message += f"   🔗 <a href='https://app.meteora.ag/dlmm/{pool['address']}'>View on Meteora</a>\n\n"
 
             message += f"⚡️ Act fast! High fee rates won't last long.\n"
             message += f"💡 Use /degen_threshold to adjust your alert threshold."

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, CircularProgress, Alert, AlertTitle } from '@mui/material';
+import { Box, Typography, CircularProgress, Alert, AlertTitle, Link } from '@mui/material';
 import LiquidityChart from './LiquidityChart';
 import LiquidityStats from './LiquidityStats';
 import LiquidityRangeSuggestion from './LiquidityRangeSuggestion';
@@ -166,8 +166,12 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
       {isAggregated && data.pools && data.pools.length > 0 && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
           {data.pools.slice(0, 8).map((pool, idx) => (
-            <Box
+            <Link
               key={idx}
+              href={`https://app.meteora.ag/dlmm/${pool.address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              underline="none"
               sx={{
                 px: 1.5,
                 py: 0.75,
@@ -177,7 +181,13 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
                 borderColor: 'divider',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1
+                gap: 1,
+                transition: 'all 0.2s',
+                '&:hover': {
+                  bgcolor: 'action.selected',
+                  borderColor: 'primary.main',
+                  transform: 'translateY(-1px)'
+                }
               }}
             >
               <Typography variant="caption" sx={{ fontWeight: 500 }}>
@@ -189,7 +199,7 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
               <Typography variant="caption" color="text.secondary">
                 Step {pool.binStep}
               </Typography>
-            </Box>
+            </Link>
           ))}
           {data.pools.length > 8 && (
             <Box
