@@ -4,6 +4,7 @@ Monitors for new opportunities and sends Telegram notifications
 """
 
 import logging
+import os
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
