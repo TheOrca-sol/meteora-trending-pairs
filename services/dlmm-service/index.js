@@ -1,10 +1,21 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
+const { Server } = require('socket.io');
 const { getLiquidityDistribution, getAggregatedLiquidityByTokenPair } = require('./dlmmController');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CORS_ORIGIN?.split(',') || '*',
+    methods: ['GET', 'POST']
+  }
+});
 
 // Middleware
 app.use(cors({
@@ -83,9 +94,90 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
+// WebSocket subscription manager
+const subscriptions = new Map(); // socketId -> { intervalId, params }
+
+io.on('connection', (socket) => {
+  console.log(`[WebSocket] Client connected: ${socket.id}`);
+
+  // Handle liquidity subscription
+  socket.on('subscribe:liquidity', async ({ pairAddress, mintX, mintY }) => {
+    console.log(`[WebSocket] ${socket.id} subscribing to:`, { pairAddress, mintX, mintY });
+
+    // Clear existing subscription if any
+    if (subscriptions.has(socket.id)) {
+      const { intervalId } = subscriptions.get(socket.id);
+      clearInterval(intervalId);
+    }
+
+    // Fetch and send initial data immediately
+    try {
+      const data = mintX && mintY
+        ? await getAggregatedLiquidityByTokenPair(mintX, mintY)
+        : await getLiquidityDistribution(pairAddress);
+
+      socket.emit('liquidity-update', {
+        data,
+        timestamp: Date.now()
+      });
+      console.log(`[WebSocket] Sent initial data to ${socket.id}`);
+    } catch (error) {
+      console.error(`[WebSocket] Error fetching initial data:`, error.message);
+      socket.emit('liquidity-error', { error: error.message });
+    }
+
+    // Set up polling interval (30 seconds)
+    const intervalId = setInterval(async () => {
+      try {
+        const data = mintX && mintY
+          ? await getAggregatedLiquidityByTokenPair(mintX, mintY)
+          : await getLiquidityDistribution(pairAddress);
+
+        socket.emit('liquidity-update', {
+          data,
+          timestamp: Date.now()
+        });
+        console.log(`[WebSocket] Sent update to ${socket.id}`);
+      } catch (error) {
+        console.error(`[WebSocket] Error in polling interval:`, error.message);
+        socket.emit('liquidity-error', { error: error.message });
+      }
+    }, 30000); // Poll every 30 seconds
+
+    // Store subscription
+    subscriptions.set(socket.id, {
+      intervalId,
+      params: { pairAddress, mintX, mintY }
+    });
+
+    console.log(`[WebSocket] Active subscriptions: ${subscriptions.size}`);
+  });
+
+  // Handle unsubscribe
+  socket.on('unsubscribe:liquidity', () => {
+    if (subscriptions.has(socket.id)) {
+      const { intervalId } = subscriptions.get(socket.id);
+      clearInterval(intervalId);
+      subscriptions.delete(socket.id);
+      console.log(`[WebSocket] ${socket.id} unsubscribed. Active: ${subscriptions.size}`);
+    }
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    if (subscriptions.has(socket.id)) {
+      const { intervalId } = subscriptions.get(socket.id);
+      clearInterval(intervalId);
+      subscriptions.delete(socket.id);
+    }
+    console.log(`[WebSocket] Client disconnected: ${socket.id}. Active: ${subscriptions.size}`);
+  });
+});
+
+// Start server (use 'server' instead of 'app')
+server.listen(PORT, () => {
   console.log(`\n🚀 DLMM Liquidity Service running on port ${PORT}`);
   console.log(`📊 RPC: ${process.env.SOLANA_RPC_URL}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV}\n`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔌 WebSocket enabled for live updates\n`);
 });

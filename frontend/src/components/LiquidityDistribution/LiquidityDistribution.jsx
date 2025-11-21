@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography, CircularProgress, Alert, AlertTitle, Link } from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Typography, CircularProgress, Alert, AlertTitle, Link, Chip } from '@mui/material';
+import { io } from 'socket.io-client';
 import LiquidityChart from './LiquidityChart';
 import LiquidityStats from './LiquidityStats';
 import LiquidityRangeSuggestion from './LiquidityRangeSuggestion';
@@ -9,50 +10,82 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStrategy, setSelectedStrategy] = useState(0);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [isLive, setIsLive] = useState(false);
+  const socketRef = useRef(null);
 
   useEffect(() => {
-    const fetchLiquidityData = async () => {
-      // Get DLMM service URL from environment variable
-      const dlmmServiceUrl = process.env.REACT_APP_DLMM_SERVICE_URL || 'http://localhost:3001';
+    // Validate params
+    if (!mintX && !mintY && !pairAddress) {
+      setError('No pair address or token mints provided');
+      setLoading(false);
+      return;
+    }
 
-      // Prefer aggregated view if both mints available, otherwise single pair
-      const endpoint = (mintX && mintY)
-        ? `${dlmmServiceUrl}/api/aggregated-liquidity?mint_x=${mintX}&mint_y=${mintY}`
-        : `${dlmmServiceUrl}/api/liquidity-distribution/${pairAddress}`;
+    // Get DLMM service URL from environment variable
+    const dlmmServiceUrl = process.env.REACT_APP_DLMM_SERVICE_URL || 'http://localhost:3001';
 
-      if (!mintX && !mintY && !pairAddress) {
-        setError('No pair address or token mints provided');
-        setLoading(false);
-        return;
-      }
+    // Create WebSocket connection
+    console.log('[LiquidityDistribution] Connecting to WebSocket...', dlmmServiceUrl);
+    const socket = io(dlmmServiceUrl, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5
+    });
 
-      try {
-        setLoading(true);
-        setError(null);
+    socketRef.current = socket;
 
-        // Fetch from microservice
-        const response = await fetch(endpoint);
+    // Connection event handlers
+    socket.on('connect', () => {
+      console.log('[LiquidityDistribution] WebSocket connected:', socket.id);
+      setIsLive(true);
+      setError(null);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch liquidity data: ${response.statusText}`);
-        }
+      // Subscribe to liquidity updates
+      socket.emit('subscribe:liquidity', {
+        pairAddress,
+        mintX,
+        mintY
+      });
+    });
 
-        const result = await response.json();
+    socket.on('disconnect', () => {
+      console.log('[LiquidityDistribution] WebSocket disconnected');
+      setIsLive(false);
+    });
 
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to fetch liquidity data');
-        }
+    socket.on('connect_error', (err) => {
+      console.error('[LiquidityDistribution] Connection error:', err.message);
+      setIsLive(false);
+      setError(`WebSocket connection error: ${err.message}`);
+    });
 
-        setData(result.data);
-      } catch (err) {
-        console.error('Error fetching liquidity distribution:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+    // Data update handler
+    socket.on('liquidity-update', ({ data: newData, timestamp }) => {
+      console.log('[LiquidityDistribution] Received update at', new Date(timestamp).toLocaleTimeString());
+      setData(newData);
+      setLastUpdate(timestamp);
+      setLoading(false);
+      setError(null);
+    });
+
+    // Error handler
+    socket.on('liquidity-error', ({ error: errorMsg }) => {
+      console.error('[LiquidityDistribution] Data error:', errorMsg);
+      setError(errorMsg);
+      setLoading(false);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      console.log('[LiquidityDistribution] Cleaning up WebSocket...');
+      if (socketRef.current) {
+        socketRef.current.emit('unsubscribe:liquidity');
+        socketRef.current.disconnect();
+        socketRef.current = null;
       }
     };
-
-    fetchLiquidityData();
   }, [pairAddress, mintX, mintY]);
 
   // Loading State
@@ -127,6 +160,20 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
             {isAggregated ? 'Aggregated Liquidity' : 'Liquidity Distribution'}
           </Typography>
 
+          {/* Live Indicator */}
+          <Chip
+            label={isLive ? 'LIVE' : 'OFFLINE'}
+            size="small"
+            sx={{
+              bgcolor: isLive ? 'success.main' : 'error.main',
+              color: 'white',
+              fontWeight: 600,
+              fontSize: '0.7rem',
+              height: 20,
+              '& .MuiChip-label': { px: 1 }
+            }}
+          />
+
           {isAggregated && poolCount > 1 && (
             <Box
               sx={{
@@ -159,6 +206,13 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
               }
             </Typography>
           </Box>
+
+          {/* Last Update Timestamp */}
+          {lastUpdate && (
+            <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+              Updated {new Date(lastUpdate).toLocaleTimeString()}
+            </Typography>
+          )}
         </Box>
       </Box>
 
