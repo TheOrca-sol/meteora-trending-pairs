@@ -9,6 +9,10 @@ const connection = new Connection(process.env.SOLANA_RPC_URL || 'https://api.mai
 // Backend API URL
 const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:5000';
 
+// Cache for Top LPs results (5 minute cache)
+const topLPsCache = new Map();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Get USD prices for multiple tokens from Jupiter API
  * @param {string[]} mints - Array of token mint addresses
@@ -547,45 +551,45 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
   try {
     console.log(`Fetching top ${limit} LPs for pool: ${pairAddress}`);
 
+    // Check cache first
+    const cacheKey = `${pairAddress}-${limit}`;
+    const cached = topLPsCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      console.log(`✅ Returning cached Top LPs (age: ${Math.round((Date.now() - cached.timestamp) / 1000)}s)`);
+      return cached.data;
+    }
+
     const pairPubkey = new PublicKey(pairAddress);
     const dlmmPool = await DLMM.create(connection, pairPubkey);
 
     // DLMM program ID
     const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
-    // Fetch position accounts using the correct memory offset
-    // After testing, offset 40 works (discriminator 8 bytes + owner 32 bytes)
-    console.log('Fetching position accounts with memory filter (offset 40)...');
-
+    // Try multiple offsets to find position accounts
+    const offsetsToTry = [8, 40, 72, 104];
     let positionAccounts = [];
 
-    try {
-      positionAccounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
-        filters: [
-          {
-            memcmp: {
-              offset: 40, // Hardcoded offset that works
-              bytes: pairPubkey.toBase58()
-            }
-          }
-        ]
-      });
-      console.log(`Found ${positionAccounts.length} position accounts`);
-    } catch (err) {
-      console.error(`Error fetching position accounts: ${err.message}`);
-      return {
-        topLPs: [],
-        totalPositions: 0,
-        totalPoolLiquidity: 0
-      };
+    for (const offset of offsetsToTry) {
+      try {
+        console.log(`Trying offset ${offset}...`);
+        positionAccounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
+          filters: [{ memcmp: { offset, bytes: pairPubkey.toBase58() } }]
+        });
+
+        if (positionAccounts.length > 0) {
+          console.log(`✅ Found ${positionAccounts.length} positions with offset ${offset}`);
+          break;
+        }
+      } catch (err) {
+        console.error(`Error with offset ${offset}: ${err.message}`);
+      }
     }
 
     if (positionAccounts.length === 0) {
-      return {
-        topLPs: [],
-        totalPositions: 0,
-        totalPoolLiquidity: 0
-      };
+      console.log('⚠️ No positions found - pool might have no LPs');
+      const emptyResult = { topLPs: [], totalPositions: 0, totalPoolLiquidity: 0 };
+      topLPsCache.set(cacheKey, { data: emptyResult, timestamp: Date.now() });
+      return emptyResult;
     }
 
     // Get token decimals and prices
@@ -598,60 +602,88 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     const priceXinUSD = prices[mintX] || 0;
     const priceYinUSD = prices[mintY] || 0;
 
-    // Group positions by owner and calculate liquidity
+    // Process positions in batches to avoid rate limiting
     const ownerLiquidity = new Map();
+    const BATCH_SIZE = 5; // Process 5 positions at a time to avoid rate limits
+    console.log(`Processing ${positionAccounts.length} positions in batches of ${BATCH_SIZE}...`);
 
-    for (const positionAccount of positionAccounts) {
-      try {
-        // Get position details using SDK
-        const position = await dlmmPool.getPosition(positionAccount.pubkey);
+    for (let i = 0; i < positionAccounts.length; i += BATCH_SIZE) {
+      const batch = positionAccounts.slice(i, i + BATCH_SIZE);
+      console.log(`  Batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(positionAccounts.length / BATCH_SIZE)}: Processing ${batch.length} positions...`);
 
-        if (!position || !position.positionData) {
-          console.log(`Skipping position ${positionAccount.pubkey.toString()} - no data`);
-          continue;
-        }
+      // Process batch concurrently
+      await Promise.all(batch.map(async (positionAccount) => {
+        try {
+          const position = await dlmmPool.getPosition(positionAccount.pubkey);
 
-        // Owner is stored in the position account data, not the position pubkey
-        // The position pubkey is the NFT, we need to extract the owner from account data
-        const owner = position.positionData.owner ? position.positionData.owner.toString() : positionAccount.pubkey.toString();
+          if (!position || !position.positionData) return;
 
-        // Calculate liquidity for this position
-        let totalX = 0;
-        let totalY = 0;
+          const owner = position.positionData.owner ? position.positionData.owner.toString() : positionAccount.pubkey.toString();
 
-        if (position.positionData.positionBinData) {
-          for (const binData of position.positionData.positionBinData) {
-            const xAmount = parseFloat(binData.positionXAmount.toString()) / Math.pow(10, decimalsX);
-            const yAmount = parseFloat(binData.positionYAmount.toString()) / Math.pow(10, decimalsY);
-            totalX += xAmount;
-            totalY += yAmount;
+          // Calculate liquidity for this position and track bin distribution
+          let totalX = 0, totalY = 0;
+          const binDistribution = [];
+
+          if (position.positionData.positionBinData) {
+            for (const binData of position.positionData.positionBinData) {
+              const xAmount = parseFloat(binData.positionXAmount.toString()) / Math.pow(10, decimalsX);
+              const yAmount = parseFloat(binData.positionYAmount.toString()) / Math.pow(10, decimalsY);
+              totalX += xAmount;
+              totalY += yAmount;
+
+              // Track bin-level data
+              const binLiquidityUsd = (xAmount * priceXinUSD) + (yAmount * priceYinUSD);
+              if (binLiquidityUsd > 0) {
+                binDistribution.push({
+                  binId: binData.binId,
+                  price: parseFloat(binData.price || 0),
+                  liquidityUsd: binLiquidityUsd,
+                  amountX: xAmount,
+                  amountY: yAmount
+                });
+              }
+            }
           }
+
+          const liquidityUsd = (totalX * priceXinUSD) + (totalY * priceYinUSD);
+
+          // Aggregate by owner
+          if (!ownerLiquidity.has(owner)) {
+            ownerLiquidity.set(owner, {
+              owner,
+              liquidityUsd: 0,
+              liquidityX: 0,
+              liquidityY: 0,
+              positionCount: 0,
+              bins: [] // Array to store all bins across positions
+            });
+          }
+          const ownerData = ownerLiquidity.get(owner);
+          ownerData.liquidityUsd += liquidityUsd;
+          ownerData.liquidityX += totalX;
+          ownerData.liquidityY += totalY;
+          ownerData.positionCount += 1;
+
+          // Merge bin data
+          for (const bin of binDistribution) {
+            const existingBin = ownerData.bins.find(b => b.binId === bin.binId);
+            if (existingBin) {
+              existingBin.liquidityUsd += bin.liquidityUsd;
+              existingBin.amountX += bin.amountX;
+              existingBin.amountY += bin.amountY;
+            } else {
+              ownerData.bins.push({ ...bin });
+            }
+          }
+
+        } catch (err) {
+          // Silent fail for individual positions
         }
+      }));
 
-        const liquidityUsd = (totalX * priceXinUSD) + (totalY * priceYinUSD);
-
-        // Aggregate by owner (one user might have multiple positions)
-        if (!ownerLiquidity.has(owner)) {
-          ownerLiquidity.set(owner, {
-            owner,
-            liquidityUsd: 0,
-            liquidityX: 0,
-            liquidityY: 0,
-            positionCount: 0
-          });
-        }
-
-        const ownerData = ownerLiquidity.get(owner);
-        ownerData.liquidityUsd += liquidityUsd;
-        ownerData.liquidityX += totalX;
-        ownerData.liquidityY += totalY;
-        ownerData.positionCount += 1;
-
-      } catch (err) {
-        console.error(`Error processing position ${positionAccount.pubkey.toString()}:`);
-        console.error(`  Error message: ${err.message}`);
-        console.error(`  Error stack: ${err.stack}`);
-        continue;
+      // Add delay between batches (except for last batch)
+      if (i + BATCH_SIZE < positionAccounts.length) {
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds between batches
       }
     }
 
@@ -668,21 +700,28 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     // Calculate total pool liquidity
     const totalPoolLiquidity = positionsArray.reduce((sum, lp) => sum + lp.liquidityUsd, 0);
 
-    // Add rank and percentage
+    // Add rank and percentage, and sort bins by binId
     const rankedLPs = topLPs.map((lp, index) => ({
       ...lp,
       rank: index + 1,
       percentage: totalPoolLiquidity > 0 ? (lp.liquidityUsd / totalPoolLiquidity) * 100 : 0,
-      binCount: lp.positionCount // Number of positions this owner has
+      binCount: lp.positionCount, // Number of positions this owner has
+      bins: lp.bins.sort((a, b) => a.binId - b.binId) // Sort bins by ID for charting
     }));
 
     console.log(`Returning top ${rankedLPs.length} LPs (total: ${ownerLiquidity.size} LPs, pool liquidity: $${totalPoolLiquidity.toFixed(2)})`);
 
-    return {
+    const result = {
       topLPs: rankedLPs,
       totalPositions: ownerLiquidity.size,
       totalPoolLiquidity
     };
+
+    // Cache the result for 5 minutes
+    topLPsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+    console.log(`💾 Cached result for 5 minutes`);
+
+    return result;
 
   } catch (error) {
     console.error('[DLMM Controller Error - Top LPs] Full error:', error);

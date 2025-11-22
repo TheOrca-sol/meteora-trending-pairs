@@ -297,8 +297,7 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
       <TopLPsDialog
         open={topLPsOpen}
         onClose={() => setTopLPsOpen(false)}
-        poolAddress={poolAddress}
-        poolName={pools && pools.length > 0 ? pools[0].pairName : null}
+        pools={pools}
       />
     </Box>
   );
