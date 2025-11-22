@@ -206,23 +206,13 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
 
       {status && status.last_check && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} sm={6}>
+          <Grid item xs={12}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="caption" color="text.secondary" gutterBottom>
                   Last Check
                 </Typography>
                 <Typography variant="body2">{formatDate(status.last_check)}</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Card variant="outlined">
-              <CardContent>
-                <Typography variant="caption" color="text.secondary" gutterBottom>
-                  Next Check
-                </Typography>
-                <Typography variant="body2">{formatDate(status.next_check)}</Typography>
               </CardContent>
             </Card>
           </Grid>
