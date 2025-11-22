@@ -23,7 +23,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import { BarChart, Bar, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const TopLPsDialog = ({ open, onClose, pools }) => {
   const [loading, setLoading] = useState(false);
@@ -167,7 +167,6 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                     <TableCell sx={{ fontWeight: 600 }}>Distribution</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>Liquidity (USD)</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>% of Pool</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 600 }}>Bins</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -215,7 +214,20 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                                 labelFormatter={(binId) => `Bin #${binId}`}
                                 contentStyle={{ fontSize: 11 }}
                               />
-                              <Bar dataKey="liquidityUsd" fill="#8884d8" />
+                              <Bar dataKey="liquidityUsd">
+                                {lp.bins.map((bin, index) => {
+                                  const activeBinId = lpData.activeBinId;
+                                  let fill;
+                                  if (bin.binId === activeBinId) {
+                                    fill = '#ffa726'; // Orange for active bin
+                                  } else if (bin.binId < activeBinId) {
+                                    fill = '#66bb6a'; // Green for buy-side (below current price)
+                                  } else {
+                                    fill = '#ef5350'; // Red for sell-side (above current price)
+                                  }
+                                  return <Cell key={`cell-${index}`} fill={fill} />;
+                                })}
+                              </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                         ) : (
@@ -234,9 +246,6 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                           color={lp.percentage > 10 ? 'warning' : 'default'}
                           sx={{ minWidth: 65 }}
                         />
-                      </TableCell>
-                      <TableCell align="right">
-                        {lp.binCount}
                       </TableCell>
                     </TableRow>
                   ))}

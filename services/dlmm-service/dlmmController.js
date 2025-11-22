@@ -711,10 +711,15 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
 
     console.log(`Returning top ${rankedLPs.length} LPs (total: ${ownerLiquidity.size} LPs, pool liquidity: $${totalPoolLiquidity.toFixed(2)})`);
 
+    // Get active bin ID - check both possible locations
+    const activeBinId = dlmmPool.activeId || dlmmPool.lbPair?.activeId;
+    console.log(`Active bin ID: ${activeBinId}`);
+
     const result = {
       topLPs: rankedLPs,
       totalPositions: ownerLiquidity.size,
-      totalPoolLiquidity
+      totalPoolLiquidity,
+      activeBinId // Include active bin for coloring
     };
 
     // Cache the result for 5 minutes
