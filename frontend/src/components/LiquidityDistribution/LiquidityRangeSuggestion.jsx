@@ -19,6 +19,9 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [topLPsOpen, setTopLPsOpen] = useState(false);
 
+  // Only show Top LPs button on localhost
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
   if (!suggestedRanges || !suggestedRanges.strategies) {
     return null;
   }
@@ -252,16 +255,18 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
           >
             Copy Range
           </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PeopleIcon />}
-            onClick={() => setTopLPsOpen(true)}
-            disabled={!poolAddress}
-            sx={{ textTransform: 'none' }}
-          >
-            Top LPs
-          </Button>
+          {isLocalhost && (
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<PeopleIcon />}
+              onClick={() => setTopLPsOpen(true)}
+              disabled={!poolAddress}
+              sx={{ textTransform: 'none' }}
+            >
+              Top LPs
+            </Button>
+          )}
           <Button
             variant="contained"
             size="small"

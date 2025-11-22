@@ -550,11 +550,31 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     const pairPubkey = new PublicKey(pairAddress);
     const dlmmPool = await DLMM.create(connection, pairPubkey);
 
-    // Get all positions for this pool
-    console.log('Fetching all positions...');
-    const positions = await dlmmPool.getPositions();
+    // DLMM program ID
+    const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
-    console.log(`Found ${positions.length} positions`);
+    // Get all position accounts for this pool using getProgramAccounts
+    console.log('Fetching all position accounts from blockchain...');
+    const positionAccounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
+      filters: [
+        {
+          memcmp: {
+            offset: 8 + 32, // Skip discriminator (8 bytes) + owner (32 bytes) to reach lbPair field
+            bytes: pairPubkey.toBase58()
+          }
+        }
+      ]
+    });
+
+    console.log(`Found ${positionAccounts.length} position accounts`);
+
+    if (positionAccounts.length === 0) {
+      return {
+        topLPs: [],
+        totalPositions: 0,
+        totalPoolLiquidity: 0
+      };
+    }
 
     // Get token decimals and prices
     const mintX = dlmmPool.tokenX.publicKey.toString();
@@ -566,55 +586,82 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     const priceXinUSD = prices[mintX] || 0;
     const priceYinUSD = prices[mintY] || 0;
 
-    // Calculate total liquidity for each position
-    const positionsWithLiquidity = positions.map(position => {
-      // Sum up liquidity across all bins in the position
-      let totalX = 0;
-      let totalY = 0;
+    // Group positions by owner and calculate liquidity
+    const ownerLiquidity = new Map();
 
-      // Position has binArrays with bins
-      if (position.positionData && position.positionData.positionBinData) {
-        for (const binData of position.positionData.positionBinData) {
-          const xAmount = parseFloat(binData.positionXAmount.toString()) / Math.pow(10, decimalsX);
-          const yAmount = parseFloat(binData.positionYAmount.toString()) / Math.pow(10, decimalsY);
+    for (const positionAccount of positionAccounts) {
+      try {
+        // Get position details using SDK
+        const position = await dlmmPool.getPosition(positionAccount.pubkey);
 
-          totalX += xAmount;
-          totalY += yAmount;
+        if (!position || !position.positionData) continue;
+
+        const owner = position.publicKey.toString();
+
+        // Calculate liquidity for this position
+        let totalX = 0;
+        let totalY = 0;
+
+        if (position.positionData.positionBinData) {
+          for (const binData of position.positionData.positionBinData) {
+            const xAmount = parseFloat(binData.positionXAmount.toString()) / Math.pow(10, decimalsX);
+            const yAmount = parseFloat(binData.positionYAmount.toString()) / Math.pow(10, decimalsY);
+            totalX += xAmount;
+            totalY += yAmount;
+          }
         }
+
+        const liquidityUsd = (totalX * priceXinUSD) + (totalY * priceYinUSD);
+
+        // Aggregate by owner (one user might have multiple positions)
+        if (!ownerLiquidity.has(owner)) {
+          ownerLiquidity.set(owner, {
+            owner,
+            liquidityUsd: 0,
+            liquidityX: 0,
+            liquidityY: 0,
+            positionCount: 0
+          });
+        }
+
+        const ownerData = ownerLiquidity.get(owner);
+        ownerData.liquidityUsd += liquidityUsd;
+        ownerData.liquidityX += totalX;
+        ownerData.liquidityY += totalY;
+        ownerData.positionCount += 1;
+
+      } catch (err) {
+        console.error(`Error processing position ${positionAccount.pubkey.toString()}:`, err.message);
+        continue;
       }
+    }
 
-      const liquidityUsd = (totalX * priceXinUSD) + (totalY * priceYinUSD);
+    console.log(`Processed positions for ${ownerLiquidity.size} unique LPs`);
 
-      return {
-        owner: position.publicKey.toString(),
-        liquidityUsd,
-        liquidityX: totalX,
-        liquidityY: totalY,
-        binCount: position.positionData?.positionBinData?.length || 0
-      };
-    });
+    // Convert to array and sort by liquidity
+    const positionsArray = Array.from(ownerLiquidity.values())
+      .filter(lp => lp.liquidityUsd > 0)
+      .sort((a, b) => b.liquidityUsd - a.liquidityUsd);
 
-    // Sort by liquidity (descending) and take top N
-    const topLPs = positionsWithLiquidity
-      .filter(lp => lp.liquidityUsd > 0) // Only include positions with liquidity
-      .sort((a, b) => b.liquidityUsd - a.liquidityUsd)
-      .slice(0, limit);
+    // Take top N
+    const topLPs = positionsArray.slice(0, limit);
 
-    // Calculate total pool liquidity for percentage
-    const totalPoolLiquidity = positionsWithLiquidity.reduce((sum, lp) => sum + lp.liquidityUsd, 0);
+    // Calculate total pool liquidity
+    const totalPoolLiquidity = positionsArray.reduce((sum, lp) => sum + lp.liquidityUsd, 0);
 
-    // Add percentage and rank
+    // Add rank and percentage
     const rankedLPs = topLPs.map((lp, index) => ({
       ...lp,
       rank: index + 1,
-      percentage: totalPoolLiquidity > 0 ? (lp.liquidityUsd / totalPoolLiquidity) * 100 : 0
+      percentage: totalPoolLiquidity > 0 ? (lp.liquidityUsd / totalPoolLiquidity) * 100 : 0,
+      binCount: lp.positionCount // Number of positions this owner has
     }));
 
-    console.log(`Returning top ${rankedLPs.length} LPs (total pool liquidity: $${totalPoolLiquidity.toFixed(2)})`);
+    console.log(`Returning top ${rankedLPs.length} LPs (total: ${ownerLiquidity.size} LPs, pool liquidity: $${totalPoolLiquidity.toFixed(2)})`);
 
     return {
       topLPs: rankedLPs,
-      totalPositions: positions.length,
+      totalPositions: ownerLiquidity.size,
       totalPoolLiquidity
     };
 
