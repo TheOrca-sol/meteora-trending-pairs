@@ -553,42 +553,32 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     // DLMM program ID
     const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
-    // Try different memory offsets to find where lbPair is stored
-    // Position account structure: discriminator (8) + owner (32) + lbPair (32) + ...
-    // Let's try offset 40 (8+32) which should be right after owner
-    console.log('Fetching position accounts with memory filter...');
+    // Fetch position accounts using the correct memory offset
+    // After testing, offset 40 works (discriminator 8 bytes + owner 32 bytes)
+    console.log('Fetching position accounts with memory filter (offset 40)...');
 
     let positionAccounts = [];
-    const offsetsToTry = [40, 8, 72, 104]; // Try different common offsets
 
-    for (const offset of offsetsToTry) {
-      try {
-        console.log(`Trying offset ${offset}...`);
-        const accounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
-          filters: [
-            {
-              memcmp: {
-                offset: offset,
-                bytes: pairPubkey.toBase58()
-              }
+    try {
+      positionAccounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
+        filters: [
+          {
+            memcmp: {
+              offset: 40, // Hardcoded offset that works
+              bytes: pairPubkey.toBase58()
             }
-          ]
-        });
-
-        if (accounts.length > 0) {
-          console.log(`✅ Found ${accounts.length} positions with offset ${offset}`);
-          positionAccounts = accounts;
-          break;
-        } else {
-          console.log(`❌ Offset ${offset} returned 0 positions`);
-        }
-      } catch (err) {
-        console.log(`❌ Offset ${offset} failed: ${err.message}`);
-        continue;
-      }
+          }
+        ]
+      });
+      console.log(`Found ${positionAccounts.length} position accounts`);
+    } catch (err) {
+      console.error(`Error fetching position accounts: ${err.message}`);
+      return {
+        topLPs: [],
+        totalPositions: 0,
+        totalPoolLiquidity: 0
+      };
     }
-
-    console.log(`Final result: ${positionAccounts.length} position accounts`);
 
     if (positionAccounts.length === 0) {
       return {
