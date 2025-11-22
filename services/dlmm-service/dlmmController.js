@@ -553,20 +553,42 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     // DLMM program ID
     const DLMM_PROGRAM_ID = new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo');
 
-    // Get all position accounts for this pool using getProgramAccounts
-    console.log('Fetching all position accounts from blockchain...');
-    const positionAccounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
-      filters: [
-        {
-          memcmp: {
-            offset: 8 + 32, // Skip discriminator (8 bytes) + owner (32 bytes) to reach lbPair field
-            bytes: pairPubkey.toBase58()
-          }
-        }
-      ]
-    });
+    // Try different memory offsets to find where lbPair is stored
+    // Position account structure: discriminator (8) + owner (32) + lbPair (32) + ...
+    // Let's try offset 40 (8+32) which should be right after owner
+    console.log('Fetching position accounts with memory filter...');
 
-    console.log(`Found ${positionAccounts.length} position accounts`);
+    let positionAccounts = [];
+    const offsetsToTry = [40, 8, 72, 104]; // Try different common offsets
+
+    for (const offset of offsetsToTry) {
+      try {
+        console.log(`Trying offset ${offset}...`);
+        const accounts = await connection.getProgramAccounts(DLMM_PROGRAM_ID, {
+          filters: [
+            {
+              memcmp: {
+                offset: offset,
+                bytes: pairPubkey.toBase58()
+              }
+            }
+          ]
+        });
+
+        if (accounts.length > 0) {
+          console.log(`✅ Found ${accounts.length} positions with offset ${offset}`);
+          positionAccounts = accounts;
+          break;
+        } else {
+          console.log(`❌ Offset ${offset} returned 0 positions`);
+        }
+      } catch (err) {
+        console.log(`❌ Offset ${offset} failed: ${err.message}`);
+        continue;
+      }
+    }
+
+    console.log(`Final result: ${positionAccounts.length} position accounts`);
 
     if (positionAccounts.length === 0) {
       return {
@@ -594,9 +616,14 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
         // Get position details using SDK
         const position = await dlmmPool.getPosition(positionAccount.pubkey);
 
-        if (!position || !position.positionData) continue;
+        if (!position || !position.positionData) {
+          console.log(`Skipping position ${positionAccount.pubkey.toString()} - no data`);
+          continue;
+        }
 
-        const owner = position.publicKey.toString();
+        // Owner is stored in the position account data, not the position pubkey
+        // The position pubkey is the NFT, we need to extract the owner from account data
+        const owner = position.positionData.owner ? position.positionData.owner.toString() : positionAccount.pubkey.toString();
 
         // Calculate liquidity for this position
         let totalX = 0;
@@ -631,7 +658,9 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
         ownerData.positionCount += 1;
 
       } catch (err) {
-        console.error(`Error processing position ${positionAccount.pubkey.toString()}:`, err.message);
+        console.error(`Error processing position ${positionAccount.pubkey.toString()}:`);
+        console.error(`  Error message: ${err.message}`);
+        console.error(`  Error stack: ${err.stack}`);
         continue;
       }
     }
@@ -666,7 +695,10 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
     };
 
   } catch (error) {
-    console.error('[DLMM Controller Error - Top LPs]', error);
+    console.error('[DLMM Controller Error - Top LPs] Full error:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     throw new Error(`Failed to fetch top liquidity providers: ${error.message}`);
   }
 }
