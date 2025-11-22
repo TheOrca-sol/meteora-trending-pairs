@@ -52,9 +52,11 @@ async function getTokenPricesInUSD(mints) {
  * @param {number} totalBuyLiquidity - Total liquidity on buy side (below price)
  * @param {number} totalSellLiquidity - Total liquidity on sell side (above price)
  * @param {number} buySellRatio - Buy/Sell liquidity ratio
+ * @param {Array} bins - Array of bin objects with liquidityUsd and price
+ * @param {number} activeBinId - The active bin ID for determining buy/sell sides
  * @returns {Object} Suggested ranges for different strategies
  */
-function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio) {
+function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio, bins = [], activeBinId = null) {
   // Determine which side has MORE liquidity (for display) and which side NEEDS liquidity (for recommendations)
   const needsBuySupport = totalSellLiquidity > totalBuyLiquidity;
   const sideWithMore = needsBuySupport ? 'SELL' : 'BUY'; // Which side currently has MORE liquidity
@@ -150,6 +152,165 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
     rangePercentage: simpleRangeWidth.toFixed(1)
   };
 
+  // Strategy 5: Peak Liquidity Zone (Place liquidity where it's most concentrated overall)
+  let peakLiquidity = {
+    name: 'Peak Liquidity',
+    description: 'Hot zone - Place in the most concentrated liquidity area',
+    side: 'BOTH',
+    lowerBound: currentPrice * 0.95,
+    upperBound: currentPrice * 1.05,
+    expectedRatio: buySellRatio,
+    suggestedLiquidityUsd: (totalBuyLiquidity + totalSellLiquidity) * 0.05,
+    rangePercentage: '10.0'
+  };
+
+  // Strategy 6: Follow the Herd (Follow the dominant side's concentration)
+  let followTheHerd = {
+    name: 'Follow the Herd',
+    description: 'Mirror majority - Add to the side with more liquidity',
+    side: sideWithMore,
+    lowerBound: currentPrice * 0.95,
+    upperBound: currentPrice * 1.05,
+    expectedRatio: buySellRatio,
+    suggestedLiquidityUsd: (totalBuyLiquidity + totalSellLiquidity) * 0.05,
+    rangePercentage: '10.0'
+  };
+
+  // Find the concentration zones if we have bins data
+  if (bins && bins.length > 0) {
+    // Filter out bins with negligible liquidity
+    const significantBins = bins.filter(b => b.liquidityUsd > 100);
+
+    if (significantBins.length > 0) {
+      // Sort bins by binId to maintain order
+      const sortedBins = [...significantBins].sort((a, b) => a.binId - b.binId);
+
+      // Use a sliding window to find the most concentrated cluster (for Peak Liquidity)
+      const windowSize = Math.min(10, Math.floor(sortedBins.length * 0.3));
+      let maxLiquidity = 0;
+      let bestCluster = null;
+
+      for (let i = 0; i <= sortedBins.length - windowSize; i++) {
+        const window = sortedBins.slice(i, i + windowSize);
+        const windowLiquidity = window.reduce((sum, b) => sum + b.liquidityUsd, 0);
+
+        if (windowLiquidity > maxLiquidity) {
+          maxLiquidity = windowLiquidity;
+          bestCluster = window;
+        }
+      }
+
+      if (bestCluster && bestCluster.length > 0) {
+        // Peak Liquidity strategy - use overall best cluster
+        const clusterPrices = bestCluster.map(b => b.price);
+        const concentrationLower = Math.min(...clusterPrices);
+        const concentrationUpper = Math.max(...clusterPrices);
+        const suggestedAmount = Math.max(deficit * 0.05, maxLiquidity * 0.05);
+
+        const avgClusterPrice = clusterPrices.reduce((sum, p) => sum + p, 0) / clusterPrices.length;
+        let concentrationSide = 'BOTH';
+        if (avgClusterPrice < currentPrice * 0.98) {
+          concentrationSide = 'BUY';
+        } else if (avgClusterPrice > currentPrice * 1.02) {
+          concentrationSide = 'SELL';
+        }
+
+        const rangeWidth = ((concentrationUpper - concentrationLower) / currentPrice) * 100;
+
+        peakLiquidity = {
+          name: 'Peak Liquidity',
+          description: 'Hot zone - Place in the most concentrated liquidity area',
+          side: concentrationSide,
+          lowerBound: concentrationLower,
+          upperBound: concentrationUpper,
+          expectedRatio: buySellRatio,
+          suggestedLiquidityUsd: suggestedAmount,
+          rangePercentage: rangeWidth.toFixed(1)
+        };
+      }
+
+      // Follow the Herd strategy - find concentration on the DOMINANT side only
+      console.log(`[Follow the Herd] Side with MORE liquidity: ${sideWithMore}`);
+      console.log(`[Follow the Herd] Active bin ID: ${activeBinId}`);
+      console.log(`[Follow the Herd] Total bins with liquidity: ${sortedBins.length}`);
+
+      const dominantSideBins = sortedBins.filter(b => {
+        if (!activeBinId) {
+          // Fallback to price-based filtering if activeBinId is not provided
+          if (sideWithMore === 'BUY') {
+            return b.price < currentPrice;
+          } else {
+            return b.price > currentPrice;
+          }
+        }
+        // Use binId for accurate side determination
+        if (sideWithMore === 'BUY') {
+          return b.binId < activeBinId; // BUY side is below active bin
+        } else {
+          return b.binId > activeBinId; // SELL side is above active bin
+        }
+      });
+
+      console.log(`[Follow the Herd] Bins on ${sideWithMore} side: ${dominantSideBins.length}`);
+
+      if (dominantSideBins.length > 0) {
+        // Find best cluster on the dominant side
+        const herdWindowSize = Math.min(10, Math.floor(dominantSideBins.length * 0.4));
+        let herdMaxLiquidity = 0;
+        let herdBestCluster = null;
+
+        for (let i = 0; i <= dominantSideBins.length - herdWindowSize; i++) {
+          const window = dominantSideBins.slice(i, i + herdWindowSize);
+          const windowLiquidity = window.reduce((sum, b) => sum + b.liquidityUsd, 0);
+
+          if (windowLiquidity > herdMaxLiquidity) {
+            herdMaxLiquidity = windowLiquidity;
+            herdBestCluster = window;
+          }
+        }
+
+        if (herdBestCluster && herdBestCluster.length > 0) {
+          const herdPrices = herdBestCluster.map(b => b.price);
+          const herdBinIds = herdBestCluster.map(b => b.binId);
+          const clusterLower = Math.min(...herdPrices);
+          const clusterUpper = Math.max(...herdPrices);
+
+          // Extend range from cluster to current price
+          let herdLower, herdUpper;
+          if (sideWithMore === 'BUY') {
+            // BUY side: cluster is below current price, so range from cluster to current price
+            herdLower = clusterLower;
+            herdUpper = currentPrice;
+          } else {
+            // SELL side: cluster is above current price, so range from current price to cluster
+            herdLower = currentPrice;
+            herdUpper = clusterUpper;
+          }
+
+          const herdSuggestedAmount = Math.max(deficit * 0.05, herdMaxLiquidity * 0.05);
+          const herdRangeWidth = ((herdUpper - herdLower) / currentPrice) * 100;
+
+          console.log(`[Follow the Herd] Best cluster: ${herdBestCluster.length} bins`);
+          console.log(`[Follow the Herd] Cluster bin IDs: ${Math.min(...herdBinIds)} to ${Math.max(...herdBinIds)}`);
+          console.log(`[Follow the Herd] Cluster range: $${clusterLower.toFixed(6)} to $${clusterUpper.toFixed(6)}`);
+          console.log(`[Follow the Herd] Extended to current price: $${herdLower.toFixed(6)} to $${herdUpper.toFixed(6)}`);
+          console.log(`[Follow the Herd] Cluster liquidity: $${herdMaxLiquidity.toFixed(2)}`);
+
+          followTheHerd = {
+            name: 'Follow the Herd',
+            description: 'Mirror majority - Add to the side with more liquidity',
+            side: sideWithMore,
+            lowerBound: herdLower,
+            upperBound: herdUpper,
+            expectedRatio: buySellRatio,
+            suggestedLiquidityUsd: herdSuggestedAmount,
+            rangePercentage: herdRangeWidth.toFixed(1)
+          };
+        }
+      }
+    }
+  }
+
   return {
     currentImbalance: {
       sideWithMore: sideWithMore, // Which side has MORE liquidity (for display)
@@ -158,6 +319,8 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
       deficit: deficit
     },
     strategies: [
+      followTheHerd,
+      peakLiquidity,
       fullCorrection,
       deficitTargeting,
       proportionalScaling,
@@ -263,7 +426,9 @@ async function getLiquidityDistribution(pairAddress) {
       currentPriceValue,
       totalBuyLiquidity,
       totalSellLiquidity,
-      buySellRatio
+      buySellRatio,
+      bins, // Pass bins data for concentration strategies
+      activeBin // Pass active bin ID for accurate side filtering
     );
 
     const stats = {
@@ -501,11 +666,14 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
     console.log(`Buy/Sell ratio: ${buySellRatio.toFixed(2)}x`);
 
     // Calculate suggested liquidity ranges based on imbalance
+    // Note: For aggregated data, we don't have a single activeBinId, so we'll use price-based filtering
     const suggestedRanges = calculateLiquidityRanges(
       marketPrice,
       totalBuyLiquidity,
       totalSellLiquidity,
-      buySellRatio
+      buySellRatio,
+      aggregatedBins, // Pass aggregated bins for concentration strategies
+      null // No single activeBinId for aggregated data
     );
 
     const stats = {

@@ -61,6 +61,8 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
 
   const getStrategyDescription = (idx) => {
     const descriptions = [
+      "Join the majority by adding liquidity where the dominant side is concentrated.",
+      "Place liquidity in the hottest zone regardless of buy/sell side.",
       "Wide range keeps you in position longer through pumps and dumps.",
       "Adds 50% of needed liquidity in a moderate 5% range.",
       "Adjusts width based on imbalance severity, capped at 10%.",
