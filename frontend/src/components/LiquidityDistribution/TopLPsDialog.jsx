@@ -19,22 +19,17 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
-  Collapse,
-  Paper
+  InputLabel
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, Tooltip, ResponsiveContainer } from 'recharts';
 
 const TopLPsDialog = ({ open, onClose, pools }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lpData, setLpData] = useState(null);
   const [selectedPool, setSelectedPool] = useState('');
-  const [expandedLP, setExpandedLP] = useState(null); // Track which LP's bins are shown
 
   // Set first pool as default when dialog opens
   useEffect(() => {
@@ -167,9 +162,9 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }} width="40"></TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Rank</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>Address</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>Distribution</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>Liquidity (USD)</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>% of Pool</TableCell>
                     <TableCell align="right" sx={{ fontWeight: 600 }}>Bins</TableCell>
@@ -177,22 +172,15 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                 </TableHead>
                 <TableBody>
                   {lpData.topLPs.map((lp) => (
-                    <React.Fragment key={lp.owner}>
-                      <TableRow
-                        onClick={() => setExpandedLP(expandedLP === lp.owner ? null : lp.owner)}
-                        sx={{
-                          cursor: 'pointer',
-                          '&:hover': { bgcolor: 'action.hover' },
-                          ...(lp.rank <= 3 && {
-                            bgcolor: lp.rank === 1 ? 'warning.lighter' : 'action.selected'
-                          })
-                        }}
-                      >
-                        <TableCell>
-                          <IconButton size="small">
-                            {expandedLP === lp.owner ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                          </IconButton>
-                        </TableCell>
+                    <TableRow
+                      key={lp.owner}
+                      sx={{
+                        '&:hover': { bgcolor: 'action.hover' },
+                        ...(lp.rank <= 3 && {
+                          bgcolor: lp.rank === 1 ? 'warning.lighter' : 'action.selected'
+                        })
+                      }}
+                    >
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                           {lp.rank === 1 && '🥇'}
@@ -218,6 +206,24 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                           <OpenInNewIcon sx={{ fontSize: 14 }} />
                         </Link>
                       </TableCell>
+                      <TableCell sx={{ width: 180, p: 1 }}>
+                        {lp.bins && lp.bins.length > 0 ? (
+                          <ResponsiveContainer width="100%" height={40}>
+                            <BarChart data={lp.bins} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                              <Tooltip
+                                formatter={(value) => [`$${value.toFixed(2)}`, 'Liquidity']}
+                                labelFormatter={(binId) => `Bin #${binId}`}
+                                contentStyle={{ fontSize: 11 }}
+                              />
+                              <Bar dataKey="liquidityUsd" fill="#8884d8" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">
+                            No data
+                          </Typography>
+                        )}
+                      </TableCell>
                       <TableCell align="right" sx={{ fontWeight: 500 }}>
                         {formatNumber(lp.liquidityUsd)}
                       </TableCell>
@@ -233,46 +239,6 @@ const TopLPsDialog = ({ open, onClose, pools }) => {
                         {lp.binCount}
                       </TableCell>
                     </TableRow>
-
-                    {/* Expandable Bin Distribution Chart */}
-                    <TableRow>
-                      <TableCell colSpan={6} sx={{ p: 0, borderBottom: expandedLP === lp.owner ? undefined : 'none' }}>
-                        <Collapse in={expandedLP === lp.owner} timeout="auto" unmountOnExit>
-                          <Box sx={{ p: 3, bgcolor: 'background.default' }}>
-                            <Typography variant="subtitle2" gutterBottom>
-                              Liquidity Distribution Across Bins
-                            </Typography>
-                            {lp.bins && lp.bins.length > 0 ? (
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={lp.bins}>
-                                  <XAxis
-                                    dataKey="binId"
-                                    label={{ value: 'Bin ID', position: 'insideBottom', offset: -5 }}
-                                    tick={{ fontSize: 11 }}
-                                  />
-                                  <YAxis
-                                    label={{ value: 'Liquidity (USD)', angle: -90, position: 'insideLeft' }}
-                                    tick={{ fontSize: 11 }}
-                                    tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(1)+'K' : value.toFixed(0)}`}
-                                  />
-                                  <Tooltip
-                                    formatter={(value) => [`$${value.toFixed(2)}`, 'Liquidity']}
-                                    labelFormatter={(binId) => `Bin #${binId}`}
-                                    contentStyle={{ fontSize: 12 }}
-                                  />
-                                  <Bar dataKey="liquidityUsd" fill="#8884d8" />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            ) : (
-                              <Typography variant="body2" color="text.secondary">
-                                No bin data available
-                              </Typography>
-                            )}
-                          </Box>
-                        </Collapse>
-                      </TableCell>
-                    </TableRow>
-                  </React.Fragment>
                   ))}
                 </TableBody>
               </Table>
