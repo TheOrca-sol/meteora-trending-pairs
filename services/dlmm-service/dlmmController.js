@@ -537,7 +537,95 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
   }
 }
 
+/**
+ * Get top liquidity providers for a DLMM pool
+ * @param {string} pairAddress - The DLMM pair address
+ * @param {number} limit - Number of top LPs to return (default: 20)
+ * @returns {Promise<Array>} Array of top liquidity providers
+ */
+async function getTopLiquidityProviders(pairAddress, limit = 20) {
+  try {
+    console.log(`Fetching top ${limit} LPs for pool: ${pairAddress}`);
+
+    const pairPubkey = new PublicKey(pairAddress);
+    const dlmmPool = await DLMM.create(connection, pairPubkey);
+
+    // Get all positions for this pool
+    console.log('Fetching all positions...');
+    const positions = await dlmmPool.getPositions();
+
+    console.log(`Found ${positions.length} positions`);
+
+    // Get token decimals and prices
+    const mintX = dlmmPool.tokenX.publicKey.toString();
+    const mintY = dlmmPool.tokenY.publicKey.toString();
+    const decimalsX = dlmmPool.tokenX.mint.decimals;
+    const decimalsY = dlmmPool.tokenY.mint.decimals;
+
+    const prices = await getTokenPricesInUSD([mintX, mintY]);
+    const priceXinUSD = prices[mintX] || 0;
+    const priceYinUSD = prices[mintY] || 0;
+
+    // Calculate total liquidity for each position
+    const positionsWithLiquidity = positions.map(position => {
+      // Sum up liquidity across all bins in the position
+      let totalX = 0;
+      let totalY = 0;
+
+      // Position has binArrays with bins
+      if (position.positionData && position.positionData.positionBinData) {
+        for (const binData of position.positionData.positionBinData) {
+          const xAmount = parseFloat(binData.positionXAmount.toString()) / Math.pow(10, decimalsX);
+          const yAmount = parseFloat(binData.positionYAmount.toString()) / Math.pow(10, decimalsY);
+
+          totalX += xAmount;
+          totalY += yAmount;
+        }
+      }
+
+      const liquidityUsd = (totalX * priceXinUSD) + (totalY * priceYinUSD);
+
+      return {
+        owner: position.publicKey.toString(),
+        liquidityUsd,
+        liquidityX: totalX,
+        liquidityY: totalY,
+        binCount: position.positionData?.positionBinData?.length || 0
+      };
+    });
+
+    // Sort by liquidity (descending) and take top N
+    const topLPs = positionsWithLiquidity
+      .filter(lp => lp.liquidityUsd > 0) // Only include positions with liquidity
+      .sort((a, b) => b.liquidityUsd - a.liquidityUsd)
+      .slice(0, limit);
+
+    // Calculate total pool liquidity for percentage
+    const totalPoolLiquidity = positionsWithLiquidity.reduce((sum, lp) => sum + lp.liquidityUsd, 0);
+
+    // Add percentage and rank
+    const rankedLPs = topLPs.map((lp, index) => ({
+      ...lp,
+      rank: index + 1,
+      percentage: totalPoolLiquidity > 0 ? (lp.liquidityUsd / totalPoolLiquidity) * 100 : 0
+    }));
+
+    console.log(`Returning top ${rankedLPs.length} LPs (total pool liquidity: $${totalPoolLiquidity.toFixed(2)})`);
+
+    return {
+      topLPs: rankedLPs,
+      totalPositions: positions.length,
+      totalPoolLiquidity
+    };
+
+  } catch (error) {
+    console.error('[DLMM Controller Error - Top LPs]', error);
+    throw new Error(`Failed to fetch top liquidity providers: ${error.message}`);
+  }
+}
+
 module.exports = {
   getLiquidityDistribution,
-  getAggregatedLiquidityByTokenPair
+  getAggregatedLiquidityByTokenPair,
+  getTopLiquidityProviders
 };

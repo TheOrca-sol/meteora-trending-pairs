@@ -12,9 +12,12 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import PeopleIcon from '@mui/icons-material/People';
+import TopLPsDialog from './TopLPsDialog';
 
 const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [topLPsOpen, setTopLPsOpen] = useState(false);
 
   if (!suggestedRanges || !suggestedRanges.strategies) {
     return null;
@@ -239,7 +242,7 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
             {getStrategyDescription(selectedStrategy)}
           </Typography>
         </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexShrink: 0, flexWrap: 'wrap' }}>
           <Button
             variant="outlined"
             size="small"
@@ -248,6 +251,16 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
             sx={{ textTransform: 'none' }}
           >
             Copy Range
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PeopleIcon />}
+            onClick={() => setTopLPsOpen(true)}
+            disabled={!poolAddress}
+            sx={{ textTransform: 'none' }}
+          >
+            Top LPs
           </Button>
           <Button
             variant="contained"
@@ -274,6 +287,14 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
           Range copied to clipboard!
         </Alert>
       </Snackbar>
+
+      {/* Top LPs Dialog */}
+      <TopLPsDialog
+        open={topLPsOpen}
+        onClose={() => setTopLPsOpen(false)}
+        poolAddress={poolAddress}
+        poolName={pools && pools.length > 0 ? pools[0].pairName : null}
+      />
     </Box>
   );
 };

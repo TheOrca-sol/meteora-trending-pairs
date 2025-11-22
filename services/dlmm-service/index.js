@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const { Server } = require('socket.io');
-const { getLiquidityDistribution, getAggregatedLiquidityByTokenPair } = require('./dlmmController');
+const { getLiquidityDistribution, getAggregatedLiquidityByTokenPair, getTopLiquidityProviders } = require('./dlmmController');
 
 const app = express();
 const server = http.createServer(app);
@@ -74,6 +74,32 @@ app.get('/api/aggregated-liquidity', async (req, res) => {
     res.json({
       success: true,
       data: aggregatedData
+    });
+  } catch (error) {
+    console.error('[ERROR]', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+// Top liquidity providers endpoint - Get top LPs for a specific pool
+app.get('/api/top-lps/:pairAddress', async (req, res) => {
+  try {
+    const { pairAddress } = req.params;
+    const limit = parseInt(req.query.limit) || 20;
+
+    console.log(`[${new Date().toISOString()}] Fetching top ${limit} LPs for: ${pairAddress}`);
+
+    const lpData = await getTopLiquidityProviders(pairAddress, limit);
+
+    console.log(`[${new Date().toISOString()}] Successfully fetched ${lpData.topLPs.length} LPs from ${lpData.totalPositions} total positions`);
+
+    res.json({
+      success: true,
+      data: lpData
     });
   } catch (error) {
     console.error('[ERROR]', error);
