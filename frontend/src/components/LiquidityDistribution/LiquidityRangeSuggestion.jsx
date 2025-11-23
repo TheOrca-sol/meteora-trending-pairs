@@ -13,14 +13,23 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PeopleIcon from '@mui/icons-material/People';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import TopLPsDialog from './TopLPsDialog';
+import { useNavigate } from 'react-router-dom';
 
 const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [topLPsOpen, setTopLPsOpen] = useState(false);
+  const navigate = useNavigate();
 
-  // Only show Top LPs button on localhost
+  // Only show localhost-only features on localhost
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+  const handleViewDetails = () => {
+    if (poolAddress) {
+      navigate(`/pool/${poolAddress}`);
+    }
+  };
 
   if (!suggestedRanges || !suggestedRanges.strategies) {
     return null;
@@ -258,16 +267,28 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
             Copy Range
           </Button>
           {isLocalhost && (
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<PeopleIcon />}
-              onClick={() => setTopLPsOpen(true)}
-              disabled={!poolAddress}
-              sx={{ textTransform: 'none' }}
-            >
-              Top LPs
-            </Button>
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PeopleIcon />}
+                onClick={() => setTopLPsOpen(true)}
+                disabled={!poolAddress}
+                sx={{ textTransform: 'none' }}
+              >
+                Top LPs
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<VisibilityIcon />}
+                onClick={handleViewDetails}
+                disabled={!poolAddress}
+                sx={{ textTransform: 'none' }}
+              >
+                Pool Details
+              </Button>
+            </>
           )}
           <Button
             variant="contained"
