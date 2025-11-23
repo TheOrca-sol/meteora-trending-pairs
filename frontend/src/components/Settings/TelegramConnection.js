@@ -89,13 +89,15 @@ const TelegramConnection = ({ onConnectionChange, walletAddress }) => {
 
       const data = await response.json();
 
-      if (data.code && data.bot_link) {
+      if (data.status === 'success' && data.code && data.botLink) {
         setAuthCode(data.code);
-        setAuthBotLink(data.bot_link);
-        setAuthExpires(new Date(data.expires_at));
+        setAuthBotLink(data.botLink);
+        // Calculate expiry time from expiresIn seconds
+        const expiresAt = new Date(Date.now() + (data.expiresIn * 1000));
+        setAuthExpires(expiresAt);
         setAuthDialogOpen(true);
       } else {
-        setError('Failed to generate authentication code');
+        setError(data.message || 'Failed to generate authentication code');
       }
     } catch (err) {
       console.error('Error generating Telegram auth code:', err);
