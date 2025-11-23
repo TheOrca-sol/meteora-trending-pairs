@@ -389,7 +389,10 @@ async function getLiquidityDistribution(pairAddress) {
       }
 
       // Parse price (already calculated by SDK)
-      const price = parseFloat(bin.price);
+      // bin.price is the raw ratio that needs decimal adjustment
+      // Adjust for decimal difference: price = rawPrice * 10^(decimalsX - decimalsY)
+      const rawPrice = parseFloat(bin.price);
+      const price = rawPrice * Math.pow(10, decimalsX - decimalsY);
 
       // Calculate USD value properly for any token pair
       // liquidityUsd = (xAmount * priceX in USD) + (yAmount * priceY in USD)
@@ -802,9 +805,13 @@ async function getTopLiquidityProviders(pairAddress, limit = 20) {
               // Track bin-level data
               const binLiquidityUsd = (xAmount * priceXinUSD) + (yAmount * priceYinUSD);
               if (binLiquidityUsd > 0) {
+                // Adjust bin price for decimal difference
+                const rawPrice = parseFloat(binData.price || 0);
+                const adjustedPrice = rawPrice * Math.pow(10, decimalsX - decimalsY);
+
                 binDistribution.push({
                   binId: binData.binId,
-                  price: parseFloat(binData.price || 0),
+                  price: adjustedPrice,
                   liquidityUsd: binLiquidityUsd,
                   amountX: xAmount,
                   amountY: yAmount
