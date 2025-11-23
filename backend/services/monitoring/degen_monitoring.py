@@ -308,7 +308,9 @@ class DegenMonitoringService:
                             'tvl': tvl,
                             'fees_30min': fees_30min,
                             'volume_24h': volume_24h,
-                            'fee_rate': round(fee_rate, 2)
+                            'fee_rate': round(fee_rate, 2),
+                            'bin_step': pool.get('bin_step', 0),
+                            'base_fee': safe_float(pool.get('base_fee_percentage', 0))
                         })
 
             # Sort by fee rate (highest first)
@@ -374,6 +376,7 @@ class DegenMonitoringService:
             for i, pool in enumerate(pools[:5], 1):  # Top 5
                 message += f"<b>{i}. {pool['name']}</b>\n"
                 message += f"   Fee Rate: <b>{pool['fee_rate']}%</b>\n"
+                message += f"   Bin Step: {pool['bin_step']} | Base Fee: {pool['base_fee']}%\n"
                 message += f"   TVL: ${pool['tvl']:,.0f}\n"
                 message += f"   30min Fees: ${pool['fees_30min']:,.2f}\n"
                 message += f"   24h Volume: ${pool['volume_24h']:,.0f}\n"
