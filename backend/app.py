@@ -1583,6 +1583,73 @@ def update_degen_config():
         }), 500
 
 
+@app.route('/api/wallet/balance', methods=['GET'])
+def get_wallet_balance():
+    """
+    Get SOL and USDC balance for a wallet address
+    """
+    try:
+        wallet_address = request.args.get('walletAddress')
+
+        if not wallet_address:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address is required'
+            }), 400
+
+        from solana.rpc.api import Client
+        from solders.pubkey import Pubkey
+
+        # Initialize Solana RPC client
+        rpc_url = os.getenv('SOLANA_RPC_URL', 'https://api.mainnet-beta.solana.com')
+        client = Client(rpc_url)
+
+        # Get SOL balance
+        pubkey = Pubkey.from_string(wallet_address)
+        sol_balance_lamports = client.get_balance(pubkey).value
+        sol_balance = sol_balance_lamports / 1e9  # Convert lamports to SOL
+
+        # Get USDC balance
+        # USDC mint address on Solana mainnet
+        usdc_mint = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+        # Get token accounts for this wallet
+        from solana.rpc.commitment import Confirmed
+        from solana.rpc.types import TokenAccountOpts
+
+        response = client.get_token_accounts_by_owner(
+            pubkey,
+            TokenAccountOpts(mint=Pubkey.from_string(usdc_mint)),
+            commitment=Confirmed
+        )
+
+        usdc_balance = 0
+        if response.value:
+            for account in response.value:
+                # Parse token account data
+                import base64
+                data = base64.b64decode(account.account.data)
+                # Token amount is at offset 64, 8 bytes (little-endian)
+                if len(data) >= 72:
+                    amount = int.from_bytes(data[64:72], byteorder='little')
+                    usdc_balance += amount / 1e6  # USDC has 6 decimals
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'sol': sol_balance,
+                'usdc': usdc_balance
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching wallet balance: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 def start_telegram_bot():
     """Start Telegram bot in background thread"""
     try:

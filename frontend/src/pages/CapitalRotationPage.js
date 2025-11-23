@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Container, Box, Typography, Paper, Grid, Divider } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Box, Typography, Paper, Grid, Divider, Chip, CircularProgress } from '@mui/material';
+import { AccountBalanceWallet } from '@mui/icons-material';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '../contexts/WalletContext';
 import WalletManager from '../components/CapitalRotation/WalletManager';
@@ -16,6 +17,10 @@ function CapitalRotationPage() {
   // Determine active wallet address
   const activeAddress = walletMode === 'monitor' ? monitorAddress : publicKey?.toBase58();
   const hasActiveWallet = Boolean(activeAddress);
+
+  // Wallet balance state
+  const [walletBalance, setWalletBalance] = useState({ sol: 0, usdc: 0 });
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   // State for whitelist and preferences
   const [whitelist, setWhitelist] = useState(() => {
@@ -35,6 +40,36 @@ function CapitalRotationPage() {
     const saved = localStorage.getItem('minFees30min');
     return saved ? Number(saved) : 100;
   });
+
+  // Fetch wallet balance
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (!activeAddress) return;
+
+      try {
+        setBalanceLoading(true);
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/wallet/balance?walletAddress=${activeAddress}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.status === 'success') {
+            setWalletBalance(data.data);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching wallet balance:', err);
+      } finally {
+        setBalanceLoading(false);
+      }
+    };
+
+    fetchWalletBalance();
+    // Refresh balance every 30 seconds
+    const interval = setInterval(fetchWalletBalance, 30000);
+    return () => clearInterval(interval);
+  }, [activeAddress]);
 
   return (
     <Container
@@ -73,6 +108,35 @@ function CapitalRotationPage() {
         >
           Capital Rotation
         </Typography>
+
+        {/* Wallet Balance Display */}
+        {hasActiveWallet && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            {balanceLoading ? (
+              <Chip
+                icon={<CircularProgress size={16} />}
+                label="Loading..."
+                variant="outlined"
+              />
+            ) : (
+              <>
+                <Chip
+                  icon={<AccountBalanceWallet />}
+                  label={`${walletBalance.sol.toFixed(4)} SOL`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+                <Chip
+                  label={`${walletBalance.usdc.toFixed(2)} USDC`}
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              </>
+            )}
+          </Box>
+        )}
       </Box>
 
       {/* Wallet Manager Section */}

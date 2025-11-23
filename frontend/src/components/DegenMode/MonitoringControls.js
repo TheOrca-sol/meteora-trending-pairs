@@ -29,12 +29,18 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [loadingStatus, setLoadingStatus] = useState(true);
+  const [walletBalance, setWalletBalance] = useState({ sol: 0, usdc: 0 });
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 10000); // Refresh every 10 seconds
+    fetchWalletBalance();
+    const interval = setInterval(() => {
+      fetchStatus();
+      fetchWalletBalance();
+    }, 10000); // Refresh every 10 seconds
     return () => clearInterval(interval);
-  }, [walletAddress]);
+  }, [walletAddress, degenWallet]);
 
   const fetchStatus = async () => {
     try {
@@ -55,6 +61,28 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
       console.error('Error fetching status:', err);
     } finally {
       setLoadingStatus(false);
+    }
+  };
+
+  const fetchWalletBalance = async () => {
+    if (!degenWallet) return;
+
+    try {
+      setBalanceLoading(true);
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/wallet/balance?walletAddress=${degenWallet}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success') {
+          setWalletBalance(data.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching wallet balance:', err);
+    } finally {
+      setBalanceLoading(false);
     }
   };
 
@@ -193,12 +221,23 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
           <Card variant="outlined">
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
-                <AccessTime fontSize="small" color="primary" />
+                <AccountBalanceWallet fontSize="small" color="success" />
                 <Typography variant="caption" color="text.secondary">
-                  Check Interval
+                  Wallet Balance
                 </Typography>
               </Box>
-              <Typography variant="body2">Every 1 minute</Typography>
+              {balanceLoading ? (
+                <CircularProgress size={20} />
+              ) : (
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {walletBalance.sol.toFixed(4)} SOL
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {walletBalance.usdc.toFixed(2)} USDC
+                  </Typography>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>
