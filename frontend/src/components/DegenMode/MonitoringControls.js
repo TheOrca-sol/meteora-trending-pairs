@@ -12,6 +12,8 @@ import {
   Grid,
   Card,
   CardContent,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   PlayArrow,
@@ -20,6 +22,7 @@ import {
   AccessTime,
   AccountBalanceWallet,
   Notifications,
+  ContentCopy,
 } from '@mui/icons-material';
 
 const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
@@ -31,6 +34,7 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
   const [loadingStatus, setLoadingStatus] = useState(true);
   const [walletBalance, setWalletBalance] = useState({ sol: 0, usdc: 0 });
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchStatus();
@@ -178,6 +182,14 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
     return new Date(dateString).toLocaleString();
   };
 
+  const handleCopyAddress = () => {
+    if (degenWallet) {
+      navigator.clipboard.writeText(degenWallet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if (loadingStatus) {
     return (
       <Paper elevation={3} sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
@@ -205,11 +217,24 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
         <Grid item xs={12} sm={6}>
           <Card variant="outlined">
             <CardContent>
-              <Box display="flex" alignItems="center" gap={1} mb={1}>
-                <AccountBalanceWallet fontSize="small" color="primary" />
-                <Typography variant="caption" color="text.secondary">
-                  Degen Wallet
-                </Typography>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <AccountBalanceWallet fontSize="small" color="primary" />
+                  <Typography variant="caption" color="text.secondary">
+                    Degen Wallet
+                  </Typography>
+                </Box>
+                {degenWallet && (
+                  <Tooltip title={copied ? "Copied!" : "Copy address"}>
+                    <IconButton
+                      size="small"
+                      onClick={handleCopyAddress}
+                      sx={{ ml: 'auto' }}
+                    >
+                      <ContentCopy fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </Box>
               <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                 {degenWallet ? `${degenWallet.slice(0, 8)}...${degenWallet.slice(-6)}` : 'Not set'}
