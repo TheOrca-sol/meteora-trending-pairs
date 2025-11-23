@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
 import sys
 import os
+import requests
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -25,6 +26,42 @@ def safe_float(value, default=0.0):
         return float(value) if value is not None else default
     except (ValueError, TypeError):
         return default
+
+
+def get_token_prices(mints):
+    """
+    Fetch token prices from Jupiter API
+
+    Args:
+        mints: List of token mint addresses
+
+    Returns:
+        dict: Map of mint address to USD price
+    """
+    try:
+        if not mints:
+            return {}
+
+        ids_param = ','.join(mints)
+        response = requests.get(
+            f'https://lite-api.jup.ag/price/v3?ids={ids_param}',
+            timeout=5
+        )
+
+        if response.status_code != 200:
+            logger.error(f"Failed to fetch prices from Jupiter: {response.status_code}")
+            return {}
+
+        data = response.json()
+        prices = {}
+        for mint, price_data in data.items():
+            if price_data and 'usdPrice' in price_data:
+                prices[mint] = price_data['usdPrice']
+
+        return prices
+    except Exception as e:
+        logger.error(f"Error fetching token prices: {e}")
+        return {}
 
 
 class DegenMonitoringService:
@@ -305,6 +342,9 @@ class DegenMonitoringService:
                         high_fee_pools.append({
                             'address': pool['address'],
                             'name': pool['name'],
+                            'mint_x': pool.get('mint_x'),
+                            'mint_y': pool.get('mint_y'),
+                            'current_price': safe_float(pool.get('current_price', 0)),
                             'tvl': tvl,
                             'fees_30min': fees_30min,
                             'volume_24h': volume_24h,
@@ -369,14 +409,41 @@ class DegenMonitoringService:
             if not pools:
                 return
 
+            # Collect all unique token mints from top 5 pools
+            top_pools = pools[:5]
+            all_mints = set()
+            for pool in top_pools:
+                if pool.get('mint_x'):
+                    all_mints.add(pool['mint_x'])
+                if pool.get('mint_y'):
+                    all_mints.add(pool['mint_y'])
+
+            # Fetch token prices from Jupiter
+            token_prices = get_token_prices(list(all_mints)) if all_mints else {}
+
             # Build message
             message = f"🚨 <b>DEGEN ALERT</b> 🚨\n\n"
             message += f"Found {len(pools)} pool(s) with fee rate ≥ {threshold}%:\n\n"
 
-            for i, pool in enumerate(pools[:5], 1):  # Top 5
+            for i, pool in enumerate(top_pools, 1):
                 message += f"<b>{i}. {pool['name']}</b>\n"
                 message += f"   Fee Rate: <b>{pool['fee_rate']}%</b>\n"
                 message += f"   Bin Step: {pool['bin_step']} | Base Fee: {pool['base_fee']}%\n"
+
+                # Add token prices if available
+                mint_x = pool.get('mint_x')
+                mint_y = pool.get('mint_y')
+                price_x = token_prices.get(mint_x)
+                price_y = token_prices.get(mint_y)
+
+                if price_x is not None or price_y is not None:
+                    price_parts = []
+                    if price_x is not None:
+                        price_parts.append(f"X: ${price_x:.8f}" if price_x < 0.01 else f"X: ${price_x:.4f}")
+                    if price_y is not None:
+                        price_parts.append(f"Y: ${price_y:.8f}" if price_y < 0.01 else f"Y: ${price_y:.4f}")
+                    message += f"   Token Prices: {' | '.join(price_parts)}\n"
+
                 message += f"   TVL: ${pool['tvl']:,.0f}\n"
                 message += f"   30min Fees: ${pool['fees_30min']:,.2f}\n"
                 message += f"   24h Volume: ${pool['volume_24h']:,.0f}\n"
