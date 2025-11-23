@@ -91,13 +91,14 @@ const PoolDetailsPage = () => {
 
   // Calculate transaction stats
   const calculateTxnStats = (txns) => {
-    if (!txns || txns.length === 0) {
+    if (!txns) {
       return { total: 0, buyPercent: 0, sellPercent: 0 };
     }
 
-    const buys = txns.filter(t => t.type === 'buy').length;
-    const sells = txns.filter(t => t.type === 'sell').length;
-    const total = txns.length;
+    // Handle DexScreener format: { buys: number, sells: number }
+    const buys = txns.buys || 0;
+    const sells = txns.sells || 0;
+    const total = buys + sells;
 
     return {
       total,
