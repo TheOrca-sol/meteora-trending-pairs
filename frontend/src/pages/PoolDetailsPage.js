@@ -27,12 +27,52 @@ const PoolDetailsPage = () => {
         setLoading(true);
         setError(null);
 
-        // Fetch pool data from the API
+        // Fetch pool data from our backend API
         const response = await axios.get(`${API_URL}/pool/${address}`);
 
         if (response.data.status === 'success') {
-          setPoolData(response.data.data.pool);
-          setTimeframes(response.data.data.timeframes);
+          const pool = response.data.data.pool;
+          setPoolData(pool);
+
+          // Fetch DexScreener data for Time Period Analysis
+          try {
+            const dexResponse = await axios.get(
+              `https://api.dexscreener.com/latest/dex/pairs/solana/${address}`,
+              { timeout: 5000 }
+            );
+
+            if (dexResponse.data?.pairs?.[0]) {
+              const dexData = dexResponse.data.pairs[0];
+
+              // Build timeframes object from DexScreener data
+              const timeframesData = {
+                '5m': {
+                  txns: dexData?.txns?.m5 || { buys: 0, sells: 0 },
+                  volume: dexData?.volume?.m5 || 0,
+                  priceChange: dexData?.priceChange?.m5 || 0
+                },
+                '1h': {
+                  txns: dexData?.txns?.h1 || { buys: 0, sells: 0 },
+                  volume: dexData?.volume?.h1 || 0,
+                  priceChange: dexData?.priceChange?.h1 || 0
+                },
+                '6h': {
+                  txns: dexData?.txns?.h6 || { buys: 0, sells: 0 },
+                  volume: dexData?.volume?.h6 || 0,
+                  priceChange: dexData?.priceChange?.h6 || 0
+                },
+                '24h': {
+                  txns: dexData?.txns?.h24 || { buys: 0, sells: 0 },
+                  volume: dexData?.volume?.h24 || 0,
+                  priceChange: dexData?.priceChange?.h24 || 0
+                }
+              };
+              setTimeframes(timeframesData);
+            }
+          } catch (dexErr) {
+            console.warn('Failed to fetch DexScreener data:', dexErr);
+            // Continue without timeframes - Time Period Analysis won't show
+          }
         } else {
           setError('Failed to load pool data');
         }
