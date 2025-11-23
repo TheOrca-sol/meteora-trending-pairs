@@ -256,11 +256,11 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
                 {balanceLoading ? (
                   <CircularProgress size={20} />
                 ) : (
-                  <Box>
+                  <Box display="flex" alignItems="baseline" gap={1.5}>
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {walletBalance.sol.toFixed(4)} SOL
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="body2" sx={{ fontWeight: 600 }} color="text.secondary">
                       {walletBalance.usdc.toFixed(2)} USDC
                     </Typography>
                   </Box>
