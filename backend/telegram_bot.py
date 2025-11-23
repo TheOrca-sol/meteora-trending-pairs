@@ -6,7 +6,7 @@ Handles user authentication and commands
 import os
 import logging
 from datetime import datetime
-from telegram import Update, Bot
+from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.error import TelegramError
 from dotenv import load_dotenv
@@ -481,14 +481,15 @@ class TelegramBotHandler:
         """Stop the bot polling"""
         self.running = False
 
-    async def send_notification(self, chat_id: int, message: str):
-        """Send a notification message to a user"""
+    async def send_notification(self, chat_id: int, message: str, reply_markup=None):
+        """Send a notification message to a user with optional inline keyboard"""
         try:
             await self.bot.send_message(
                 chat_id=chat_id,
                 text=message,
                 parse_mode='HTML',
-                disable_web_page_preview=True
+                disable_web_page_preview=True,
+                reply_markup=reply_markup
             )
             logger.info(f"Sent notification to chat {chat_id}")
             return True

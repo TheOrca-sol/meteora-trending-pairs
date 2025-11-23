@@ -16,6 +16,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from models import get_db, User, DegenConfig
 from telegram_bot import telegram_bot_handler
 from pool_cache import get_cached_pools
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 logger = logging.getLogger(__name__)
 
@@ -452,9 +453,24 @@ class DegenMonitoringService:
             message += f"⚡️ Act fast! High fee rates won't last long.\n"
             message += f"💡 Use /degen_threshold to adjust your alert threshold."
 
+            # Create inline keyboard with buttons for each pool
+            keyboard = []
+            frontend_url = os.getenv('FRONTEND_URL', 'https://imded.fun')
+
+            for i, pool in enumerate(top_pools, 1):
+                pool_url = f"{frontend_url}/pool/{pool['address']}"
+                keyboard.append([
+                    InlineKeyboardButton(
+                        text=f"📊 View {pool['name'][:20]}{'...' if len(pool['name']) > 20 else ''}",
+                        url=pool_url
+                    )
+                ])
+
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
             # Send via Telegram bot
             import asyncio
-            asyncio.run(telegram_bot_handler.send_notification(chat_id, message))
+            asyncio.run(telegram_bot_handler.send_notification(chat_id, message, reply_markup=reply_markup))
 
             logger.info(f"✅ Sent degen notification to chat {chat_id}")
 

@@ -276,6 +276,42 @@ def get_pairs():
             'message': str(e)
         }), 500
 
+@app.route('/api/pool/<pool_address>', methods=['GET'])
+def get_pool_details(pool_address):
+    """
+    Get detailed information for a single pool by address
+    """
+    try:
+        logger.info(f"Fetching pool details for: {pool_address}")
+
+        # Fetch all pools from cache
+        pools = get_pools_from_cache()
+
+        # Find the specific pool
+        pool = next((p for p in pools if p.get('address') == pool_address), None)
+
+        if not pool:
+            return jsonify({
+                'status': 'error',
+                'message': 'Pool not found'
+            }), 404
+
+        # For now, return basic pool data
+        # Timeframes would need to be fetched from transaction history API
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'pool': pool,
+                'timeframes': None  # Can be enhanced later with transaction data
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching pool details: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({'status': 'healthy'})
