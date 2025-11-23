@@ -221,23 +221,12 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
           <Card variant="outlined">
             <CardContent>
               <Box display="flex" alignItems="center" gap={1} mb={1}>
-                <AccountBalanceWallet fontSize="small" color="success" />
+                <AccessTime fontSize="small" color="primary" />
                 <Typography variant="caption" color="text.secondary">
-                  Wallet Balance
+                  Check Interval
                 </Typography>
               </Box>
-              {balanceLoading ? (
-                <CircularProgress size={20} />
-              ) : (
-                <Box>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {walletBalance.sol.toFixed(4)} SOL
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {walletBalance.usdc.toFixed(2)} USDC
-                  </Typography>
-                </Box>
-              )}
+              <Typography variant="body2">Every 1 minute</Typography>
             </CardContent>
           </Card>
         </Grid>
@@ -245,13 +234,37 @@ const MonitoringControls = ({ walletAddress, degenWallet, onError }) => {
 
       {status && status.last_check && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12}>
+          <Grid item xs={12} sm={6}>
             <Card variant="outlined">
               <CardContent>
                 <Typography variant="caption" color="text.secondary" gutterBottom>
                   Last Check
                 </Typography>
                 <Typography variant="body2">{formatDate(status.last_check)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Card variant="outlined">
+              <CardContent>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <AccountBalanceWallet fontSize="small" color="success" />
+                  <Typography variant="caption" color="text.secondary">
+                    Wallet Balance
+                  </Typography>
+                </Box>
+                {balanceLoading ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {walletBalance.sol.toFixed(4)} SOL
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {walletBalance.usdc.toFixed(2)} USDC
+                    </Typography>
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>
