@@ -20,15 +20,16 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
-# Configure connection pool for Supabase Session mode limits
-# Supabase Session mode has strict connection limits, so we use a smaller pool
+# Configure connection pool for Supabase Transaction mode
+# Transaction mode supports more concurrent connections than Session mode
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,        # Verify connections before using
-    pool_size=5,                # Reduced from 10 to fit Supabase limits
-    max_overflow=5,             # Reduced from 20 to fit Supabase limits
+    pool_size=3,                # Keep pool small - Transaction mode handles short-lived connections better
+    max_overflow=7,             # Allow burst to 10 total connections
     pool_recycle=300,           # Recycle connections after 5 minutes to prevent stale connections
     pool_timeout=30,            # Wait up to 30 seconds for a connection
+    pool_reset_on_return='rollback',  # Important for Transaction mode - reset state on return
     echo_pool=False             # Set to True for connection pool debugging
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
