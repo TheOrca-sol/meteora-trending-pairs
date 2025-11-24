@@ -93,16 +93,32 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
         </Box>
 
         {/* Strategy Selection Tabs */}
-        <ButtonGroup variant="outlined" size="small">
+        <ButtonGroup
+          variant="outlined"
+          size="small"
+          sx={{
+            width: { xs: '100%', lg: 'auto' },
+            flexWrap: { xs: 'wrap', lg: 'nowrap' },
+            '& .MuiButtonGroup-grouped': {
+              flex: { xs: '1 1 auto', lg: '0 1 auto' },
+              minWidth: { xs: 0, lg: 100 }
+            }
+          }}
+        >
           {strategies.map((strat, idx) => (
             <Button
               key={idx}
-              onClick={() => setSelectedStrategy(idx)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedStrategy(idx);
+              }}
               variant={selectedStrategy === idx ? 'contained' : 'outlined'}
               sx={{
                 textTransform: 'none',
                 fontWeight: selectedStrategy === idx ? 600 : 400,
-                minWidth: { xs: 'auto', sm: 100 }
+                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                px: { xs: 1, sm: 2 },
+                py: { xs: 0.5, sm: 1 }
               }}
             >
               {strat.name}
