@@ -4,6 +4,7 @@ import { Box, Tabs, Tab, useMediaQuery, useTheme, IconButton, Tooltip, Chip, Cir
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SettingsModal from '../Settings/SettingsModal';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '../../contexts/WalletContext';
@@ -19,6 +20,10 @@ function Navigation() {
   const { publicKey } = useSolanaWallet();
   const { walletMode, monitorAddress } = useWallet();
   const activeAddress = walletMode === 'monitor' ? monitorAddress : publicKey?.toBase58();
+
+  // Check if dev wallet
+  const DEV_WALLET = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV';
+  const isDevWallet = publicKey?.toBase58() === DEV_WALLET;
 
   // Wallet balance state
   const [walletBalance, setWalletBalance] = useState({ sol: 0, usdc: 0 });
@@ -95,6 +100,16 @@ function Navigation() {
             icon={<AccountBalanceWalletIcon fontSize={isMobile ? "small" : "medium"} />}
             iconPosition="start"
           />
+          {isDevWallet && (
+            <Tab
+              label="Backoffice"
+              value="/backoffice"
+              component={Link}
+              to="/backoffice"
+              icon={<AdminPanelSettingsIcon fontSize={isMobile ? "small" : "medium"} />}
+              iconPosition="start"
+            />
+          )}
         </Tabs>
 
         {/* Wallet Balance & Settings Button */}
