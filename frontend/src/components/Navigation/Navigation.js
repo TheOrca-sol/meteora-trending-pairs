@@ -73,41 +73,61 @@ function Navigation() {
         <Tabs
           value={currentPath}
           centered={!isMobile}
-          variant={isMobile ? "fullWidth" : "standard"}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          allowScrollButtonsMobile
           sx={{
             '& .MuiTab-root': {
-              minWidth: { xs: 'auto', sm: 150, md: 200 },
-              fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' },
+              minWidth: { xs: 80, sm: 150, md: 200 },
+              fontSize: { xs: '0.75rem', sm: '0.95rem', md: '1rem' },
               fontWeight: 500,
-              px: { xs: 1, sm: 2, md: 3 },
+              px: { xs: 0.5, sm: 2, md: 3 },
               py: { xs: 1.5, sm: 2 }
             }
           }}
         >
           <Tab
-            label="Analytics"
+            label={isMobile ? "Analytics" : "Analytics"}
             value="/"
             component={Link}
             to="/"
-            icon={<ShowChartIcon fontSize={isMobile ? "small" : "medium"} />}
-            iconPosition="start"
+            icon={<ShowChartIcon fontSize="small" />}
+            iconPosition={isMobile ? "top" : "start"}
+            sx={{
+              '& .MuiTab-iconWrapper': {
+                mb: { xs: 0.5, sm: 0 },
+                mr: { xs: 0, sm: 1 }
+              }
+            }}
           />
           <Tab
-            label="Capital Rotation"
+            label={isMobile ? "Capital" : "Capital Rotation"}
             value="/capital-rotation"
             component={Link}
             to="/capital-rotation"
-            icon={<AccountBalanceWalletIcon fontSize={isMobile ? "small" : "medium"} />}
-            iconPosition="start"
+            icon={<AccountBalanceWalletIcon fontSize="small" />}
+            iconPosition={isMobile ? "top" : "start"}
+            sx={{
+              '& .MuiTab-iconWrapper': {
+                mb: { xs: 0.5, sm: 0 },
+                mr: { xs: 0, sm: 1 }
+              }
+            }}
           />
           {isDevWallet && (
             <Tab
-              label="Backoffice"
+              label={isMobile ? "Admin" : "Backoffice"}
               value="/backoffice"
               component={Link}
               to="/backoffice"
-              icon={<AdminPanelSettingsIcon fontSize={isMobile ? "small" : "medium"} />}
-              iconPosition="start"
+              icon={<AdminPanelSettingsIcon fontSize="small" />}
+              iconPosition={isMobile ? "top" : "start"}
+              sx={{
+                '& .MuiTab-iconWrapper': {
+                  mb: { xs: 0.5, sm: 0 },
+                  mr: { xs: 0, sm: 1 }
+                }
+              }}
             />
           )}
         </Tabs>
@@ -159,6 +179,7 @@ function Navigation() {
           <Tooltip title="Settings">
             <IconButton
               onClick={() => setSettingsOpen(true)}
+              size={isMobile ? "small" : "medium"}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {
@@ -167,7 +188,7 @@ function Navigation() {
                 }
               }}
             >
-              <SettingsIcon />
+              <SettingsIcon fontSize={isMobile ? "small" : "medium"} />
             </IconButton>
           </Tooltip>
         </Box>
