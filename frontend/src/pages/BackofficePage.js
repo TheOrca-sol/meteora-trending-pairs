@@ -16,13 +16,17 @@ import {
   Chip,
   CircularProgress,
   Alert,
-  Divider
+  Divider,
+  Button,
+  Snackbar
 } from '@mui/material';
 import {
   People as PeopleIcon,
   MonitorHeart as MonitorIcon,
   Storage as StorageIcon,
-  Schedule as ScheduleIcon
+  Schedule as ScheduleIcon,
+  RestartAlt as RestartIcon,
+  Stop as StopIcon
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 
@@ -66,6 +70,8 @@ const BackofficePage = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   const isDevWallet = publicKey?.toBase58() === DEV_WALLET;
 
@@ -102,6 +108,66 @@ const BackofficePage = () => {
     const interval = setInterval(fetchAdminData, 30000);
     return () => clearInterval(interval);
   }, [publicKey, isDevWallet]);
+
+  const handleRestartMonitors = async () => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/admin/restart-all-monitors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: publicKey.toBase58() })
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        setSnackbar({ open: true, message: 'All monitors restarted successfully!', severity: 'success' });
+        // Refresh data after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setSnackbar({ open: true, message: result.message || 'Failed to restart monitors', severity: 'error' });
+      }
+    } catch (err) {
+      console.error('Error restarting monitors:', err);
+      setSnackbar({ open: true, message: 'Failed to restart monitors', severity: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStopMonitors = async () => {
+    if (!window.confirm('Are you sure you want to stop ALL active monitors? This will affect all users.')) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/admin/stop-all-monitors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletAddress: publicKey.toBase58() })
+      });
+
+      const result = await response.json();
+
+      if (result.status === 'success') {
+        setSnackbar({ open: true, message: 'All monitors stopped successfully!', severity: 'success' });
+        // Refresh data after a short delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setSnackbar({ open: true, message: result.message || 'Failed to stop monitors', severity: 'error' });
+      }
+    } catch (err) {
+      console.error('Error stopping monitors:', err);
+      setSnackbar({ open: true, message: 'Failed to stop monitors', severity: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   if (!publicKey) {
     return (
@@ -144,13 +210,35 @@ const BackofficePage = () => {
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Admin Dashboard
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          System overview and user management
-        </Typography>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+            Admin Dashboard
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            System overview and user management
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={actionLoading ? <CircularProgress size={20} /> : <RestartIcon />}
+            onClick={handleRestartMonitors}
+            disabled={actionLoading}
+          >
+            Restart All Monitors
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={actionLoading ? <CircularProgress size={20} /> : <StopIcon />}
+            onClick={handleStopMonitors}
+            disabled={actionLoading}
+          >
+            Stop All Monitors
+          </Button>
+        </Box>
       </Box>
 
       {/* Stats Overview */}
@@ -369,6 +457,22 @@ const BackofficePage = () => {
           </Grid>
         </Grid>
       </Paper>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };

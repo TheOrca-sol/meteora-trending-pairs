@@ -1754,6 +1754,100 @@ def get_admin_dashboard():
         }), 500
 
 
+@app.route('/api/admin/restart-all-monitors', methods=['POST'])
+def restart_all_monitors():
+    """
+    Restart all active monitors (degen + capital rotation)
+    Only accessible by dev wallet
+    """
+    try:
+        # Verify admin wallet
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        dev_wallet = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV'
+
+        if wallet_address != dev_wallet:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+
+        if not DATABASE_ENABLED:
+            return jsonify({
+                'status': 'error',
+                'message': 'Database not enabled'
+            }), 400
+
+        # Restart degen mode monitors
+        logger.info("Admin: Restarting all degen mode monitors...")
+        degen_monitoring_service.load_active_monitors()
+
+        # Restart capital rotation monitors
+        logger.info("Admin: Restarting all capital rotation monitors...")
+        monitoring_service.load_active_monitors()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'All monitors restarted successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error restarting monitors: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/admin/stop-all-monitors', methods=['POST'])
+def stop_all_monitors():
+    """
+    Stop all active monitors (degen + capital rotation)
+    Only accessible by dev wallet
+    """
+    try:
+        # Verify admin wallet
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        dev_wallet = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV'
+
+        if wallet_address != dev_wallet:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+
+        if not DATABASE_ENABLED:
+            return jsonify({
+                'status': 'error',
+                'message': 'Database not enabled'
+            }), 400
+
+        # Stop all degen mode jobs
+        logger.info("Admin: Stopping all degen mode monitors...")
+        degen_jobs = degen_monitoring_service.scheduler.get_jobs()
+        for job in degen_jobs:
+            degen_monitoring_service.scheduler.remove_job(job.id)
+            logger.info(f"Removed degen job: {job.id}")
+
+        # Stop all capital rotation jobs
+        logger.info("Admin: Stopping all capital rotation monitors...")
+        capital_jobs = monitoring_service.scheduler.get_jobs()
+        for job in capital_jobs:
+            monitoring_service.scheduler.remove_job(job.id)
+            logger.info(f"Removed capital job: {job.id}")
+
+        return jsonify({
+            'status': 'success',
+            'message': 'All monitors stopped successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error stopping monitors: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 def start_telegram_bot():
     """Start Telegram bot in background thread"""
     try:
