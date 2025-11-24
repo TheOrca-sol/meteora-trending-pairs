@@ -248,7 +248,7 @@ const BackofficePage = () => {
                   <TableCell align="center">
                     {user.capital_enabled ? (
                       <Chip
-                        label={`${user.capital_threshold}%`}
+                        label={`${user.capital_threshold}x`}
                         size="small"
                         color="warning"
                       />

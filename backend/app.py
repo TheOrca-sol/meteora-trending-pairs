@@ -1702,7 +1702,7 @@ def get_admin_dashboard():
                 'degen_enabled': degen_config.enabled if degen_config else False,
                 'degen_threshold': float(degen_config.min_fee_rate_threshold) if degen_config else None,
                 'capital_enabled': capital_config.enabled if capital_config else False,
-                'capital_threshold': float(capital_config.min_improvement_percentage) if capital_config else None
+                'capital_threshold': float(capital_config.threshold_multiplier) if capital_config else None
             })
 
         # Pool cache statistics
