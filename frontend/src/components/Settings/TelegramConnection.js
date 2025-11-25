@@ -264,30 +264,48 @@ const TelegramConnection = ({ onConnectionChange, walletAddress }) => {
             </Alert>
           ) : (
             <Box>
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Important: After clicking the button, press "START" in Telegram!
+                </Typography>
+                <Typography variant="caption">
+                  The bot will automatically receive your auth code. Just click START when Telegram opens.
+                </Typography>
+              </Alert>
+
               <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                 Follow these steps to connect your Telegram account:
               </Typography>
 
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Step 1: Open the bot
+                  Step 1: Click this button
                 </Typography>
                 <Button
-                  variant="outlined"
-                  startIcon={<LinkIcon />}
+                  variant="contained"
+                  size="large"
+                  startIcon={<TelegramIcon />}
                   href={authBotLink}
                   target="_blank"
                   rel="noopener noreferrer"
                   fullWidth
-                  sx={{ mb: 2 }}
+                  sx={{
+                    mb: 1,
+                    bgcolor: '#0088cc',
+                    '&:hover': { bgcolor: '#006699' },
+                    py: 1.5
+                  }}
                 >
                   Open Telegram Bot
                 </Button>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'center' }}>
+                  ⚠️ Remember to press START in the Telegram chat!
+                </Typography>
               </Box>
 
               <Box sx={{ mb: 3 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                  Step 2: Send this code to the bot
+                  Step 2: Or manually send this code
                 </Typography>
                 <Paper
                   sx={{
