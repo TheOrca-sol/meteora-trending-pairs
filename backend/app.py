@@ -340,7 +340,7 @@ def get_wallet_positions():
 
         # Now fetch ALL positions for this wallet in ONE RPC call (like the SDK does)
         # Then match them against candidate pools
-        RPC_URL = "https://api.mainnet-beta.solana.com"
+        RPC_URL = os.getenv('SOLANA_RPC_URL', 'https://api.mainnet-beta.solana.com')
         DLMM_PROGRAM_ID = "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo"
 
         import base58
@@ -1643,10 +1643,10 @@ def get_wallet_balance():
         })
 
     except Exception as e:
-        logger.error(f"Error fetching wallet balance: {str(e)}")
+        logger.error(f"Error fetching wallet balance: {str(e)}", exc_info=True)
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': f"Failed to fetch wallet balance: {str(e)}"
         }), 500
 
 
