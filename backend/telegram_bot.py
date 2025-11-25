@@ -5,10 +5,12 @@ Handles user authentication and commands
 
 import os
 import logging
+import fcntl
 from datetime import datetime
 from telegram import Update, Bot
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.error import TelegramError
+from telegram.request import HTTPXRequest
 from dotenv import load_dotenv
 from models import get_db, User, TelegramAuthCode, MonitoringConfig, DegenConfig
 
@@ -26,12 +28,31 @@ if not TELEGRAM_BOT_TOKEN:
 class TelegramBotHandler:
     def __init__(self):
         self.application = None
-        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        # Configure HTTPXRequest with larger connection pool to handle multiple simultaneous notifications
+        # Default pool size is typically 10, increasing to 50 to handle bursts of notifications
+        # This prevents "Pool timeout: All connections in the connection pool are occupied" errors
+        request = HTTPXRequest(
+            connection_pool_size=50,  # Maximum number of connections in the pool
+            connect_timeout=10.0,     # Connection timeout in seconds
+            read_timeout=10.0,        # Read timeout in seconds
+            write_timeout=10.0,       # Write timeout in seconds
+            pool_timeout=10.0         # Pool timeout in seconds
+        )
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN, request=request)
         self.running = False
 
     def initialize(self):
         """Initialize the bot application"""
-        self.application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+        # Use the same HTTPXRequest configuration for the Application
+        # to ensure consistent connection pool settings across all bot operations
+        request = HTTPXRequest(
+            connection_pool_size=50,
+            connect_timeout=10.0,
+            read_timeout=10.0,
+            write_timeout=10.0,
+            pool_timeout=10.0
+        )
+        self.application = Application.builder().token(TELEGRAM_BOT_TOKEN).request(request).build()
 
         # Register command handlers
         self.application.add_handler(CommandHandler("start", self.start_command))
@@ -432,6 +453,18 @@ class TelegramBotHandler:
 
         if not self.application:
             self.initialize()
+
+        # Try to acquire file lock to ensure only ONE instance polls
+        # This prevents "Conflict: terminated by other getUpdates request" errors
+        lock_file_path = '/tmp/telegram_bot_polling.lock'
+        try:
+            lock_file = open(lock_file_path, 'w')
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            logger.info("✅ Acquired polling lock - this instance will handle Telegram updates")
+        except (IOError, OSError) as e:
+            logger.warning(f"⚠️ Could not acquire polling lock - another instance is already polling. This is normal in multi-instance deployments.")
+            logger.warning(f"   This instance will only send notifications, not handle bot commands.")
+            return  # Exit without starting polling
 
         logger.info("Starting Telegram bot polling...")
 
