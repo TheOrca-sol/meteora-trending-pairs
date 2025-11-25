@@ -478,6 +478,30 @@ const PairsTable = ({ pairs = [], orderBy, order, handleSort }) => {
     console.log('PairsTable received pairs:', pairs.length);
   }
 
+  // Empty state
+  if (pairs.length === 0) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '400px',
+          p: 4,
+          textAlign: 'center'
+        }}
+      >
+        <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+          No pairs found
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Try adjusting your filters to see more results
+        </Typography>
+      </Box>
+    );
+  }
+
   // Mobile Card Layout
   if (isMobile) {
     return (
