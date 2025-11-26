@@ -69,6 +69,13 @@ const TokenInformation = ({ tokenAddress }) => {
     // SOL mint address (wrapped SOL)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
+    // Log wallet status for debugging
+    if (wallet) {
+      console.log('✅ Passing connected wallet to Jupiter:', wallet.adapter?.name);
+    } else {
+      console.log('⚠️ No wallet connected - Jupiter will prompt for connection');
+    }
+
     // Initialize Jupiter Plugin v1 with correct parameters
     window.Jupiter.init({
       displayMode: 'integrated',
@@ -80,7 +87,7 @@ const TokenInformation = ({ tokenAddress }) => {
         fixedOutputMint: true,
       },
       enableWalletPassthrough: true, // Use already connected wallet
-      passThroughWallet: wallet, // Pass the wallet instance
+      passThroughWallet: wallet, // Pass the wallet instance from Settings
     });
   };
 
@@ -169,8 +176,12 @@ const TokenInformation = ({ tokenAddress }) => {
         id="integrated-terminal"
         sx={{
           mb: 3,
+          width: '100%',
+          minWidth: '400px',
           '& > div': {
             borderRadius: 2,
+            width: '100% !important',
+            maxWidth: '100% !important',
           }
         }}
       />
