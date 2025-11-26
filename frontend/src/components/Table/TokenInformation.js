@@ -64,15 +64,19 @@ const TokenInformation = ({ tokenAddress }) => {
       return;
     }
 
+    // SOL mint address (wrapped SOL)
+    const SOL_MINT = 'So11111111111111111111111111111111111111112';
+
     window.Jupiter.init({
       displayMode: 'integrated',
       integratedTargetId: 'integrated-terminal',
       // No endpoint needed - Jupiter Ultra handles RPC internally
-      strictTokenList: false,
+      strictTokenList: false, // Allow all tokens
       defaultExplorer: 'Solscan',
       formProps: {
-        initialOutputMint: tokenAddress, // Set this token as the "To" token
-        fixedOutputMint: true, // Lock the output token so users can't change it
+        initialInputMint: SOL_MINT, // Swap FROM SOL
+        initialOutputMint: tokenAddress, // Swap TO this token (mint_x)
+        fixedOutputMint: true, // Lock output token - user can't change TO token
       },
       enableWalletPassthrough: true,
     });
