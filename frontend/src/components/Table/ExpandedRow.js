@@ -20,6 +20,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AddIcon from '@mui/icons-material/Add';
 import { getPairXToken, formatNumber } from '../../utils/helpers';
 import axios from 'axios';
 import MarketStats from './MarketStats';
@@ -30,6 +31,7 @@ import LiquidityDistribution from '../LiquidityDistribution';
 import BubbleMaps from './BubbleMaps';
 import ExternalLinks from './ExternalLinks';
 import TradingViewChart from '../TradingViewChart';
+import AddLiquidityModal from '../LiquidityManagement/AddLiquidityModal';
 
 const commonTypographyStyles = {
   sectionTitle: {
@@ -68,6 +70,9 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   // Enable all features in production
   const enableLocalhostFeatures = true;
 
+  // Add Liquidity modal state
+  const [addLiquidityOpen, setAddLiquidityOpen] = useState(false);
+
   if (!pair || !pairXToken) {
     return (
       <Box sx={{ p: { xs: 1.5, sm: 2 }, textAlign: 'center' }}>
@@ -81,12 +86,13 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, bgcolor: 'background.default' }}>
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-        {/* Quick Links Bar */}
+        {/* Quick Links Bar with Add Liquidity Button */}
         <Grid item xs={12}>
           <Box
             sx={{
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'space-between',
               gap: { xs: 1, sm: 1.5, md: 2 },
               pb: { xs: 1.5, sm: 2 },
               borderBottom: 1,
@@ -94,19 +100,38 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
               flexWrap: 'wrap'
             }}
           >
-            <Typography
-              variant="subtitle2"
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, sm: 1.5, md: 2 }, flexWrap: 'wrap' }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: 'text.secondary',
+                  fontWeight: 600,
+                  mr: { xs: 0, sm: 1 },
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  display: { xs: 'none', sm: 'block' }
+                }}
+              >
+                Quick Links:
+              </Typography>
+              <ExternalLinks pair={pair} />
+            </Box>
+
+            {/* Add Liquidity Button */}
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              startIcon={<AddIcon />}
+              onClick={() => setAddLiquidityOpen(true)}
               sx={{
-                color: 'text.secondary',
                 fontWeight: 600,
-                mr: { xs: 0, sm: 1 },
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                display: { xs: 'none', sm: 'block' }
+                textTransform: 'none',
+                px: { xs: 2, sm: 3 },
+                py: { xs: 0.75, sm: 1 }
               }}
             >
-              Quick Links:
-            </Typography>
-            <ExternalLinks pair={pair} />
+              Add Liquidity
+            </Button>
           </Box>
         </Grid>
 
@@ -342,6 +367,18 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
           </>
         )}
       </Grid>
+
+      {/* Add Liquidity Modal */}
+      <AddLiquidityModal
+        open={addLiquidityOpen}
+        onClose={() => setAddLiquidityOpen(false)}
+        poolAddress={pair.address}
+        pairName={pair.name || pair.pairName}
+        mintX={pair.mint_x}
+        mintY={pair.mint_y}
+        suggestedStrategy={null}
+        liquidityStats={null}
+      />
     </Box>
   );
 };

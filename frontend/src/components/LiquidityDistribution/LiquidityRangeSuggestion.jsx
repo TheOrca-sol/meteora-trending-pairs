@@ -14,12 +14,15 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PeopleIcon from '@mui/icons-material/People';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import AddIcon from '@mui/icons-material/Add';
 import TopLPsDialog from './TopLPsDialog';
+import AddLiquidityModal from '../LiquidityManagement/AddLiquidityModal';
 import { useNavigate } from 'react-router-dom';
 
-const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools }) => {
+const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools, pairName, mintX, mintY }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [topLPsOpen, setTopLPsOpen] = useState(false);
+  const [addLiquidityOpen, setAddLiquidityOpen] = useState(false);
   const navigate = useNavigate();
 
   // Only show localhost-only features on localhost
@@ -293,13 +296,29 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
           <Button
             variant="contained"
             size="small"
+            startIcon={<AddIcon />}
+            onClick={() => setAddLiquidityOpen(true)}
+            disabled={!poolAddress}
+            sx={{
+              textTransform: 'none',
+              bgcolor: 'success.main',
+              '&:hover': {
+                bgcolor: 'success.dark'
+              }
+            }}
+          >
+            Add Liquidity
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
             endIcon={<OpenInNewIcon />}
             href={poolAddress ? `https://app.meteora.ag/dlmm/${poolAddress}` : 'https://app.meteora.ag/pools'}
             target="_blank"
             rel="noopener noreferrer"
             sx={{ textTransform: 'none' }}
           >
-            Add Liquidity
+            View on Meteora
           </Button>
         </Box>
       </Paper>
@@ -321,6 +340,18 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
         open={topLPsOpen}
         onClose={() => setTopLPsOpen(false)}
         pools={pools}
+      />
+
+      {/* Add Liquidity Modal */}
+      <AddLiquidityModal
+        open={addLiquidityOpen}
+        onClose={() => setAddLiquidityOpen(false)}
+        poolAddress={poolAddress}
+        pairName={pairName}
+        mintX={mintX}
+        mintY={mintY}
+        suggestedStrategy={strategy}
+        liquidityStats={suggestedRanges}
       />
     </Box>
   );
