@@ -24,7 +24,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import axios from 'axios';
 
 const TokenInformation = ({ tokenAddress }) => {
-  const { wallet } = useWallet(); // Get connected wallet from Solana adapter
+  const { wallet, publicKey, signTransaction, signAllTransactions } = useWallet(); // Get wallet adapter methods
   const [tokenInfo, setTokenInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -70,11 +70,19 @@ const TokenInformation = ({ tokenAddress }) => {
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
     // Log wallet status for debugging
-    if (wallet) {
-      console.log('✅ Passing connected wallet to Jupiter:', wallet.adapter?.name);
+    if (publicKey && wallet) {
+      console.log('✅ Passing connected wallet to Jupiter:', wallet.adapter?.name, publicKey.toString());
     } else {
       console.log('⚠️ No wallet connected - Jupiter will prompt for connection');
     }
+
+    // Build the wallet object that Jupiter expects
+    const walletPassthrough = publicKey && wallet && signTransaction && signAllTransactions ? {
+      publicKey,
+      signTransaction,
+      signAllTransactions,
+      connected: true,
+    } : undefined;
 
     // Initialize Jupiter Plugin v1 with correct parameters
     window.Jupiter.init({
@@ -86,8 +94,8 @@ const TokenInformation = ({ tokenAddress }) => {
         initialOutputMint: tokenAddress,
         fixedOutputMint: true,
       },
-      enableWalletPassthrough: true, // Use already connected wallet
-      passThroughWallet: wallet, // Pass the wallet instance from Settings
+      enableWalletPassthrough: true, // Enable wallet passthrough
+      passThroughWallet: walletPassthrough, // Pass properly formatted wallet object
     });
   };
 
