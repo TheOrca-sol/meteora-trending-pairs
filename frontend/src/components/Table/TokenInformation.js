@@ -61,31 +61,13 @@ const TokenInformation = ({ tokenAddress }) => {
   };
 
   const handleSwap = () => {
-    if (!window.Jupiter) {
-      console.error('Jupiter Terminal not loaded');
-      return;
-    }
-
     // SOL mint address (wrapped SOL)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
-    // Use Helius RPC from env, fallback to public RPC
-    const rpcEndpoint = process.env.REACT_APP_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-
-    window.Jupiter.init({
-      displayMode: 'integrated',
-      integratedTargetId: 'integrated-terminal',
-      endpoint: rpcEndpoint, // Required for wallet connection and transaction signing
-      defaultExplorer: 'Solscan',
-      formProps: {
-        initialInputMint: SOL_MINT, // Swap FROM SOL
-        initialOutputMint: tokenAddress, // Swap TO this token (mint_x)
-        fixedOutputMint: true, // Lock output token - user can't change TO token
-      },
-      // Pass through the connected wallet if available
-      // This allows Jupiter to use the already-connected wallet without re-connecting
-      passThroughWallet: wallet || undefined,
-    });
+    // Open Jupiter in new tab with pre-filled swap
+    // Jupiter will auto-detect and connect the user's wallet
+    const jupiterUrl = `https://jup.ag/swap/${SOL_MINT}-${tokenAddress}`;
+    window.open(jupiterUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
@@ -152,6 +134,7 @@ const TokenInformation = ({ tokenAddress }) => {
         fullWidth
         startIcon={<SwapIcon />}
         onClick={handleSwap}
+        endIcon={<OpenInNewIcon fontSize="small" />}
         sx={{
           mb: 3,
           bgcolor: 'primary.main',
@@ -167,17 +150,6 @@ const TokenInformation = ({ tokenAddress }) => {
       >
         Swap on Jupiter
       </Button>
-
-      {/* Jupiter Terminal Container */}
-      <Box
-        id="integrated-terminal"
-        sx={{
-          mb: 3,
-          '& > div': {
-            borderRadius: 2,
-          }
-        }}
-      />
 
       {/* Token Address */}
       <Box sx={{ 
