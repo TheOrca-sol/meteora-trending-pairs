@@ -20,9 +20,11 @@ import {
   Refresh as RefreshIcon,
   SwapHoriz as SwapIcon
 } from '@mui/icons-material';
+import { useWallet } from '@solana/wallet-adapter-react';
 import axios from 'axios';
 
 const TokenInformation = ({ tokenAddress }) => {
+  const { wallet } = useWallet(); // Get connected wallet from Solana adapter
   const [tokenInfo, setTokenInfo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -81,7 +83,9 @@ const TokenInformation = ({ tokenAddress }) => {
         initialOutputMint: tokenAddress, // Swap TO this token (mint_x)
         fixedOutputMint: true, // Lock output token - user can't change TO token
       },
-      enableWalletPassthrough: true,
+      // Pass through the connected wallet if available
+      // This allows Jupiter to use the already-connected wallet without re-connecting
+      passThroughWallet: wallet || undefined,
     });
   };
 
