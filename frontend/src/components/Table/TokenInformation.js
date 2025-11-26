@@ -67,7 +67,7 @@ const TokenInformation = ({ tokenAddress }) => {
     window.Jupiter.init({
       displayMode: 'integrated',
       integratedTargetId: 'integrated-terminal',
-      endpoint: 'https://api.mainnet-beta.solana.com',
+      // No endpoint needed - Jupiter Ultra handles RPC internally
       strictTokenList: false,
       defaultExplorer: 'Solscan',
       formProps: {
