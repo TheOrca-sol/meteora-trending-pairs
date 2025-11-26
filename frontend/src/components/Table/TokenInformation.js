@@ -264,65 +264,6 @@ const TokenInformation = ({ tokenAddress }) => {
         </Grid>
       </Grid>
 
-      {/* Security Status */}
-      <Box sx={{ mt: 3 }}>
-        <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-          Security Status
-        </Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2,
-              bgcolor: !tokenInfo?.mint_authority ? 'success.lighter' : 'error.lighter',
-              borderRadius: 2,
-              border: 1,
-              borderColor: !tokenInfo?.mint_authority ? 'success.light' : 'error.light'
-            }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                color: !tokenInfo?.mint_authority ? 'success.dark' : 'error.dark'
-              }}>
-                {!tokenInfo?.mint_authority ? (
-                  <CheckCircleIcon fontSize="small" />
-                ) : (
-                  <WarningIcon fontSize="small" />
-                )}
-                <Typography variant="body2">
-                  Mint Authority
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-          <Grid item xs={6}>
-            <Box sx={{ 
-              p: 2,
-              bgcolor: !tokenInfo?.freeze_authority ? 'success.lighter' : 'error.lighter',
-              borderRadius: 2,
-              border: 1,
-              borderColor: !tokenInfo?.freeze_authority ? 'success.light' : 'error.light'
-            }}>
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: 1,
-                color: !tokenInfo?.freeze_authority ? 'success.dark' : 'error.dark'
-              }}>
-                {!tokenInfo?.freeze_authority ? (
-                  <CheckCircleIcon fontSize="small" />
-                ) : (
-                  <WarningIcon fontSize="small" />
-                )}
-                <Typography variant="body2">
-                  Freeze Authority
-                </Typography>
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-      </Box>
-
       {/* Tags */}
       {tokenInfo?.tags && tokenInfo.tags.length > 0 && (
         <Box sx={{ mt: 3 }}>
