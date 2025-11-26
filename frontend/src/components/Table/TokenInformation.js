@@ -61,13 +61,27 @@ const TokenInformation = ({ tokenAddress }) => {
   };
 
   const handleSwap = () => {
+    if (!window.Jupiter) {
+      console.error('Jupiter Plugin not loaded');
+      return;
+    }
+
     // SOL mint address (wrapped SOL)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
-    // Open Jupiter in new tab with pre-filled swap
-    // Jupiter will auto-detect and connect the user's wallet
-    const jupiterUrl = `https://jup.ag/swap/${SOL_MINT}-${tokenAddress}`;
-    window.open(jupiterUrl, '_blank', 'noopener,noreferrer');
+    // Initialize Jupiter Plugin v1 with correct parameters
+    window.Jupiter.init({
+      displayMode: 'integrated',
+      integratedTargetId: 'integrated-terminal',
+      endpoint: process.env.REACT_APP_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com',
+      formProps: {
+        initialInputMint: SOL_MINT,
+        initialOutputMint: tokenAddress,
+        fixedOutputMint: true,
+      },
+      enableWalletPassthrough: true, // Use already connected wallet
+      passThroughWallet: wallet, // Pass the wallet instance
+    });
   };
 
   if (loading) {
@@ -134,7 +148,6 @@ const TokenInformation = ({ tokenAddress }) => {
         fullWidth
         startIcon={<SwapIcon />}
         onClick={handleSwap}
-        endIcon={<OpenInNewIcon fontSize="small" />}
         sx={{
           mb: 3,
           bgcolor: 'primary.main',
@@ -150,6 +163,17 @@ const TokenInformation = ({ tokenAddress }) => {
       >
         Swap on Jupiter
       </Button>
+
+      {/* Jupiter Plugin Container */}
+      <Box
+        id="integrated-terminal"
+        sx={{
+          mb: 3,
+          '& > div': {
+            borderRadius: 2,
+          }
+        }}
+      />
 
       {/* Token Address */}
       <Box sx={{ 
