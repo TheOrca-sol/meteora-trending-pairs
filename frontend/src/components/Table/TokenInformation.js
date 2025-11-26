@@ -67,10 +67,13 @@ const TokenInformation = ({ tokenAddress }) => {
     // SOL mint address (wrapped SOL)
     const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
+    // Use Helius RPC from env, fallback to public RPC
+    const rpcEndpoint = process.env.REACT_APP_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+
     window.Jupiter.init({
       displayMode: 'integrated',
       integratedTargetId: 'integrated-terminal',
-      // No endpoint needed - Jupiter Ultra handles RPC internally
+      endpoint: rpcEndpoint, // Required for wallet connection and transaction signing
       strictTokenList: false, // Allow all tokens
       defaultExplorer: 'Solscan',
       formProps: {
