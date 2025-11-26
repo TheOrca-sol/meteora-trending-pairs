@@ -76,7 +76,6 @@ const TokenInformation = ({ tokenAddress }) => {
       displayMode: 'integrated',
       integratedTargetId: 'integrated-terminal',
       endpoint: rpcEndpoint, // Required for wallet connection and transaction signing
-      strictTokenList: false, // Allow all tokens
       defaultExplorer: 'Solscan',
       formProps: {
         initialInputMint: SOL_MINT, // Swap FROM SOL
@@ -155,9 +154,9 @@ const TokenInformation = ({ tokenAddress }) => {
         onClick={handleSwap}
         sx={{
           mb: 3,
-          background: 'linear-gradient(90deg, #FD9E13 0%, #C94C9A 100%)',
+          bgcolor: 'primary.main',
           '&:hover': {
-            background: 'linear-gradient(90deg, #FD9E13 10%, #C94C9A 110%)',
+            bgcolor: 'primary.dark',
             transform: 'translateY(-1px)',
           },
           fontWeight: 600,
