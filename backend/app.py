@@ -33,9 +33,12 @@ if DATABASE_ENABLED:
         from telegram_bot import telegram_bot_handler, get_bot_link
         from wallet_manager import WalletManager
         from services.monitoring.degen_monitoring import degen_monitoring_service
+        from liquidity_routes import liquidity_bp  # Import liquidity blueprint
+        from liquidity_monitoring_service import liquidity_monitoring_service
+        from liquidity_execution_service import liquidity_execution_service
         # Enable APScheduler logging
         logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-        logger.info("Database features enabled (Capital Rotation + Degen Mode)")
+        logger.info("Database features enabled (Capital Rotation + Degen Mode + Liquidity Management)")
     except Exception as e:
         logger.warning(f"Failed to load database features: {e}")
         DATABASE_ENABLED = False
@@ -43,6 +46,11 @@ else:
     logger.info("Running in analytics-only mode (no DATABASE_URL set)")
 
 app = Flask(__name__)
+
+# Register liquidity management blueprint (if database enabled)
+if DATABASE_ENABLED:
+    app.register_blueprint(liquidity_bp)
+    logger.info("Liquidity management routes registered")
 
 # Pool cache configuration
 # Set to True to use GroupedPoolCache (/pair/groups API) - NOT RECOMMENDED (slow)
@@ -271,6 +279,42 @@ def get_pairs():
         })
     except Exception as e:
         logger.error(f"Error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/pool/<pool_address>', methods=['GET'])
+def get_pool_details(pool_address):
+    """
+    Get detailed information for a single pool by address
+    """
+    try:
+        logger.info(f"Fetching pool details for: {pool_address}")
+
+        # Fetch all pools from cache
+        pools = get_pools_from_cache()
+
+        # Find the specific pool
+        pool = next((p for p in pools if p.get('address') == pool_address), None)
+
+        if not pool:
+            return jsonify({
+                'status': 'error',
+                'message': 'Pool not found'
+            }), 404
+
+        # For now, return basic pool data
+        # Timeframes would need to be fetched from transaction history API
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'pool': pool,
+                'timeframes': None  # Can be enhanced later with transaction data
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching pool details: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': str(e)
@@ -1872,6 +1916,11 @@ def initialize_app():
         # Load active degen mode monitors from database
         logger.info("Loading active degen mode monitors from database...")
         degen_monitoring_service.load_active_monitors()
+
+        # Initialize liquidity automation services
+        logger.info("Liquidity monitoring and execution services initialized")
+        logger.info("  - Monitoring service: checking positions every 5 minutes")
+        logger.info("  - Execution service: processing queue every 2 minutes")
 
         # Start Telegram bot in background thread
         # Note: This only works with use_reloader=False (see bottom of file)
