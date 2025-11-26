@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Avatar, 
-  Typography, 
-  Grid, 
-  IconButton, 
-  Tooltip, 
-  Chip, 
-  Button, 
-  CircularProgress 
+import {
+  Box,
+  Avatar,
+  Typography,
+  Grid,
+  IconButton,
+  Tooltip,
+  Chip,
+  Button,
+  CircularProgress
 } from '@mui/material';
 import {
   CheckCircle as CheckCircleIcon,
@@ -17,7 +17,8 @@ import {
   OpenInNew as OpenInNewIcon,
   Check as CheckIcon,
   ErrorOutline as ErrorOutlineIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  SwapHoriz as SwapIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -57,6 +58,26 @@ const TokenInformation = ({ tokenAddress }) => {
     }
   };
 
+  const handleSwap = () => {
+    if (!window.Jupiter) {
+      console.error('Jupiter Terminal not loaded');
+      return;
+    }
+
+    window.Jupiter.init({
+      displayMode: 'integrated',
+      integratedTargetId: 'integrated-terminal',
+      endpoint: 'https://api.mainnet-beta.solana.com',
+      strictTokenList: false,
+      defaultExplorer: 'Solscan',
+      formProps: {
+        initialOutputMint: tokenAddress, // Set this token as the "To" token
+        fixedOutputMint: true, // Lock the output token so users can't change it
+      },
+      enableWalletPassthrough: true,
+    });
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
@@ -87,18 +108,18 @@ const TokenInformation = ({ tokenAddress }) => {
   return (
     <Box>
       {/* Token Header */}
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
+      <Box sx={{
+        display: 'flex',
+        alignItems: 'center',
         gap: 2,
-        mb: 3
+        mb: 2
       }}>
         {tokenInfo?.logoURI && (
-          <Avatar 
-            src={tokenInfo.logoURI} 
+          <Avatar
+            src={tokenInfo.logoURI}
             alt={tokenInfo.symbol}
-            sx={{ 
-              width: 48, 
+            sx={{
+              width: 48,
               height: 48,
               border: 1,
               borderColor: 'divider'
@@ -114,6 +135,39 @@ const TokenInformation = ({ tokenAddress }) => {
           </Typography>
         </Box>
       </Box>
+
+      {/* Jupiter Swap Button */}
+      <Button
+        variant="contained"
+        fullWidth
+        startIcon={<SwapIcon />}
+        onClick={handleSwap}
+        sx={{
+          mb: 3,
+          background: 'linear-gradient(90deg, #FD9E13 0%, #C94C9A 100%)',
+          '&:hover': {
+            background: 'linear-gradient(90deg, #FD9E13 10%, #C94C9A 110%)',
+            transform: 'translateY(-1px)',
+          },
+          fontWeight: 600,
+          py: 1.5,
+          boxShadow: 2,
+          transition: 'all 0.2s ease-in-out'
+        }}
+      >
+        Swap on Jupiter
+      </Button>
+
+      {/* Jupiter Terminal Container */}
+      <Box
+        id="integrated-terminal"
+        sx={{
+          mb: 3,
+          '& > div': {
+            borderRadius: 2,
+          }
+        }}
+      />
 
       {/* Token Address */}
       <Box sx={{ 
