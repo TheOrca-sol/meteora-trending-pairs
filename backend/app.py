@@ -1693,6 +1693,204 @@ def get_wallet_balance():
         }), 500
 
 
+@app.route('/api/admin/dashboard', methods=['GET'])
+def get_admin_dashboard():
+    """
+    Admin dashboard statistics
+    Only accessible by dev wallet: DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV
+    """
+    try:
+        # Verify admin wallet
+        wallet_address = request.args.get('walletAddress')
+        dev_wallet = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV'
+
+        if wallet_address != dev_wallet:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+
+        if not DATABASE_ENABLED:
+            return jsonify({
+                'status': 'error',
+                'message': 'Database not enabled'
+            }), 400
+
+        db = get_db()
+
+        # User statistics
+        total_users = db.query(User).count()
+        users_with_telegram = db.query(User).filter(User.telegram_chat_id.isnot(None)).count()
+
+        # Degen mode statistics
+        active_degen_monitors = db.query(DegenConfig).filter(DegenConfig.enabled == True).count()
+        total_degen_configs = db.query(DegenConfig).count()
+
+        # Capital rotation statistics
+        active_capital_monitors = db.query(MonitoringConfig).filter(MonitoringConfig.enabled == True).count()
+        total_capital_configs = db.query(MonitoringConfig).count()
+
+        # Get all users with details
+        users = db.query(User).all()
+        users_list = []
+        for user in users:
+            degen_config = db.query(DegenConfig).filter(DegenConfig.wallet_address == user.wallet_address).first()
+            capital_config = db.query(MonitoringConfig).filter(MonitoringConfig.wallet_address == user.wallet_address).first()
+
+            users_list.append({
+                'wallet_address': user.wallet_address,
+                'telegram_username': user.telegram_username,
+                'telegram_connected': user.telegram_chat_id is not None,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'degen_enabled': degen_config.enabled if degen_config else False,
+                'degen_threshold': float(degen_config.min_fee_rate_threshold) if degen_config else None,
+                'capital_enabled': capital_config.enabled if capital_config else False,
+                'capital_threshold': float(capital_config.threshold_multiplier) if capital_config else None
+            })
+
+        # Pool cache statistics
+        cache_stats = pool_cache.get_stats()
+
+        # Scheduler jobs info
+        degen_jobs = []
+        for job in degen_monitoring_service.scheduler.get_jobs():
+            degen_jobs.append({
+                'id': job.id,
+                'next_run': job.next_run_time.isoformat() if job.next_run_time else None
+            })
+
+        capital_jobs = []
+        for job in monitoring_service.scheduler.get_jobs():
+            capital_jobs.append({
+                'id': job.id,
+                'next_run': job.next_run_time.isoformat() if job.next_run_time else None
+            })
+
+        db.close()
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'users': {
+                    'total': total_users,
+                    'with_telegram': users_with_telegram,
+                    'list': users_list
+                },
+                'degen_mode': {
+                    'active_monitors': active_degen_monitors,
+                    'total_configs': total_degen_configs,
+                    'jobs': degen_jobs
+                },
+                'capital_rotation': {
+                    'active_monitors': active_capital_monitors,
+                    'total_configs': total_capital_configs,
+                    'jobs': capital_jobs
+                },
+                'cache': cache_stats
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error fetching admin dashboard: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/admin/restart-all-monitors', methods=['POST'])
+def restart_all_monitors():
+    """
+    Restart all active monitors (degen + capital rotation)
+    Only accessible by dev wallet
+    """
+    try:
+        # Verify admin wallet
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        dev_wallet = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV'
+
+        if wallet_address != dev_wallet:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+
+        if not DATABASE_ENABLED:
+            return jsonify({
+                'status': 'error',
+                'message': 'Database not enabled'
+            }), 400
+
+        # Restart degen mode monitors
+        logger.info("Admin: Restarting all degen mode monitors...")
+        degen_monitoring_service.load_active_monitors()
+
+        # Restart capital rotation monitors
+        logger.info("Admin: Restarting all capital rotation monitors...")
+        monitoring_service.load_active_monitors()
+
+        return jsonify({
+            'status': 'success',
+            'message': 'All monitors restarted successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error restarting monitors: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/api/admin/stop-all-monitors', methods=['POST'])
+def stop_all_monitors():
+    """
+    Stop all active monitors (degen + capital rotation)
+    Only accessible by dev wallet
+    """
+    try:
+        # Verify admin wallet
+        data = request.get_json()
+        wallet_address = data.get('walletAddress')
+        dev_wallet = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV'
+
+        if wallet_address != dev_wallet:
+            return jsonify({
+                'status': 'error',
+                'message': 'Unauthorized'
+            }), 403
+
+        if not DATABASE_ENABLED:
+            return jsonify({
+                'status': 'error',
+                'message': 'Database not enabled'
+            }), 400
+
+        # Stop all degen mode jobs
+        logger.info("Admin: Stopping all degen mode monitors...")
+        degen_jobs = degen_monitoring_service.scheduler.get_jobs()
+        for job in degen_jobs:
+            degen_monitoring_service.scheduler.remove_job(job.id)
+            logger.info(f"Removed degen job: {job.id}")
+
+        # Stop all capital rotation jobs
+        logger.info("Admin: Stopping all capital rotation monitors...")
+        capital_jobs = monitoring_service.scheduler.get_jobs()
+        for job in capital_jobs:
+            monitoring_service.scheduler.remove_job(job.id)
+            logger.info(f"Removed capital job: {job.id}")
+
+        return jsonify({
+            'status': 'success',
+            'message': 'All monitors stopped successfully'
+        })
+    except Exception as e:
+        logger.error(f"Error stopping monitors: {e}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 def start_telegram_bot():
     """Start Telegram bot in background thread"""
     try:
