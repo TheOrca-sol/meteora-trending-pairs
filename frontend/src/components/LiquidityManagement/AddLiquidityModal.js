@@ -48,6 +48,9 @@ const AddLiquidityModal = ({
 
   // Form state
   const [amountUSD, setAmountUSD] = useState('');
+  const [amountTokenX, setAmountTokenX] = useState('');
+  const [amountTokenY, setAmountTokenY] = useState('');
+  const [inputMode, setInputMode] = useState('usd'); // 'usd', 'tokenX', 'tokenY', 'both'
   const [selectedStrategy, setSelectedStrategy] = useState(suggestedStrategy || null);
   const [takeProfitEnabled, setTakeProfitEnabled] = useState(false);
   const [takeProfitValue, setTakeProfitValue] = useState(50);
@@ -96,9 +99,27 @@ const AddLiquidityModal = ({
       return;
     }
 
-    if (!amountUSD || parseFloat(amountUSD) <= 0) {
-      setError('Please enter a valid amount');
-      return;
+    // Validation based on input mode
+    if (inputMode === 'usd') {
+      if (!amountUSD || parseFloat(amountUSD) <= 0) {
+        setError('Please enter a valid USD amount');
+        return;
+      }
+    } else if (inputMode === 'tokenX') {
+      if (!amountTokenX || parseFloat(amountTokenX) <= 0) {
+        setError('Please enter a valid Token X amount');
+        return;
+      }
+    } else if (inputMode === 'tokenY') {
+      if (!amountTokenY || parseFloat(amountTokenY) <= 0) {
+        setError('Please enter a valid Token Y amount');
+        return;
+      }
+    } else if (inputMode === 'both') {
+      if ((!amountTokenX || parseFloat(amountTokenX) <= 0) && (!amountTokenY || parseFloat(amountTokenY) <= 0)) {
+        setError('Please enter at least one token amount');
+        return;
+      }
     }
 
     if (!selectedStrategy) {
@@ -119,15 +140,29 @@ const AddLiquidityModal = ({
 
       console.log('[Add Liquidity] Bin IDs:', { lowerBinId, upperBinId, activeBinId });
 
-      // Add liquidity using Meteora SDK
-      const { signature, positionAddress } = await addLiquidity({
+      // Prepare parameters based on input mode
+      const params = {
         poolAddress,
-        amountUSD: parseFloat(amountUSD),
         lowerBinId,
         upperBinId,
         wallet: { signTransaction, signAllTransactions },
         walletPublicKey: publicKey
-      });
+      };
+
+      // Add amount based on input mode
+      if (inputMode === 'usd') {
+        params.amountUSD = parseFloat(amountUSD);
+      } else if (inputMode === 'tokenX') {
+        params.amountTokenX = parseFloat(amountTokenX);
+      } else if (inputMode === 'tokenY') {
+        params.amountTokenY = parseFloat(amountTokenY);
+      } else if (inputMode === 'both') {
+        if (amountTokenX) params.amountTokenX = parseFloat(amountTokenX);
+        if (amountTokenY) params.amountTokenY = parseFloat(amountTokenY);
+      }
+
+      // Add liquidity using Meteora SDK
+      const { signature, positionAddress } = await addLiquidity(params);
 
       console.log('[Add Liquidity] Success:', { signature, positionAddress });
 
@@ -227,26 +262,94 @@ const AddLiquidityModal = ({
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 2 }}>
 
-          {/* Amount Input */}
+          {/* Amount Input Mode Selection */}
           <Box>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Liquidity Amount
             </Typography>
-            <TextField
-              fullWidth
-              label="Amount (USD)"
-              type="number"
-              value={amountUSD}
-              onChange={(e) => setAmountUSD(e.target.value)}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
-              }}
-              helperText={
-                walletBalance && amountUSD
-                  ? `${calculatePercentOfBalance()}% of wallet balance (${walletBalance.toFixed(2)} SOL)`
-                  : 'Enter amount in USD'
-              }
-            />
+            <ButtonGroup fullWidth size="small" sx={{ mb: 2 }}>
+              <Button
+                variant={inputMode === 'usd' ? 'contained' : 'outlined'}
+                onClick={() => setInputMode('usd')}
+              >
+                USD Value
+              </Button>
+              <Button
+                variant={inputMode === 'tokenX' ? 'contained' : 'outlined'}
+                onClick={() => setInputMode('tokenX')}
+              >
+                Token X Amount
+              </Button>
+              <Button
+                variant={inputMode === 'tokenY' ? 'contained' : 'outlined'}
+                onClick={() => setInputMode('tokenY')}
+              >
+                Token Y Amount
+              </Button>
+              <Button
+                variant={inputMode === 'both' ? 'contained' : 'outlined'}
+                onClick={() => setInputMode('both')}
+              >
+                Both Tokens
+              </Button>
+            </ButtonGroup>
+
+            {inputMode === 'usd' && (
+              <TextField
+                fullWidth
+                label="Amount (USD)"
+                type="number"
+                value={amountUSD}
+                onChange={(e) => setAmountUSD(e.target.value)}
+                InputProps={{
+                  startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
+                }}
+                helperText="Enter total liquidity value in USD"
+              />
+            )}
+
+            {inputMode === 'tokenX' && (
+              <TextField
+                fullWidth
+                label={`Amount (Token X)`}
+                type="number"
+                value={amountTokenX}
+                onChange={(e) => setAmountTokenX(e.target.value)}
+                helperText={`Enter amount of Token X (${mintX?.slice(0, 8)}...)`}
+              />
+            )}
+
+            {inputMode === 'tokenY' && (
+              <TextField
+                fullWidth
+                label={`Amount (Token Y)`}
+                type="number"
+                value={amountTokenY}
+                onChange={(e) => setAmountTokenY(e.target.value)}
+                helperText={`Enter amount of Token Y (${mintY?.slice(0, 8)}...)`}
+              />
+            )}
+
+            {inputMode === 'both' && (
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Token X Amount"
+                  type="number"
+                  value={amountTokenX}
+                  onChange={(e) => setAmountTokenX(e.target.value)}
+                  helperText={`${mintX?.slice(0, 8)}...`}
+                />
+                <TextField
+                  fullWidth
+                  label="Token Y Amount"
+                  type="number"
+                  value={amountTokenY}
+                  onChange={(e) => setAmountTokenY(e.target.value)}
+                  helperText={`${mintY?.slice(0, 8)}...`}
+                />
+              </Box>
+            )}
           </Box>
 
           {/* Strategy Selection */}
@@ -455,7 +558,12 @@ const AddLiquidityModal = ({
         <Button
           variant="contained"
           onClick={handleAddLiquidity}
-          disabled={loading || !publicKey || !amountUSD || !selectedStrategy}
+          disabled={loading || !publicKey ||
+            (inputMode === 'usd' && !amountUSD) ||
+            (inputMode === 'tokenX' && !amountTokenX) ||
+            (inputMode === 'tokenY' && !amountTokenY) ||
+            (inputMode === 'both' && !amountTokenX && !amountTokenY) ||
+            !selectedStrategy}
           startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
         >
           {loading ? 'Adding...' : 'Add Liquidity'}
