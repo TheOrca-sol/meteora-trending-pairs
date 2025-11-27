@@ -74,9 +74,25 @@ const AddLiquidityModal = ({
 
   useEffect(() => {
     if (suggestedStrategy) {
+      console.log('[AddLiquidityModal] Received suggestedStrategy:', suggestedStrategy);
       setSelectedStrategy(suggestedStrategy);
     }
   }, [suggestedStrategy]);
+
+  // Reset strategy when modal opens
+  useEffect(() => {
+    if (open) {
+      console.log('[AddLiquidityModal] Modal opened with suggestedStrategy:', suggestedStrategy);
+      console.log('[AddLiquidityModal] liquidityStats:', liquidityStats);
+
+      if (suggestedStrategy) {
+        setSelectedStrategy(suggestedStrategy);
+      } else if (liquidityStats?.strategies && liquidityStats.strategies.length > 0) {
+        // Default to first strategy if none is provided
+        setSelectedStrategy(liquidityStats.strategies[0]);
+      }
+    }
+  }, [open, suggestedStrategy, liquidityStats]);
 
   // Fetch token balances
   const fetchTokenBalances = async () => {
@@ -251,6 +267,8 @@ const AddLiquidityModal = ({
       setLoading(false);
     }
   };
+
+  console.log('[AddLiquidityModal] Rendering with selectedStrategy:', selectedStrategy);
 
   return (
     <Dialog
@@ -442,23 +460,61 @@ const AddLiquidityModal = ({
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Liquidity Strategy
             </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-              {selectedStrategy
-                ? `Selected: ${selectedStrategy.name} (${selectedStrategy.rangePercentage}% range)`
-                : 'Select a strategy from the Liquidity Distribution chart above'}
-            </Typography>
-            {selectedStrategy && (
+
+            {/* Strategy Selection Buttons */}
+            {liquidityStats?.strategies && liquidityStats.strategies.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                  Choose a liquidity strategy:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {liquidityStats.strategies.map((strategy, index) => (
+                    <Button
+                      key={index}
+                      variant={selectedStrategy === strategy ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setSelectedStrategy(strategy)}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      {strategy.name || `Strategy ${index + 1}`}
+                    </Button>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Selected Strategy Details */}
+            {selectedStrategy ? (
               <Alert severity="info" sx={{ mt: 1 }}>
                 <Typography variant="body2">
-                  <strong>{selectedStrategy.name}</strong>: {selectedStrategy.description}
+                  <strong>{selectedStrategy.name || 'Custom Strategy'}</strong>
+                  {selectedStrategy.description && `: ${selectedStrategy.description}`}
                 </Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                  Range: ${selectedStrategy.lowerBound.toFixed(6)} - ${selectedStrategy.upperBound.toFixed(6)}
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
-                </Typography>
+                {selectedStrategy.lowerBound !== undefined && selectedStrategy.upperBound !== undefined && (
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    Range: ${selectedStrategy.lowerBound.toFixed(6)} - ${selectedStrategy.upperBound.toFixed(6)}
+                  </Typography>
+                )}
+                {selectedStrategy.side && (
+                  <Typography variant="caption" display="block">
+                    Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
+                  </Typography>
+                )}
+                {selectedStrategy.liquidityUsd !== undefined && (
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                    Liquidity: ${selectedStrategy.liquidityUsd.toLocaleString()}
+                  </Typography>
+                )}
+                {selectedStrategy.dominantSide && (
+                  <Typography variant="caption" display="block">
+                    Dominant Side: {selectedStrategy.dominantSide}
+                  </Typography>
+                )}
               </Alert>
+            ) : (
+              <Typography variant="caption" color="text.secondary">
+                Please select a strategy above to continue
+              </Typography>
             )}
           </Box>
 
