@@ -229,6 +229,30 @@ const AddLiquidityModal = ({
     return balance.toFixed(6);
   };
 
+  const formatPrice = (price) => {
+    if (!price || isNaN(price)) return '$0.0000';
+
+    // For very small prices (< 0.00001), use scientific notation or show more decimals
+    if (price < 0.00001) {
+      // Find the first non-zero digit position
+      const priceStr = price.toFixed(20);
+      const match = priceStr.match(/0\.0*[1-9]/);
+      if (match) {
+        const zerosCount = match[0].length - 2; // subtract "0."
+        return `$${price.toFixed(zerosCount + 4)}`; // Show 4 significant digits
+      }
+      return `$${price.toExponential(4)}`;
+    }
+
+    // For prices between 0.00001 and 1, use 8 decimals
+    if (price < 1) {
+      return `$${price.toFixed(8)}`;
+    }
+
+    // For prices >= 1, use 4 decimals
+    return `$${price.toFixed(4)}`;
+  };
+
   return (
     <Dialog
       open={open}
@@ -324,7 +348,7 @@ const AddLiquidityModal = ({
                   <strong>{selectedStrategy.name}</strong>: {selectedStrategy.description}
                 </Typography>
                 <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                  Range: ${selectedStrategy.lowerBound.toFixed(6)} - ${selectedStrategy.upperBound.toFixed(6)}
+                  Range: {formatPrice(selectedStrategy.lowerBound)} - {formatPrice(selectedStrategy.upperBound)}
                 </Typography>
                 <Typography variant="caption" display="block">
                   Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
