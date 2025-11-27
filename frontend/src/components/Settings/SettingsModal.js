@@ -243,7 +243,7 @@ const SettingsModal = ({ open, onClose }) => {
 
         {/* Automation Tab */}
         <TabPanel value={tabValue} index={2}>
-          <AutomationSettings />
+          <AutomationSettings walletAddress={publicKey?.toBase58()} />
         </TabPanel>
       </DialogContent>
     </Dialog>

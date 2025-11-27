@@ -4,6 +4,7 @@ import { Box, Tabs, Tab, useMediaQuery, useTheme, IconButton, Tooltip, Chip, Cir
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SettingsModal from '../Settings/SettingsModal';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '../../contexts/WalletContext';
@@ -19,6 +20,10 @@ function Navigation() {
   const { publicKey } = useSolanaWallet();
   const { walletMode, monitorAddress } = useWallet();
   const activeAddress = walletMode === 'monitor' ? monitorAddress : publicKey?.toBase58();
+
+  // Check if dev wallet
+  const DEV_WALLET = 'DQMwHbduxUEEW4MPJWF6PbLhcPJBiLm5XTie4pwUPbuV';
+  const isDevWallet = publicKey?.toBase58() === DEV_WALLET;
 
   // Wallet balance state
   const [walletBalance, setWalletBalance] = useState({ sol: 0, usdc: 0 });
@@ -68,33 +73,63 @@ function Navigation() {
         <Tabs
           value={currentPath}
           centered={!isMobile}
-          variant={isMobile ? "fullWidth" : "standard"}
+          variant={isMobile ? "scrollable" : "standard"}
+          scrollButtons={isMobile ? "auto" : false}
+          allowScrollButtonsMobile
           sx={{
             '& .MuiTab-root': {
-              minWidth: { xs: 'auto', sm: 150, md: 200 },
-              fontSize: { xs: '0.875rem', sm: '0.95rem', md: '1rem' },
+              minWidth: { xs: 80, sm: 150, md: 200 },
+              fontSize: { xs: '0.75rem', sm: '0.95rem', md: '1rem' },
               fontWeight: 500,
-              px: { xs: 1, sm: 2, md: 3 },
+              px: { xs: 0.5, sm: 2, md: 3 },
               py: { xs: 1.5, sm: 2 }
             }
           }}
         >
           <Tab
-            label="Analytics"
+            label={isMobile ? "Analytics" : "Analytics"}
             value="/"
             component={Link}
             to="/"
-            icon={<ShowChartIcon fontSize={isMobile ? "small" : "medium"} />}
-            iconPosition="start"
+            icon={<ShowChartIcon fontSize="small" />}
+            iconPosition={isMobile ? "top" : "start"}
+            sx={{
+              '& .MuiTab-iconWrapper': {
+                mb: { xs: 0.5, sm: 0 },
+                mr: { xs: 0, sm: 1 }
+              }
+            }}
           />
           <Tab
-            label="Capital Rotation"
+            label={isMobile ? "Capital" : "Capital Rotation"}
             value="/capital-rotation"
             component={Link}
             to="/capital-rotation"
-            icon={<AccountBalanceWalletIcon fontSize={isMobile ? "small" : "medium"} />}
-            iconPosition="start"
+            icon={<AccountBalanceWalletIcon fontSize="small" />}
+            iconPosition={isMobile ? "top" : "start"}
+            sx={{
+              '& .MuiTab-iconWrapper': {
+                mb: { xs: 0.5, sm: 0 },
+                mr: { xs: 0, sm: 1 }
+              }
+            }}
           />
+          {isDevWallet && (
+            <Tab
+              label={isMobile ? "Admin" : "Backoffice"}
+              value="/backoffice"
+              component={Link}
+              to="/backoffice"
+              icon={<AdminPanelSettingsIcon fontSize="small" />}
+              iconPosition={isMobile ? "top" : "start"}
+              sx={{
+                '& .MuiTab-iconWrapper': {
+                  mb: { xs: 0.5, sm: 0 },
+                  mr: { xs: 0, sm: 1 }
+                }
+              }}
+            />
+          )}
         </Tabs>
 
         {/* Wallet Balance & Settings Button */}
@@ -144,6 +179,7 @@ function Navigation() {
           <Tooltip title="Settings">
             <IconButton
               onClick={() => setSettingsOpen(true)}
+              size={isMobile ? "small" : "medium"}
               sx={{
                 color: 'text.secondary',
                 '&:hover': {
@@ -152,7 +188,7 @@ function Navigation() {
                 }
               }}
             >
-              <SettingsIcon />
+              <SettingsIcon fontSize={isMobile ? "small" : "medium"} />
             </IconButton>
           </Tooltip>
         </Box>
