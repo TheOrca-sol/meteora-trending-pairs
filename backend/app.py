@@ -33,9 +33,12 @@ if DATABASE_ENABLED:
         from telegram_bot import telegram_bot_handler, get_bot_link
         from wallet_manager import WalletManager
         from services.monitoring.degen_monitoring import degen_monitoring_service
+        from liquidity_routes import liquidity_bp  # Import liquidity blueprint
+        from liquidity_monitoring_service import liquidity_monitoring_service
+        from liquidity_execution_service import liquidity_execution_service
         # Enable APScheduler logging
         logging.getLogger('apscheduler').setLevel(logging.DEBUG)
-        logger.info("Database features enabled (Capital Rotation + Degen Mode)")
+        logger.info("Database features enabled (Capital Rotation + Degen Mode + Liquidity Management)")
     except Exception as e:
         logger.warning(f"Failed to load database features: {e}")
         DATABASE_ENABLED = False
@@ -43,6 +46,10 @@ else:
     logger.info("Running in analytics-only mode (no DATABASE_URL set)")
 
 app = Flask(__name__)
+
+# Register liquidity management blueprint (if database is enabled)
+if DATABASE_ENABLED:
+    app.register_blueprint(liquidity_bp)
 
 # Pool cache configuration
 # Set to True to use GroupedPoolCache (/pair/groups API) - NOT RECOMMENDED (slow)
