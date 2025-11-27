@@ -1693,6 +1693,83 @@ def get_wallet_balance():
         }), 500
 
 
+@app.route('/api/wallet/token-balance', methods=['GET'])
+def get_token_balance():
+    """
+    Get balance for any SPL token
+    """
+    try:
+        wallet_address = request.args.get('walletAddress')
+        token_mint = request.args.get('tokenMint')
+
+        if not wallet_address or not token_mint:
+            return jsonify({
+                'status': 'error',
+                'message': 'Wallet address and token mint are required'
+            }), 400
+
+        from solana.rpc.api import Client
+        from solders.pubkey import Pubkey
+        from solana.rpc.commitment import Confirmed
+        from solana.rpc.types import TokenAccountOpts
+
+        # Initialize Solana RPC client
+        rpc_url = os.getenv('SOLANA_RPC_URL', 'https://api.mainnet-beta.solana.com')
+        client = Client(rpc_url)
+
+        pubkey = Pubkey.from_string(wallet_address)
+        mint_pubkey = Pubkey.from_string(token_mint)
+
+        # Get token accounts for this wallet and mint
+        response = client.get_token_accounts_by_owner(
+            pubkey,
+            TokenAccountOpts(mint=mint_pubkey),
+            commitment=Confirmed
+        )
+
+        token_balance = 0
+        decimals = 6  # Default to 6 decimals (most common for SPL tokens)
+
+        if response.value:
+            for account in response.value:
+                # Parse token account data
+                import base64
+                data = base64.b64decode(account.account.data)
+
+                # Token amount is at offset 64, 8 bytes (little-endian)
+                if len(data) >= 72:
+                    amount = int.from_bytes(data[64:72], byteorder='little')
+
+                    # Try to get decimals from mint (offset 44, 1 byte)
+                    # For more accurate balance calculation
+                    try:
+                        mint_info = client.get_account_info(mint_pubkey)
+                        if mint_info.value:
+                            mint_data = base64.b64decode(mint_info.value.data)
+                            if len(mint_data) >= 45:
+                                decimals = mint_data[44]
+                    except:
+                        pass  # Use default decimals
+
+                    token_balance += amount / (10 ** decimals)
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'balance': token_balance,
+                'decimals': decimals,
+                'mint': token_mint
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching token balance: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
 @app.route('/api/admin/dashboard', methods=['GET'])
 def get_admin_dashboard():
     """

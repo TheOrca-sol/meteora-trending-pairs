@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogActions,
   Button,
+  ButtonGroup,
   Box,
   Typography,
   TextField,
@@ -29,7 +30,8 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Autorenew as AutorenewIcon,
-  Balance as BalanceIcon
+  Balance as BalanceIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { addLiquidity, calculateBinIds } from '../../services/meteoraLiquidityService';
@@ -45,6 +47,9 @@ const AddLiquidityModal = ({
   liquidityStats
 }) => {
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
+
+  // Extract token names from pairName (e.g., "SOL-USDC" -> ["SOL", "USDC"])
+  const [tokenXName, tokenYName] = pairName ? pairName.split('-').map(t => t.trim()) : ['Token X', 'Token Y'];
 
   // Form state
   const [amountUSD, setAmountUSD] = useState('');
@@ -64,7 +69,8 @@ const AddLiquidityModal = ({
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(null);
+  const [tokenBalances, setTokenBalances] = useState({ tokenX: null, tokenY: null });
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   useEffect(() => {
     if (suggestedStrategy) {
@@ -72,26 +78,40 @@ const AddLiquidityModal = ({
     }
   }, [suggestedStrategy]);
 
-  // Fetch wallet balance
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (!publicKey) return;
+  // Fetch token balances
+  const fetchTokenBalances = async () => {
+    if (!publicKey || !mintX || !mintY) return;
 
-      try {
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/wallet/balance?walletAddress=${publicKey.toString()}`
-        );
-        const data = await response.json();
-        setWalletBalance(data.balanceSOL);
-      } catch (err) {
-        console.error('Error fetching balance:', err);
-      }
-    };
+    setBalanceLoading(true);
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
-    if (open && publicKey) {
-      fetchBalance();
+      // Fetch both token balances
+      const [balanceXResponse, balanceYResponse] = await Promise.all([
+        fetch(`${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintX}`),
+        fetch(`${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintY}`)
+      ]);
+
+      const balanceXData = await balanceXResponse.json();
+      const balanceYData = await balanceYResponse.json();
+
+      setTokenBalances({
+        tokenX: balanceXData.status === 'success' ? balanceXData.data.balance : 0,
+        tokenY: balanceYData.status === 'success' ? balanceYData.data.balance : 0
+      });
+    } catch (err) {
+      console.error('Error fetching token balances:', err);
+      setTokenBalances({ tokenX: 0, tokenY: 0 });
+    } finally {
+      setBalanceLoading(false);
     }
-  }, [open, publicKey]);
+  };
+
+  useEffect(() => {
+    if (open && publicKey && mintX && mintY) {
+      fetchTokenBalances();
+    }
+  }, [open, publicKey, mintX, mintY]);
 
   const handleAddLiquidity = async () => {
     if (!publicKey || !signTransaction || !signAllTransactions) {
@@ -107,12 +127,12 @@ const AddLiquidityModal = ({
       }
     } else if (inputMode === 'tokenX') {
       if (!amountTokenX || parseFloat(amountTokenX) <= 0) {
-        setError('Please enter a valid Token X amount');
+        setError(`Please enter a valid ${tokenXName} amount`);
         return;
       }
     } else if (inputMode === 'tokenY') {
       if (!amountTokenY || parseFloat(amountTokenY) <= 0) {
-        setError('Please enter a valid Token Y amount');
+        setError(`Please enter a valid ${tokenYName} amount`);
         return;
       }
     } else if (inputMode === 'both') {
@@ -232,11 +252,6 @@ const AddLiquidityModal = ({
     }
   };
 
-  const calculatePercentOfBalance = () => {
-    if (!walletBalance || !amountUSD) return 0;
-    return ((parseFloat(amountUSD) / walletBalance) * 100).toFixed(2);
-  };
-
   return (
     <Dialog
       open={open}
@@ -278,13 +293,13 @@ const AddLiquidityModal = ({
                 variant={inputMode === 'tokenX' ? 'contained' : 'outlined'}
                 onClick={() => setInputMode('tokenX')}
               >
-                Token X Amount
+                {tokenXName}
               </Button>
               <Button
                 variant={inputMode === 'tokenY' ? 'contained' : 'outlined'}
                 onClick={() => setInputMode('tokenY')}
               >
-                Token Y Amount
+                {tokenYName}
               </Button>
               <Button
                 variant={inputMode === 'both' ? 'contained' : 'outlined'}
@@ -309,45 +324,115 @@ const AddLiquidityModal = ({
             )}
 
             {inputMode === 'tokenX' && (
-              <TextField
-                fullWidth
-                label={`Amount (Token X)`}
-                type="number"
-                value={amountTokenX}
-                onChange={(e) => setAmountTokenX(e.target.value)}
-                helperText={`Enter amount of Token X (${mintX?.slice(0, 8)}...)`}
-              />
-            )}
-
-            {inputMode === 'tokenY' && (
-              <TextField
-                fullWidth
-                label={`Amount (Token Y)`}
-                type="number"
-                value={amountTokenY}
-                onChange={(e) => setAmountTokenY(e.target.value)}
-                helperText={`Enter amount of Token Y (${mintY?.slice(0, 8)}...)`}
-              />
-            )}
-
-            {inputMode === 'both' && (
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box>
                 <TextField
                   fullWidth
-                  label="Token X Amount"
+                  label={`${tokenXName} Amount`}
                   type="number"
                   value={amountTokenX}
                   onChange={(e) => setAmountTokenX(e.target.value)}
-                  helperText={`${mintX?.slice(0, 8)}...`}
+                  helperText={`Enter amount of ${tokenXName}`}
                 />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Balance: {balanceLoading ? (
+                      <CircularProgress size={12} sx={{ ml: 0.5 }} />
+                    ) : (
+                      <strong>{tokenBalances.tokenX !== null ? tokenBalances.tokenX.toLocaleString() : '0'} {tokenXName}</strong>
+                    )}
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={fetchTokenBalances}
+                    disabled={balanceLoading}
+                    sx={{ minWidth: 'auto', py: 0 }}
+                  >
+                    Refresh
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {inputMode === 'tokenY' && (
+              <Box>
                 <TextField
                   fullWidth
-                  label="Token Y Amount"
+                  label={`${tokenYName} Amount`}
                   type="number"
                   value={amountTokenY}
                   onChange={(e) => setAmountTokenY(e.target.value)}
-                  helperText={`${mintY?.slice(0, 8)}...`}
+                  helperText={`Enter amount of ${tokenYName}`}
                 />
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Balance: {balanceLoading ? (
+                      <CircularProgress size={12} sx={{ ml: 0.5 }} />
+                    ) : (
+                      <strong>{tokenBalances.tokenY !== null ? tokenBalances.tokenY.toLocaleString() : '0'} {tokenYName}</strong>
+                    )}
+                  </Typography>
+                  <Button
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={fetchTokenBalances}
+                    disabled={balanceLoading}
+                    sx={{ minWidth: 'auto', py: 0 }}
+                  >
+                    Refresh
+                  </Button>
+                </Box>
+              </Box>
+            )}
+
+            {inputMode === 'both' && (
+              <Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Box sx={{ flex: 1 }}>
+                    <TextField
+                      fullWidth
+                      label={`${tokenXName} Amount`}
+                      type="number"
+                      value={amountTokenX}
+                      onChange={(e) => setAmountTokenX(e.target.value)}
+                      helperText={tokenXName}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Balance: {balanceLoading ? (
+                        <CircularProgress size={12} sx={{ ml: 0.5 }} />
+                      ) : (
+                        <strong>{tokenBalances.tokenX !== null ? tokenBalances.tokenX.toLocaleString() : '0'}</strong>
+                      )}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ flex: 1 }}>
+                    <TextField
+                      fullWidth
+                      label={`${tokenYName} Amount`}
+                      type="number"
+                      value={amountTokenY}
+                      onChange={(e) => setAmountTokenY(e.target.value)}
+                      helperText={tokenYName}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Balance: {balanceLoading ? (
+                        <CircularProgress size={12} sx={{ ml: 0.5 }} />
+                      ) : (
+                        <strong>{tokenBalances.tokenY !== null ? tokenBalances.tokenY.toLocaleString() : '0'}</strong>
+                      )}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={<RefreshIcon />}
+                    onClick={fetchTokenBalances}
+                    disabled={balanceLoading}
+                  >
+                    Refresh Balances
+                  </Button>
+                </Box>
               </Box>
             )}
           </Box>
