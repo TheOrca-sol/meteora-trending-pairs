@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogActions,
   Button,
-  ButtonGroup,
   Box,
   Typography,
   TextField,
@@ -30,8 +29,7 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Autorenew as AutorenewIcon,
-  Balance as BalanceIcon,
-  Refresh as RefreshIcon
+  Balance as BalanceIcon
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { addLiquidity, calculateBinIds } from '../../services/meteoraLiquidityService';
@@ -48,14 +46,8 @@ const AddLiquidityModal = ({
 }) => {
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
 
-  // Extract token names from pairName (e.g., "SOL-USDC" -> ["SOL", "USDC"])
-  const [tokenXName, tokenYName] = pairName ? pairName.split('-').map(t => t.trim()) : ['Token X', 'Token Y'];
-
   // Form state
   const [amountUSD, setAmountUSD] = useState('');
-  const [amountTokenX, setAmountTokenX] = useState('');
-  const [amountTokenY, setAmountTokenY] = useState('');
-  const [inputMode, setInputMode] = useState('usd'); // 'usd', 'tokenX', 'tokenY', 'both'
   const [selectedStrategy, setSelectedStrategy] = useState(suggestedStrategy || null);
   const [takeProfitEnabled, setTakeProfitEnabled] = useState(false);
   const [takeProfitValue, setTakeProfitValue] = useState(50);
@@ -69,65 +61,34 @@ const AddLiquidityModal = ({
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [tokenBalances, setTokenBalances] = useState({ tokenX: null, tokenY: null });
-  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(null);
 
   useEffect(() => {
     if (suggestedStrategy) {
-      console.log('[AddLiquidityModal] Received suggestedStrategy:', suggestedStrategy);
       setSelectedStrategy(suggestedStrategy);
     }
   }, [suggestedStrategy]);
 
-  // Reset strategy when modal opens
+  // Fetch wallet balance
   useEffect(() => {
-    if (open) {
-      console.log('[AddLiquidityModal] Modal opened with suggestedStrategy:', suggestedStrategy);
-      console.log('[AddLiquidityModal] liquidityStats:', liquidityStats);
+    const fetchBalance = async () => {
+      if (!publicKey) return;
 
-      if (suggestedStrategy) {
-        setSelectedStrategy(suggestedStrategy);
-      } else if (liquidityStats?.strategies && liquidityStats.strategies.length > 0) {
-        // Default to first strategy if none is provided
-        setSelectedStrategy(liquidityStats.strategies[0]);
+      try {
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/wallet/balance?walletAddress=${publicKey.toString()}`
+        );
+        const data = await response.json();
+        setWalletBalance(data.balanceSOL);
+      } catch (err) {
+        console.error('Error fetching balance:', err);
       }
+    };
+
+    if (open && publicKey) {
+      fetchBalance();
     }
-  }, [open, suggestedStrategy, liquidityStats]);
-
-  // Fetch token balances
-  const fetchTokenBalances = async () => {
-    if (!publicKey || !mintX || !mintY) return;
-
-    setBalanceLoading(true);
-    try {
-      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-      // Fetch both token balances
-      const [balanceXResponse, balanceYResponse] = await Promise.all([
-        fetch(`${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintX}`),
-        fetch(`${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintY}`)
-      ]);
-
-      const balanceXData = await balanceXResponse.json();
-      const balanceYData = await balanceYResponse.json();
-
-      setTokenBalances({
-        tokenX: balanceXData.status === 'success' ? balanceXData.data.balance : 0,
-        tokenY: balanceYData.status === 'success' ? balanceYData.data.balance : 0
-      });
-    } catch (err) {
-      console.error('Error fetching token balances:', err);
-      setTokenBalances({ tokenX: 0, tokenY: 0 });
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (open && publicKey && mintX && mintY) {
-      fetchTokenBalances();
-    }
-  }, [open, publicKey, mintX, mintY]);
+  }, [open, publicKey]);
 
   const handleAddLiquidity = async () => {
     if (!publicKey || !signTransaction || !signAllTransactions) {
@@ -135,27 +96,9 @@ const AddLiquidityModal = ({
       return;
     }
 
-    // Validation based on input mode
-    if (inputMode === 'usd') {
-      if (!amountUSD || parseFloat(amountUSD) <= 0) {
-        setError('Please enter a valid USD amount');
-        return;
-      }
-    } else if (inputMode === 'tokenX') {
-      if (!amountTokenX || parseFloat(amountTokenX) <= 0) {
-        setError(`Please enter a valid ${tokenXName} amount`);
-        return;
-      }
-    } else if (inputMode === 'tokenY') {
-      if (!amountTokenY || parseFloat(amountTokenY) <= 0) {
-        setError(`Please enter a valid ${tokenYName} amount`);
-        return;
-      }
-    } else if (inputMode === 'both') {
-      if ((!amountTokenX || parseFloat(amountTokenX) <= 0) && (!amountTokenY || parseFloat(amountTokenY) <= 0)) {
-        setError('Please enter at least one token amount');
-        return;
-      }
+    if (!amountUSD || parseFloat(amountUSD) <= 0) {
+      setError('Please enter a valid amount');
+      return;
     }
 
     if (!selectedStrategy) {
@@ -176,29 +119,15 @@ const AddLiquidityModal = ({
 
       console.log('[Add Liquidity] Bin IDs:', { lowerBinId, upperBinId, activeBinId });
 
-      // Prepare parameters based on input mode
-      const params = {
+      // Add liquidity using Meteora SDK
+      const { signature, positionAddress } = await addLiquidity({
         poolAddress,
+        amountUSD: parseFloat(amountUSD),
         lowerBinId,
         upperBinId,
         wallet: { signTransaction, signAllTransactions },
         walletPublicKey: publicKey
-      };
-
-      // Add amount based on input mode
-      if (inputMode === 'usd') {
-        params.amountUSD = parseFloat(amountUSD);
-      } else if (inputMode === 'tokenX') {
-        params.amountTokenX = parseFloat(amountTokenX);
-      } else if (inputMode === 'tokenY') {
-        params.amountTokenY = parseFloat(amountTokenY);
-      } else if (inputMode === 'both') {
-        if (amountTokenX) params.amountTokenX = parseFloat(amountTokenX);
-        if (amountTokenY) params.amountTokenY = parseFloat(amountTokenY);
-      }
-
-      // Add liquidity using Meteora SDK
-      const { signature, positionAddress } = await addLiquidity(params);
+      });
 
       console.log('[Add Liquidity] Success:', { signature, positionAddress });
 
@@ -268,7 +197,10 @@ const AddLiquidityModal = ({
     }
   };
 
-  console.log('[AddLiquidityModal] Rendering with selectedStrategy:', selectedStrategy);
+  const calculatePercentOfBalance = () => {
+    if (!walletBalance || !amountUSD) return 0;
+    return ((parseFloat(amountUSD) / walletBalance) * 100).toFixed(2);
+  };
 
   return (
     <Dialog
@@ -295,164 +227,26 @@ const AddLiquidityModal = ({
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 2 }}>
 
-          {/* Amount Input Mode Selection */}
+          {/* Amount Input */}
           <Box>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Liquidity Amount
             </Typography>
-            <ButtonGroup fullWidth size="small" sx={{ mb: 2 }}>
-              <Button
-                variant={inputMode === 'usd' ? 'contained' : 'outlined'}
-                onClick={() => setInputMode('usd')}
-              >
-                USD Value
-              </Button>
-              <Button
-                variant={inputMode === 'tokenX' ? 'contained' : 'outlined'}
-                onClick={() => setInputMode('tokenX')}
-              >
-                {tokenXName}
-              </Button>
-              <Button
-                variant={inputMode === 'tokenY' ? 'contained' : 'outlined'}
-                onClick={() => setInputMode('tokenY')}
-              >
-                {tokenYName}
-              </Button>
-              <Button
-                variant={inputMode === 'both' ? 'contained' : 'outlined'}
-                onClick={() => setInputMode('both')}
-              >
-                Both Tokens
-              </Button>
-            </ButtonGroup>
-
-            {inputMode === 'usd' && (
-              <TextField
-                fullWidth
-                label="Amount (USD)"
-                type="number"
-                value={amountUSD}
-                onChange={(e) => setAmountUSD(e.target.value)}
-                InputProps={{
-                  startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
-                }}
-                helperText="Enter total liquidity value in USD"
-              />
-            )}
-
-            {inputMode === 'tokenX' && (
-              <Box>
-                <TextField
-                  fullWidth
-                  label={`${tokenXName} Amount`}
-                  type="number"
-                  value={amountTokenX}
-                  onChange={(e) => setAmountTokenX(e.target.value)}
-                  helperText={`Enter amount of ${tokenXName}`}
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Balance: {balanceLoading ? (
-                      <CircularProgress size={12} sx={{ ml: 0.5 }} />
-                    ) : (
-                      <strong>{tokenBalances.tokenX !== null ? tokenBalances.tokenX.toLocaleString() : '0'} {tokenXName}</strong>
-                    )}
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={fetchTokenBalances}
-                    disabled={balanceLoading}
-                    sx={{ minWidth: 'auto', py: 0 }}
-                  >
-                    Refresh
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
-            {inputMode === 'tokenY' && (
-              <Box>
-                <TextField
-                  fullWidth
-                  label={`${tokenYName} Amount`}
-                  type="number"
-                  value={amountTokenY}
-                  onChange={(e) => setAmountTokenY(e.target.value)}
-                  helperText={`Enter amount of ${tokenYName}`}
-                />
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 1 }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Balance: {balanceLoading ? (
-                      <CircularProgress size={12} sx={{ ml: 0.5 }} />
-                    ) : (
-                      <strong>{tokenBalances.tokenY !== null ? tokenBalances.tokenY.toLocaleString() : '0'} {tokenYName}</strong>
-                    )}
-                  </Typography>
-                  <Button
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={fetchTokenBalances}
-                    disabled={balanceLoading}
-                    sx={{ minWidth: 'auto', py: 0 }}
-                  >
-                    Refresh
-                  </Button>
-                </Box>
-              </Box>
-            )}
-
-            {inputMode === 'both' && (
-              <Box>
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <Box sx={{ flex: 1 }}>
-                    <TextField
-                      fullWidth
-                      label={`${tokenXName} Amount`}
-                      type="number"
-                      value={amountTokenX}
-                      onChange={(e) => setAmountTokenX(e.target.value)}
-                      helperText={tokenXName}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      Balance: {balanceLoading ? (
-                        <CircularProgress size={12} sx={{ ml: 0.5 }} />
-                      ) : (
-                        <strong>{tokenBalances.tokenX !== null ? tokenBalances.tokenX.toLocaleString() : '0'}</strong>
-                      )}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ flex: 1 }}>
-                    <TextField
-                      fullWidth
-                      label={`${tokenYName} Amount`}
-                      type="number"
-                      value={amountTokenY}
-                      onChange={(e) => setAmountTokenY(e.target.value)}
-                      helperText={tokenYName}
-                    />
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                      Balance: {balanceLoading ? (
-                        <CircularProgress size={12} sx={{ ml: 0.5 }} />
-                      ) : (
-                        <strong>{tokenBalances.tokenY !== null ? tokenBalances.tokenY.toLocaleString() : '0'}</strong>
-                      )}
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
-                  <Button
-                    size="small"
-                    startIcon={<RefreshIcon />}
-                    onClick={fetchTokenBalances}
-                    disabled={balanceLoading}
-                  >
-                    Refresh Balances
-                  </Button>
-                </Box>
-              </Box>
-            )}
+            <TextField
+              fullWidth
+              label="Amount (USD)"
+              type="number"
+              value={amountUSD}
+              onChange={(e) => setAmountUSD(e.target.value)}
+              InputProps={{
+                startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
+              }}
+              helperText={
+                walletBalance && amountUSD
+                  ? `${calculatePercentOfBalance()}% of wallet balance (${walletBalance.toFixed(2)} SOL)`
+                  : 'Enter amount in USD'
+              }
+            />
           </Box>
 
           {/* Strategy Selection */}
@@ -460,61 +254,23 @@ const AddLiquidityModal = ({
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
               Liquidity Strategy
             </Typography>
-
-            {/* Strategy Selection Buttons */}
-            {liquidityStats?.strategies && liquidityStats.strategies.length > 0 && (
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                  Choose a liquidity strategy:
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {liquidityStats.strategies.map((strategy, index) => (
-                    <Button
-                      key={index}
-                      variant={selectedStrategy === strategy ? 'contained' : 'outlined'}
-                      size="small"
-                      onClick={() => setSelectedStrategy(strategy)}
-                      sx={{ textTransform: 'none' }}
-                    >
-                      {strategy.name || `Strategy ${index + 1}`}
-                    </Button>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* Selected Strategy Details */}
-            {selectedStrategy ? (
+            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+              {selectedStrategy
+                ? `Selected: ${selectedStrategy.name} (${selectedStrategy.rangePercentage}% range)`
+                : 'Select a strategy from the Liquidity Distribution chart above'}
+            </Typography>
+            {selectedStrategy && (
               <Alert severity="info" sx={{ mt: 1 }}>
                 <Typography variant="body2">
-                  <strong>{selectedStrategy.name || 'Custom Strategy'}</strong>
-                  {selectedStrategy.description && `: ${selectedStrategy.description}`}
+                  <strong>{selectedStrategy.name}</strong>: {selectedStrategy.description}
                 </Typography>
-                {selectedStrategy.lowerBound !== undefined && selectedStrategy.upperBound !== undefined && (
-                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                    Range: ${selectedStrategy.lowerBound.toFixed(6)} - ${selectedStrategy.upperBound.toFixed(6)}
-                  </Typography>
-                )}
-                {selectedStrategy.side && (
-                  <Typography variant="caption" display="block">
-                    Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
-                  </Typography>
-                )}
-                {selectedStrategy.liquidityUsd !== undefined && (
-                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                    Liquidity: ${selectedStrategy.liquidityUsd.toLocaleString()}
-                  </Typography>
-                )}
-                {selectedStrategy.dominantSide && (
-                  <Typography variant="caption" display="block">
-                    Dominant Side: {selectedStrategy.dominantSide}
-                  </Typography>
-                )}
+                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                  Range: ${selectedStrategy.lowerBound.toFixed(6)} - ${selectedStrategy.upperBound.toFixed(6)}
+                </Typography>
+                <Typography variant="caption" display="block">
+                  Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
+                </Typography>
               </Alert>
-            ) : (
-              <Typography variant="caption" color="text.secondary">
-                Please select a strategy above to continue
-              </Typography>
             )}
           </Box>
 
@@ -699,12 +455,7 @@ const AddLiquidityModal = ({
         <Button
           variant="contained"
           onClick={handleAddLiquidity}
-          disabled={loading || !publicKey ||
-            (inputMode === 'usd' && !amountUSD) ||
-            (inputMode === 'tokenX' && !amountTokenX) ||
-            (inputMode === 'tokenY' && !amountTokenY) ||
-            (inputMode === 'both' && !amountTokenX && !amountTokenY) ||
-            !selectedStrategy}
+          disabled={loading || !publicKey || !amountUSD || !selectedStrategy}
           startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
         >
           {loading ? 'Adding...' : 'Add Liquidity'}

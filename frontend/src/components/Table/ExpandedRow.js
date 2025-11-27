@@ -20,7 +20,6 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import AddIcon from '@mui/icons-material/Add';
 import { getPairXToken, formatNumber } from '../../utils/helpers';
 import axios from 'axios';
 import MarketStats from './MarketStats';
@@ -31,7 +30,6 @@ import LiquidityDistribution from '../LiquidityDistribution';
 import BubbleMaps from './BubbleMaps';
 import ExternalLinks from './ExternalLinks';
 import TradingViewChart from '../TradingViewChart';
-import AddLiquidityModal from '../LiquidityManagement/AddLiquidityModal';
 
 const commonTypographyStyles = {
   sectionTitle: {
@@ -70,8 +68,6 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
   // Enable all features in production
   const enableLocalhostFeatures = true;
 
-  // Add Liquidity modal state
-  const [addLiquidityOpen, setAddLiquidityOpen] = useState(false);
 
   if (!pair || !pairXToken) {
     return (
@@ -116,22 +112,6 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
               <ExternalLinks pair={pair} />
             </Box>
 
-            {/* Add Liquidity Button */}
-            <Button
-              variant="contained"
-              color="success"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={() => setAddLiquidityOpen(true)}
-              sx={{
-                fontWeight: 600,
-                textTransform: 'none',
-                px: { xs: 2, sm: 3 },
-                py: { xs: 0.75, sm: 1 }
-              }}
-            >
-              Add Liquidity
-            </Button>
           </Box>
         </Grid>
 
@@ -343,7 +323,11 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
                   borderColor: 'divider',
                 }}
               >
-                <LiquidityDistribution mintX={pair.mint_x} mintY={pair.mint_y} />
+                <LiquidityDistribution
+                  mintX={pair.mint_x}
+                  mintY={pair.mint_y}
+                  poolAddress={pair.address}
+                />
               </Paper>
             </Grid>
 
@@ -368,17 +352,6 @@ const ExpandedRow = ({ pair, timeframes, calculateTxnStats }) => {
         )}
       </Grid>
 
-      {/* Add Liquidity Modal */}
-      <AddLiquidityModal
-        open={addLiquidityOpen}
-        onClose={() => setAddLiquidityOpen(false)}
-        poolAddress={pair.address}
-        pairName={pair.name || pair.pairName}
-        mintX={pair.mint_x}
-        mintY={pair.mint_y}
-        suggestedStrategy={null}
-        liquidityStats={null}
-      />
     </Box>
   );
 };
