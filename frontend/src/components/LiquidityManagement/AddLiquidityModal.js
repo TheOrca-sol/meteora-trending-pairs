@@ -29,7 +29,8 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Autorenew as AutorenewIcon,
-  Balance as BalanceIcon
+  Balance as BalanceIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { addLiquidity, calculateBinIds } from '../../services/meteoraLiquidityService';
@@ -47,7 +48,8 @@ const AddLiquidityModal = ({
   const { publicKey, signTransaction, signAllTransactions } = useWallet();
 
   // Form state
-  const [amountUSD, setAmountUSD] = useState('');
+  const [amountTokenX, setAmountTokenX] = useState('');
+  const [amountTokenY, setAmountTokenY] = useState('');
   const [selectedStrategy, setSelectedStrategy] = useState(suggestedStrategy || null);
   const [takeProfitEnabled, setTakeProfitEnabled] = useState(false);
   const [takeProfitValue, setTakeProfitValue] = useState(50);
@@ -61,7 +63,13 @@ const AddLiquidityModal = ({
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(null);
+  const [balanceTokenX, setBalanceTokenX] = useState(null);
+  const [balanceTokenY, setBalanceTokenY] = useState(null);
+  const [loadingBalances, setLoadingBalances] = useState(false);
+
+  // Extract token names from pairName (e.g., "SOL - USDC")
+  const tokenXName = pairName?.split('-')[0]?.trim() || 'Token X';
+  const tokenYName = pairName?.split('-')[1]?.trim() || 'Token Y';
 
   useEffect(() => {
     if (suggestedStrategy) {
@@ -69,26 +77,43 @@ const AddLiquidityModal = ({
     }
   }, [suggestedStrategy]);
 
-  // Fetch wallet balance
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (!publicKey) return;
+  // Fetch token balances
+  const fetchBalances = async () => {
+    if (!publicKey || !mintX || !mintY) return;
 
-      try {
-        const response = await fetch(
-          `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/wallet/balance?walletAddress=${publicKey.toString()}`
-        );
-        const data = await response.json();
-        setWalletBalance(data.balanceSOL);
-      } catch (err) {
-        console.error('Error fetching balance:', err);
+    setLoadingBalances(true);
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+      // Fetch Token X balance
+      const responseX = await fetch(
+        `${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintX}`
+      );
+      const dataX = await responseX.json();
+      if (dataX.status === 'success') {
+        setBalanceTokenX(dataX.data.balance);
       }
-    };
 
-    if (open && publicKey) {
-      fetchBalance();
+      // Fetch Token Y balance
+      const responseY = await fetch(
+        `${API_URL}/wallet/token-balance?walletAddress=${publicKey.toString()}&tokenMint=${mintY}`
+      );
+      const dataY = await responseY.json();
+      if (dataY.status === 'success') {
+        setBalanceTokenY(dataY.data.balance);
+      }
+    } catch (err) {
+      console.error('Error fetching token balances:', err);
+    } finally {
+      setLoadingBalances(false);
     }
-  }, [open, publicKey]);
+  };
+
+  useEffect(() => {
+    if (open && publicKey && mintX && mintY) {
+      fetchBalances();
+    }
+  }, [open, publicKey, mintX, mintY]);
 
   const handleAddLiquidity = async () => {
     if (!publicKey || !signTransaction || !signAllTransactions) {
@@ -96,8 +121,8 @@ const AddLiquidityModal = ({
       return;
     }
 
-    if (!amountUSD || parseFloat(amountUSD) <= 0) {
-      setError('Please enter a valid amount');
+    if (!amountTokenX || parseFloat(amountTokenX) <= 0 || !amountTokenY || parseFloat(amountTokenY) <= 0) {
+      setError('Please enter valid amounts for both tokens');
       return;
     }
 
@@ -122,7 +147,8 @@ const AddLiquidityModal = ({
       // Add liquidity using Meteora SDK
       const { signature, positionAddress } = await addLiquidity({
         poolAddress,
-        amountUSD: parseFloat(amountUSD),
+        amountX: parseFloat(amountTokenX),
+        amountY: parseFloat(amountTokenY),
         lowerBinId,
         upperBinId,
         wallet: { signTransaction, signAllTransactions },
@@ -140,11 +166,11 @@ const AddLiquidityModal = ({
         positionAddress,
         tokenXMint: mintX,
         tokenYMint: mintY,
-        tokenXSymbol: pairName?.split('-')[0]?.trim(),
-        tokenYSymbol: pairName?.split('-')[1]?.trim(),
-        amountX: 0, // Will be calculated by backend
-        amountY: 0, // Will be calculated by backend
-        liquidityUsd: parseFloat(amountUSD),
+        tokenXSymbol: tokenXName,
+        tokenYSymbol: tokenYName,
+        amountX: parseFloat(amountTokenX),
+        amountY: parseFloat(amountTokenY),
+        liquidityUsd: 0, // Will be calculated by backend based on token amounts
         lowerPrice: selectedStrategy.lowerBound,
         upperPrice: selectedStrategy.upperBound,
         lowerBinId,
@@ -197,9 +223,9 @@ const AddLiquidityModal = ({
     }
   };
 
-  const calculatePercentOfBalance = () => {
-    if (!walletBalance || !amountUSD) return 0;
-    return ((parseFloat(amountUSD) / walletBalance) * 100).toFixed(2);
+  const formatBalance = (balance) => {
+    if (balance === null) return 'Loading...';
+    return balance.toFixed(6);
   };
 
   return (
@@ -227,26 +253,58 @@ const AddLiquidityModal = ({
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, py: 2 }}>
 
-          {/* Amount Input */}
+          {/* Token Amounts Input */}
           <Box>
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-              Liquidity Amount
-            </Typography>
-            <TextField
-              fullWidth
-              label="Amount (USD)"
-              type="number"
-              value={amountUSD}
-              onChange={(e) => setAmountUSD(e.target.value)}
-              InputProps={{
-                startAdornment: <Typography sx={{ mr: 1, color: 'text.secondary' }}>$</Typography>,
-              }}
-              helperText={
-                walletBalance && amountUSD
-                  ? `${calculatePercentOfBalance()}% of wallet balance (${walletBalance.toFixed(2)} SOL)`
-                  : 'Enter amount in USD'
-              }
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                Liquidity Amounts
+              </Typography>
+              <Button
+                size="small"
+                startIcon={<RefreshIcon />}
+                onClick={fetchBalances}
+                disabled={loadingBalances || !publicKey}
+                sx={{ textTransform: 'none' }}
+              >
+                Refresh Balances
+              </Button>
+            </Box>
+
+            <Grid container spacing={2}>
+              {/* Token X Input */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label={`${tokenXName} Amount`}
+                  type="number"
+                  value={amountTokenX}
+                  onChange={(e) => setAmountTokenX(e.target.value)}
+                  helperText={
+                    publicKey
+                      ? `Balance: ${formatBalance(balanceTokenX)} ${tokenXName}`
+                      : 'Connect wallet to see balance'
+                  }
+                  inputProps={{ step: 'any', min: 0 }}
+                />
+              </Grid>
+
+              {/* Token Y Input */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label={`${tokenYName} Amount`}
+                  type="number"
+                  value={amountTokenY}
+                  onChange={(e) => setAmountTokenY(e.target.value)}
+                  helperText={
+                    publicKey
+                      ? `Balance: ${formatBalance(balanceTokenY)} ${tokenYName}`
+                      : 'Connect wallet to see balance'
+                  }
+                  inputProps={{ step: 'any', min: 0 }}
+                />
+              </Grid>
+            </Grid>
           </Box>
 
           {/* Strategy Selection */}
@@ -455,7 +513,7 @@ const AddLiquidityModal = ({
         <Button
           variant="contained"
           onClick={handleAddLiquidity}
-          disabled={loading || !publicKey || !amountUSD || !selectedStrategy}
+          disabled={loading || !publicKey || !amountTokenX || !amountTokenY || !selectedStrategy}
           startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
         >
           {loading ? 'Adding...' : 'Add Liquidity'}
