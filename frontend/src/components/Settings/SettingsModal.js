@@ -13,9 +13,11 @@ import {
 import {
   Close as CloseIcon,
   AccountBalanceWallet as WalletIcon,
-  Telegram as TelegramIcon
+  Telegram as TelegramIcon,
+  Settings as AutomationIcon
 } from '@mui/icons-material';
 import TelegramConnection from './TelegramConnection';
+import AutomationSettings from './AutomationSettings';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
@@ -92,6 +94,12 @@ const SettingsModal = ({ open, onClose }) => {
             icon={<TelegramIcon />}
             iconPosition="start"
             label="Telegram"
+            sx={{ fontFamily: "'Inter', sans-serif", textTransform: 'none' }}
+          />
+          <Tab
+            icon={<AutomationIcon />}
+            iconPosition="start"
+            label="Automation"
             sx={{ fontFamily: "'Inter', sans-serif", textTransform: 'none' }}
           />
         </Tabs>
@@ -231,6 +239,11 @@ const SettingsModal = ({ open, onClose }) => {
         {/* Telegram Tab */}
         <TabPanel value={tabValue} index={1}>
           <TelegramConnection walletAddress={publicKey?.toBase58()} />
+        </TabPanel>
+
+        {/* Automation Tab */}
+        <TabPanel value={tabValue} index={2}>
+          <AutomationSettings />
         </TabPanel>
       </DialogContent>
     </Dialog>
