@@ -31,19 +31,6 @@ const BinRangeSelector = ({
   const isTokenXPosition = hasTokenX && !hasTokenY;
   const isBothTokens = hasTokenX && hasTokenY;
 
-  console.log('[BinRangeSelector] Debug:', {
-    amountTokenX,
-    amountTokenY,
-    hasTokenX,
-    hasTokenY,
-    showPositionBins,
-    isTokenYPosition,
-    isTokenXPosition,
-    isBothTokens,
-    currentPrice,
-    suggestedLowerBound,
-    suggestedUpperBound
-  });
 
   useEffect(() => {
     if (suggestedLowerBound && suggestedUpperBound) {
@@ -57,8 +44,6 @@ const BinRangeSelector = ({
         min: adjustedMin,
         max: adjustedMax
       });
-
-      console.log('[BinRangeSelector] Range set:', { min: adjustedMin, max: adjustedMax });
     }
   }, [suggestedLowerBound, suggestedUpperBound, currentPrice]);
 
@@ -83,8 +68,6 @@ const BinRangeSelector = ({
     // For single token positions, show bars in range regardless of current price
     // The suggested range from the strategy already accounts for which side
     // Just show all bars in the selected range for the token they're providing
-
-    console.log('[BinRangeSelector] Showing bar at price:', price, 'currentPrice:', currentPrice, 'for token:', isTokenYPosition ? 'Y' : isTokenXPosition ? 'X' : 'Both');
 
     const rangeStart = bins.findIndex(b => b.price >= selectedRange.min);
     const rangeEnd = bins.findIndex(b => b.price > selectedRange.max);
@@ -144,13 +127,6 @@ const BinRangeSelector = ({
     positionLiquidity: getDistributionForBin(bin.price, bins.indexOf(bin))
   }));
 
-  // Debug: log how many bars have position liquidity
-  const barsWithPosition = chartData.filter(d => d.positionLiquidity > 0);
-  console.log('[BinRangeSelector] Chart data:', {
-    totalBins: chartData.length,
-    barsWithPosition: barsWithPosition.length,
-    positions: barsWithPosition.map(b => ({ price: b.price, liquidity: b.positionLiquidity }))
-  });
 
   const formatPrice = (price) => {
     if (!price) return '$0';

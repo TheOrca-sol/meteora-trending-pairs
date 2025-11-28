@@ -129,8 +129,12 @@ const AddLiquidityModal = ({
       return;
     }
 
-    if (!amountTokenX || parseFloat(amountTokenX) <= 0 || !amountTokenY || parseFloat(amountTokenY) <= 0) {
-      setError('Please enter valid amounts for both tokens');
+    // Require at least one token amount
+    const hasTokenX = amountTokenX && parseFloat(amountTokenX) > 0;
+    const hasTokenY = amountTokenY && parseFloat(amountTokenY) > 0;
+
+    if (!hasTokenX && !hasTokenY) {
+      setError('Please enter at least one token amount');
       return;
     }
 
@@ -157,20 +161,22 @@ const AddLiquidityModal = ({
       const lowerPrice = parseFloat(customLowerBound) || selectedStrategy.lowerBound;
       const upperPrice = parseFloat(customUpperBound) || selectedStrategy.upperBound;
 
-      // Calculate bin IDs from price range
+      // Calculate bin IDs from price range using Meteora SDK
+      console.log('[Add Liquidity] Calculating bin IDs for range:', { lowerPrice, upperPrice });
+
       const { lowerBinId, upperBinId, activeBinId } = await calculateBinIds({
         poolAddress,
         lowerPrice,
         upperPrice
       });
 
-      console.log('[Add Liquidity] Bin IDs:', { lowerBinId, upperBinId, activeBinId });
+      console.log('[Add Liquidity] Bin IDs calculated:', { lowerBinId, upperBinId, activeBinId });
 
       // Add liquidity using Meteora SDK
       const { signature, positionAddress } = await addLiquidity({
         poolAddress,
-        amountX: parseFloat(amountTokenX),
-        amountY: parseFloat(amountTokenY),
+        amountX: amountTokenX ? parseFloat(amountTokenX) : 0,
+        amountY: amountTokenY ? parseFloat(amountTokenY) : 0,
         lowerBinId,
         upperBinId,
         distributionStrategy, // spot, curve, or bid-ask
@@ -614,7 +620,14 @@ const AddLiquidityModal = ({
         <Button
           variant="contained"
           onClick={handleAddLiquidity}
-          disabled={loading || !publicKey || !amountTokenX || !amountTokenY || !selectedStrategy || !customLowerBound || !customUpperBound}
+          disabled={
+            loading ||
+            !publicKey ||
+            (!amountTokenX && !amountTokenY) ||
+            !selectedStrategy ||
+            !customLowerBound ||
+            !customUpperBound
+          }
           startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
         >
           {loading ? 'Adding...' : 'Add Liquidity'}

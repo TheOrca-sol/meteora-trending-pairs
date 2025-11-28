@@ -392,58 +392,85 @@ app.post('/position/compound', async (req, res) => {
 // Create position (for user adding liquidity)
 app.post('/position/create', async (req, res) => {
     try {
-        const { poolAddress, amountUSD, lowerBinId, upperBinId, userPublicKey } = req.body;
+        const { poolAddress, amountX, amountY, lowerBinId, upperBinId, userPublicKey, distributionStrategy } = req.body;
 
-        if (!poolAddress || !amountUSD || lowerBinId === undefined || upperBinId === undefined || !userPublicKey) {
-            return res.status(400).json({ error: 'Missing required parameters' });
+        console.log('[Position Create] Received request:', { poolAddress, amountX, amountY, lowerBinId, upperBinId, userPublicKey, distributionStrategy });
+
+        if (!poolAddress || lowerBinId === undefined || upperBinId === undefined || !userPublicKey) {
+            console.error('[Position Create] Missing required parameters:', { poolAddress, lowerBinId, upperBinId, userPublicKey });
+            return res.status(400).json({
+                error: 'Missing required parameters',
+                details: {
+                    hasPoolAddress: !!poolAddress,
+                    hasLowerBinId: lowerBinId !== undefined,
+                    hasUpperBinId: upperBinId !== undefined,
+                    hasUserPublicKey: !!userPublicKey
+                }
+            });
+        }
+
+        // Require at least one token amount
+        if ((amountX === undefined || amountX === 0) && (amountY === undefined || amountY === 0)) {
+            return res.status(400).json({ error: 'Must provide at least one token amount' });
         }
 
         console.log(`Creating position for user: ${userPublicKey}`);
+        console.log(`  Amounts: ${amountX || 0} X, ${amountY || 0} Y`);
+        console.log(`  Range: bins ${lowerBinId} - ${upperBinId}`);
+        console.log(`  Strategy: ${distributionStrategy || 'spot'}`);
 
         // Load DLMM pool
         const poolPubkey = new PublicKey(poolAddress);
         const dlmmPool = await DLMM.create(connection, poolPubkey);
 
-        // Get token prices
-        const mintX = dlmmPool.tokenX.publicKey.toString();
-        const mintY = dlmmPool.tokenY.publicKey.toString();
-        const { priceX, priceY } = await fetchTokenPrices(mintX, mintY);
-
-        if (!priceX || !priceY) {
-            throw new Error('Unable to fetch token prices');
-        }
-
-        // Calculate token amounts (50/50 split)
-        const usdPerToken = amountUSD / 2;
-        const amountX = usdPerToken / priceX;
-        const amountY = usdPerToken / priceY;
-
         // Convert to lamports
         const decimalsX = dlmmPool.tokenX.decimal;
         const decimalsY = dlmmPool.tokenY.decimal;
-        const amountXLamports = new BN(Math.floor(amountX * Math.pow(10, decimalsX)));
-        const amountYLamports = new BN(Math.floor(amountY * Math.pow(10, decimalsY)));
+        const amountXLamports = new BN(Math.floor((amountX || 0) * Math.pow(10, decimalsX)));
+        const amountYLamports = new BN(Math.floor((amountY || 0) * Math.pow(10, decimalsY)));
 
-        console.log(`Token amounts: ${amountX.toFixed(6)} X, ${amountY.toFixed(6)} Y`);
+        // Map distribution strategy to Meteora strategyType
+        // 0 = Spot (uniform), 1 = Curve (bell curve), 2 = Bid-Ask (concentrated at edges)
+        let strategyType;
+        switch (distributionStrategy?.toLowerCase()) {
+            case 'curve':
+                strategyType = 1; // Bell curve
+                break;
+            case 'bid-ask':
+                strategyType = 2; // Bid-Ask spread
+                break;
+            case 'spot':
+            default:
+                strategyType = 0; // Uniform/Spot
+                break;
+        }
 
         // Create unsigned transaction for user to sign
         const userPubkey = new PublicKey(userPublicKey);
-        const addLiquidityResult = await dlmmPool.addLiquidity({
-            positionPubKey: PublicKey.default, // New position
+
+        // Generate a new position keypair (will be owned by user)
+        const positionKeypair = Keypair.generate();
+
+        const createPositionTx = await dlmmPool.initializePositionAndAddLiquidityByStrategy({
+            positionPubKey: positionKeypair.publicKey,
             user: userPubkey,
             totalXAmount: amountXLamports,
             totalYAmount: amountYLamports,
             strategy: {
                 maxBinId: upperBinId,
                 minBinId: lowerBinId,
-                strategyType: 1 // Spot distribution
+                strategyType
             }
         });
 
-        const transaction = addLiquidityResult.tx;
-        const positionPubkey = addLiquidityResult.userPositionPubKey;
+        // The SDK returns either a single Transaction or an array of Transactions
+        const transaction = Array.isArray(createPositionTx) ? createPositionTx[0] : createPositionTx;
+        const positionPubkey = positionKeypair.publicKey;
 
-        // Serialize transaction (unsigned) to send to frontend
+        // Partially sign with position keypair (this keypair is ephemeral, created server-side)
+        transaction.partialSign(positionKeypair);
+
+        // Serialize transaction (partially signed) to send to frontend
         const serializedTx = transaction.serialize({
             requireAllSignatures: false,
             verifySignatures: false
@@ -458,6 +485,40 @@ app.post('/position/create', async (req, res) => {
 
     } catch (error) {
         console.error('Error creating position:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Calculate bin IDs from prices
+app.post('/pool/calculate-bin-ids', async (req, res) => {
+    try {
+        const { poolAddress, lowerPrice, upperPrice } = req.body;
+
+        if (!poolAddress || !lowerPrice || !upperPrice) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log(`[Calculate Bin IDs] Pool: ${poolAddress}, Range: ${lowerPrice} - ${upperPrice}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Use SDK's getBinIdFromPrice method
+        const lowerBinId = dlmmPool.getBinIdFromPrice(lowerPrice, true); // round down
+        const upperBinId = dlmmPool.getBinIdFromPrice(upperPrice, false); // round up
+        const activeBinId = dlmmPool.lbPair.activeId;
+
+        console.log(`[Calculate Bin IDs] Result:`, { lowerBinId, upperBinId, activeBinId });
+
+        res.json({
+            lowerBinId,
+            upperBinId,
+            activeBinId
+        });
+
+    } catch (error) {
+        console.error('Error calculating bin IDs:', error);
         res.status(500).json({ error: error.message });
     }
 });

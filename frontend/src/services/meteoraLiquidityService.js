@@ -12,40 +12,43 @@ const METEORA_SERVICE_URL = process.env.REACT_APP_METEORA_SERVICE_URL || 'http:/
  * Add liquidity to a Meteora DLMM pool
  * @param {Object} params
  * @param {string} params.poolAddress - DLMM pool address
- * @param {number} params.amountUSD - Amount in USD to add
+ * @param {number} params.amountX - Amount of Token X to add
+ * @param {number} params.amountY - Amount of Token Y to add
  * @param {number} params.lowerBinId - Lower bin ID for range
  * @param {number} params.upperBinId - Upper bin ID for range
+ * @param {string} params.distributionStrategy - Distribution strategy (spot, curve, bid-ask)
  * @param {Object} params.wallet - Wallet adapter instance with signTransaction
  * @param {PublicKey} params.walletPublicKey - User's wallet public key
  * @returns {Promise<{signature: string, positionAddress: string}>}
  */
 export async function addLiquidity({
   poolAddress,
-  amountUSD,
+  amountX,
+  amountY,
   lowerBinId,
   upperBinId,
+  distributionStrategy,
   wallet,
   walletPublicKey
 }) {
   try {
-    console.log('[Meteora Service] Adding liquidity:', {
+    const payload = {
       poolAddress,
-      amountUSD,
+      amountX: parseFloat(amountX) || 0,
+      amountY: parseFloat(amountY) || 0,
       lowerBinId,
-      upperBinId
-    });
+      upperBinId,
+      distributionStrategy,
+      userPublicKey: walletPublicKey.toString()
+    };
+
+    console.log('[Meteora Service] Adding liquidity:', payload);
 
     // Call backend microservice to create unsigned transaction
     const response = await fetch(`${METEORA_SERVICE_URL}/position/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        poolAddress,
-        amountUSD,
-        lowerBinId,
-        upperBinId,
-        userPublicKey: walletPublicKey.toString()
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -127,28 +130,34 @@ export async function claimFees() {
 
 /**
  * Calculate bin IDs from price range
- * Calls backend microservice to get bin calculations
+ * Calls Meteora microservice to get accurate bin IDs using SDK
  */
 export async function calculateBinIds({ poolAddress, lowerPrice, upperPrice }) {
   try {
-    // For now, we can use a simple formula
-    // In production, you might want to add an endpoint in the microservice for this
-    // Meteora formula: BinId = floor(log(price) / log(1 + binStep/10000))
+    console.log('[Meteora Service] Calculating bin IDs:', { poolAddress, lowerPrice, upperPrice });
 
-    // This is a simplified calculation - for production, call the backend
-    console.warn('[Meteora Service] Using simplified bin ID calculation');
+    const response = await fetch(`${METEORA_SERVICE_URL}/pool/calculate-bin-ids`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolAddress,
+        lowerPrice,
+        upperPrice
+      })
+    });
 
-    // Default bin step (this should come from the pool)
-    const binStep = 25; // Common bin step
-    const binStepNum = binStep / 10000;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to calculate bin IDs');
+    }
 
-    const lowerBinId = Math.floor(Math.log(lowerPrice) / Math.log(1 + binStepNum));
-    const upperBinId = Math.floor(Math.log(upperPrice) / Math.log(1 + binStepNum));
+    const { lowerBinId, upperBinId, activeBinId } = await response.json();
+    console.log('[Meteora Service] Bin IDs calculated:', { lowerBinId, upperBinId, activeBinId });
 
     return {
       lowerBinId,
       upperBinId,
-      activeBinId: Math.floor((lowerBinId + upperBinId) / 2) // Estimate
+      activeBinId
     };
 
   } catch (error) {

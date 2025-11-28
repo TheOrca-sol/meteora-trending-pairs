@@ -56,7 +56,7 @@ async function getTokenPricesInUSD(mints) {
  * @param {number} activeBinId - The active bin ID for determining buy/sell sides
  * @returns {Object} Suggested ranges for different strategies
  */
-function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio, bins = [], activeBinId = null) {
+function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiquidity, buySellRatio, bins = [], activeBinId = null, binStep = 25) {
   // Determine which side has MORE liquidity (for display) and which side NEEDS liquidity (for recommendations)
   const needsBuySupport = totalSellLiquidity > totalBuyLiquidity;
   const sideWithMore = needsBuySupport ? 'SELL' : 'BUY'; // Which side currently has MORE liquidity
@@ -70,9 +70,28 @@ function calculateLiquidityRanges(currentPrice, totalBuyLiquidity, totalSellLiqu
   // Calculate liquidity deficit
   const deficit = Math.abs(totalBuyLiquidity - totalSellLiquidity);
 
-  // Strategy 1: Full Imbalance Correction (User's Original - Conservative for memecoins)
-  const fullCorrectionLower = needsBuySupport ? currentPrice / imbalanceRatio : currentPrice;
-  const fullCorrectionUpper = needsBuySupport ? currentPrice : currentPrice * imbalanceRatio;
+  // IMPORTANT: Cap ranges to avoid non-refundable bin array creation costs
+  // Each bin array holds 70 bins, max bins per position = 69 to stay in 1 array
+  // Bin step in basis points: 1 basis point = 0.01%, so binStep/100 = % per bin
+  // Max range % = 69 bins × (binStep / 100)
+  // Examples:
+  //   binStep 200: max 138% range
+  //   binStep 100: max 69% range
+  //   binStep 25: max 17.25% range
+  //   binStep 20: max 13.8% range
+  const MAX_BINS_PER_ARRAY = 69;
+  const binStepPercent = binStep / 100; // Convert basis points to % (25 -> 0.25%)
+  const maxRangePercent = (MAX_BINS_PER_ARRAY * binStepPercent) / 100; // As decimal (0.1725 for binStep=25)
+
+  // Cap the imbalance ratio to not exceed max range
+  // If needsBuySupport, range is currentPrice / ratio to currentPrice
+  // Range % = (1 - 1/ratio) * 100, so ratio = 1 / (1 - maxRangePercent)
+  const maxAllowedRatio = 1 / (1 - maxRangePercent);
+  const cappedImbalanceRatio = Math.min(imbalanceRatio, maxAllowedRatio);
+
+  // Strategy 1: Full Imbalance Correction - Now capped to stay within 69 bins
+  const fullCorrectionLower = needsBuySupport ? currentPrice / cappedImbalanceRatio : currentPrice;
+  const fullCorrectionUpper = needsBuySupport ? currentPrice : currentPrice * cappedImbalanceRatio;
   const fullCorrectionRangeWidth = needsBuySupport
     ? ((currentPrice - fullCorrectionLower) / currentPrice) * 100
     : ((fullCorrectionUpper - currentPrice) / currentPrice) * 100;
@@ -431,7 +450,8 @@ async function getLiquidityDistribution(pairAddress) {
       totalSellLiquidity,
       buySellRatio,
       bins, // Pass bins data for concentration strategies
-      activeBin // Pass active bin ID for accurate side filtering
+      activeBin, // Pass active bin ID for accurate side filtering
+      binStep // Pass binStep to cap ranges based on bin array limits
     );
 
     const stats = {
@@ -669,14 +689,16 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
     console.log(`Buy/Sell ratio: ${buySellRatio.toFixed(2)}x`);
 
     // Calculate suggested liquidity ranges based on imbalance
-    // Note: For aggregated data, we don't have a single activeBinId, so we'll use price-based filtering
+    // Note: For aggregated data, use the first pool's binStep
+    const firstPoolBinStep = poolsData[0]?.pool?.binStep || 25;
     const suggestedRanges = calculateLiquidityRanges(
       marketPrice,
       totalBuyLiquidity,
       totalSellLiquidity,
       buySellRatio,
       aggregatedBins, // Pass aggregated bins for concentration strategies
-      null // No single activeBinId for aggregated data
+      null, // No single activeBinId for aggregated data
+      firstPoolBinStep // Use first pool's binStep as reference
     );
 
     const stats = {
