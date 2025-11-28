@@ -35,6 +35,7 @@ import {
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { addLiquidity, calculateBinIds } from '../../services/meteoraLiquidityService';
+import BinRangeSelector from './BinRangeSelector';
 
 const AddLiquidityModal = ({
   open,
@@ -53,6 +54,8 @@ const AddLiquidityModal = ({
   const [amountTokenY, setAmountTokenY] = useState('');
   const [distributionStrategy, setDistributionStrategy] = useState('spot'); // spot, curve, bid-ask
   const [selectedStrategy, setSelectedStrategy] = useState(suggestedStrategy || null);
+  const [customLowerBound, setCustomLowerBound] = useState('');
+  const [customUpperBound, setCustomUpperBound] = useState('');
   const [takeProfitEnabled, setTakeProfitEnabled] = useState(false);
   const [takeProfitValue, setTakeProfitValue] = useState(50);
   const [stopLossEnabled, setStopLossEnabled] = useState(false);
@@ -76,6 +79,9 @@ const AddLiquidityModal = ({
   useEffect(() => {
     if (suggestedStrategy) {
       setSelectedStrategy(suggestedStrategy);
+      // Initialize custom bounds with suggested values
+      setCustomLowerBound(suggestedStrategy.lowerBound?.toString() || '');
+      setCustomUpperBound(suggestedStrategy.upperBound?.toString() || '');
     }
   }, [suggestedStrategy]);
 
@@ -133,15 +139,29 @@ const AddLiquidityModal = ({
       return;
     }
 
+    if (!customLowerBound || !customUpperBound) {
+      setError('Please set price range bounds');
+      return;
+    }
+
+    if (parseFloat(customLowerBound) >= parseFloat(customUpperBound)) {
+      setError('Min price must be less than max price');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      // Use custom bounds if set, otherwise use strategy bounds
+      const lowerPrice = parseFloat(customLowerBound) || selectedStrategy.lowerBound;
+      const upperPrice = parseFloat(customUpperBound) || selectedStrategy.upperBound;
+
       // Calculate bin IDs from price range
       const { lowerBinId, upperBinId, activeBinId } = await calculateBinIds({
         poolAddress,
-        lowerPrice: selectedStrategy.lowerBound,
-        upperPrice: selectedStrategy.upperBound
+        lowerPrice,
+        upperPrice
       });
 
       console.log('[Add Liquidity] Bin IDs:', { lowerBinId, upperBinId, activeBinId });
@@ -174,8 +194,8 @@ const AddLiquidityModal = ({
         amountX: parseFloat(amountTokenX),
         amountY: parseFloat(amountTokenY),
         liquidityUsd: 0, // Will be calculated by backend based on token amounts
-        lowerPrice: selectedStrategy.lowerBound,
-        upperPrice: selectedStrategy.upperBound,
+        lowerPrice: lowerPrice,
+        upperPrice: upperPrice,
         lowerBinId,
         upperBinId,
         activeBinId,
@@ -386,33 +406,28 @@ const AddLiquidityModal = ({
             </FormControl>
           </Box>
 
-          {/* Price Range Strategy */}
-          <Box>
-            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-              Price Range Strategy
-            </Typography>
-            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-              {selectedStrategy
-                ? `Selected: ${selectedStrategy.name} (${selectedStrategy.rangePercentage}% range)`
-                : 'Select a strategy from the Liquidity Distribution chart above'}
-            </Typography>
-            {selectedStrategy && (
-              <Alert severity="info" sx={{ mt: 1 }}>
-                <Typography variant="body2">
-                  <strong>{selectedStrategy.name}</strong>: {selectedStrategy.description}
-                </Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                  Range: {formatPrice(selectedStrategy.lowerBound)} - {formatPrice(selectedStrategy.upperBound)}
-                </Typography>
-                <Typography variant="caption" display="block">
-                  Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
-                </Typography>
-                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                  Distribution: <strong>{distributionStrategy.toUpperCase()}</strong>
-                </Typography>
-              </Alert>
-            )}
-          </Box>
+          {/* Visual Bin Range Selector */}
+          {selectedStrategy && liquidityStats?.bins && (
+            <Box>
+              <BinRangeSelector
+                bins={liquidityStats.bins}
+                currentPrice={liquidityStats.currentPrice}
+                suggestedLowerBound={selectedStrategy.lowerBound}
+                suggestedUpperBound={selectedStrategy.upperBound}
+                distributionStrategy={distributionStrategy}
+                onRangeChange={(min, max) => {
+                  setCustomLowerBound(min.toString());
+                  setCustomUpperBound(max.toString());
+                }}
+              />
+            </Box>
+          )}
+
+          {!selectedStrategy && (
+            <Alert severity="warning">
+              Please select a strategy from the Liquidity Distribution chart above to set your price range
+            </Alert>
+          )}
 
           <Divider />
 
@@ -595,7 +610,7 @@ const AddLiquidityModal = ({
         <Button
           variant="contained"
           onClick={handleAddLiquidity}
-          disabled={loading || !publicKey || !amountTokenX || !amountTokenY || !selectedStrategy}
+          disabled={loading || !publicKey || !amountTokenX || !amountTokenY || !selectedStrategy || !customLowerBound || !customUpperBound}
           startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
         >
           {loading ? 'Adding...' : 'Add Liquidity'}
