@@ -31,29 +31,36 @@ const BinRangeSelector = ({
   const isTokenXPosition = hasTokenX && !hasTokenY;
   const isBothTokens = hasTokenX && hasTokenY;
 
+  console.log('[BinRangeSelector] Debug:', {
+    amountTokenX,
+    amountTokenY,
+    hasTokenX,
+    hasTokenY,
+    showPositionBins,
+    isTokenYPosition,
+    isTokenXPosition,
+    isBothTokens,
+    currentPrice,
+    suggestedLowerBound,
+    suggestedUpperBound
+  });
+
   useEffect(() => {
     if (suggestedLowerBound && suggestedUpperBound) {
       let adjustedMin = suggestedLowerBound;
       let adjustedMax = suggestedUpperBound;
 
-      // Adjust range based on which token has value
-      if (isTokenYPosition) {
-        // Token Y: position below current price (left side)
-        adjustedMax = Math.min(currentPrice, suggestedUpperBound);
-        adjustedMin = suggestedLowerBound;
-      } else if (isTokenXPosition) {
-        // Token X: position above current price (right side)
-        adjustedMin = Math.max(currentPrice, suggestedLowerBound);
-        adjustedMax = suggestedUpperBound;
-      }
-      // For both tokens, use full suggested range
+      // Don't adjust range - let user see the full suggested range
+      // The position bars will only show in the appropriate bins based on price vs currentPrice
 
       setSelectedRange({
         min: adjustedMin,
         max: adjustedMax
       });
+
+      console.log('[BinRangeSelector] Range set:', { min: adjustedMin, max: adjustedMax });
     }
-  }, [suggestedLowerBound, suggestedUpperBound, isTokenYPosition, isTokenXPosition, currentPrice]);
+  }, [suggestedLowerBound, suggestedUpperBound, currentPrice]);
 
   useEffect(() => {
     if (onRangeChange) {
@@ -68,6 +75,16 @@ const BinRangeSelector = ({
 
     const inRange = price >= selectedRange.min && price <= selectedRange.max;
     if (!inRange) return 0;
+
+    // Filter based on which token has value
+    if (isTokenYPosition) {
+      // Token Y only: show bars below/equal to current price
+      if (price > currentPrice) return 0;
+    } else if (isTokenXPosition) {
+      // Token X only: show bars above/equal to current price
+      if (price < currentPrice) return 0;
+    }
+    // For both tokens, show all bars in range
 
     const rangeStart = bins.findIndex(b => b.price >= selectedRange.min);
     const rangeEnd = bins.findIndex(b => b.price > selectedRange.max);
