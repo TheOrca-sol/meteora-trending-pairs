@@ -8,21 +8,52 @@ const BinRangeSelector = ({
   suggestedLowerBound,
   suggestedUpperBound,
   onRangeChange,
-  distributionStrategy = 'spot'
+  distributionStrategy = 'spot',
+  amountTokenX = 0,
+  amountTokenY = 0,
+  tokenXName = 'Token X',
+  tokenYName = 'Token Y'
 }) => {
   const [selectedRange, setSelectedRange] = useState({
     min: suggestedLowerBound || 0,
     max: suggestedUpperBound || 0
   });
 
+  // Determine if we should show position bins and which side
+  const hasTokenX = amountTokenX > 0;
+  const hasTokenY = amountTokenY > 0;
+  const showPositionBins = hasTokenX || hasTokenY;
+
+  // Determine which side to show liquidity
+  // Token Y (usually SOL) = left side (below current price)
+  // Token X = right side (above current price)
+  const isTokenYPosition = hasTokenY && !hasTokenX;
+  const isTokenXPosition = hasTokenX && !hasTokenY;
+  const isBothTokens = hasTokenX && hasTokenY;
+
   useEffect(() => {
     if (suggestedLowerBound && suggestedUpperBound) {
+      let adjustedMin = suggestedLowerBound;
+      let adjustedMax = suggestedUpperBound;
+
+      // Adjust range based on which token has value
+      if (isTokenYPosition) {
+        // Token Y: position below current price (left side)
+        adjustedMax = Math.min(currentPrice, suggestedUpperBound);
+        adjustedMin = suggestedLowerBound;
+      } else if (isTokenXPosition) {
+        // Token X: position above current price (right side)
+        adjustedMin = Math.max(currentPrice, suggestedLowerBound);
+        adjustedMax = suggestedUpperBound;
+      }
+      // For both tokens, use full suggested range
+
       setSelectedRange({
-        min: suggestedLowerBound,
-        max: suggestedUpperBound
+        min: adjustedMin,
+        max: adjustedMax
       });
     }
-  }, [suggestedLowerBound, suggestedUpperBound]);
+  }, [suggestedLowerBound, suggestedUpperBound, isTokenYPosition, isTokenXPosition, currentPrice]);
 
   useEffect(() => {
     if (onRangeChange) {
@@ -32,6 +63,9 @@ const BinRangeSelector = ({
 
   // Calculate distribution preview based on strategy
   const getDistributionForBin = (price, index) => {
+    // Only show position bars if user entered amounts
+    if (!showPositionBins) return 0;
+
     const inRange = price >= selectedRange.min && price <= selectedRange.max;
     if (!inRange) return 0;
 
@@ -233,16 +267,30 @@ const BinRangeSelector = ({
       </Box>
 
       {/* Distribution Strategy Info */}
-      <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.light', borderRadius: 1, border: 1, borderColor: 'info.main' }}>
-        <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.dark' }}>
-          {distributionStrategy.toUpperCase()} Distribution Preview
-        </Typography>
-        <Typography variant="caption" display="block" sx={{ color: 'info.dark', mt: 0.5 }}>
-          {distributionStrategy === 'spot' && 'Liquidity evenly distributed across range'}
-          {distributionStrategy === 'curve' && 'Liquidity concentrated at center with gradual falloff'}
-          {distributionStrategy === 'bid-ask' && 'Liquidity concentrated at range edges'}
-        </Typography>
-      </Box>
+      {!showPositionBins ? (
+        <Box sx={{ mt: 2, p: 1.5, bgcolor: 'warning.light', borderRadius: 1, border: 1, borderColor: 'warning.main' }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: 'warning.dark' }}>
+            Enter Token Amounts
+          </Typography>
+          <Typography variant="caption" display="block" sx={{ color: 'warning.dark', mt: 0.5 }}>
+            Enter {tokenXName} and/or {tokenYName} amounts above to preview your position distribution
+          </Typography>
+        </Box>
+      ) : (
+        <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.light', borderRadius: 1, border: 1, borderColor: 'info.main' }}>
+          <Typography variant="caption" sx={{ fontWeight: 600, color: 'info.dark' }}>
+            {distributionStrategy.toUpperCase()} Distribution Preview
+            {isTokenYPosition && ` - ${tokenYName} Only (Below Current Price)`}
+            {isTokenXPosition && ` - ${tokenXName} Only (Above Current Price)`}
+            {isBothTokens && ` - Both Tokens (Full Range)`}
+          </Typography>
+          <Typography variant="caption" display="block" sx={{ color: 'info.dark', mt: 0.5 }}>
+            {distributionStrategy === 'spot' && 'Liquidity evenly distributed across range'}
+            {distributionStrategy === 'curve' && 'Liquidity concentrated at center with gradual falloff'}
+            {distributionStrategy === 'bid-ask' && 'Liquidity concentrated at range edges'}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

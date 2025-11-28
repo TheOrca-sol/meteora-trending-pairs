@@ -415,6 +415,10 @@ const AddLiquidityModal = ({
                 suggestedLowerBound={selectedStrategy.lowerBound}
                 suggestedUpperBound={selectedStrategy.upperBound}
                 distributionStrategy={distributionStrategy}
+                amountTokenX={parseFloat(amountTokenX) || 0}
+                amountTokenY={parseFloat(amountTokenY) || 0}
+                tokenXName={tokenXName}
+                tokenYName={tokenYName}
                 onRangeChange={(min, max) => {
                   setCustomLowerBound(min.toString());
                   setCustomUpperBound(max.toString());
