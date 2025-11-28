@@ -51,6 +51,7 @@ const AddLiquidityModal = ({
   // Form state
   const [amountTokenX, setAmountTokenX] = useState('');
   const [amountTokenY, setAmountTokenY] = useState('');
+  const [distributionStrategy, setDistributionStrategy] = useState('spot'); // spot, curve, bid-ask
   const [selectedStrategy, setSelectedStrategy] = useState(suggestedStrategy || null);
   const [takeProfitEnabled, setTakeProfitEnabled] = useState(false);
   const [takeProfitValue, setTakeProfitValue] = useState(50);
@@ -152,6 +153,7 @@ const AddLiquidityModal = ({
         amountY: parseFloat(amountTokenY),
         lowerBinId,
         upperBinId,
+        distributionStrategy, // spot, curve, or bid-ask
         wallet: { signTransaction, signAllTransactions },
         walletPublicKey: publicKey
       });
@@ -178,6 +180,7 @@ const AddLiquidityModal = ({
         upperBinId,
         activeBinId,
         strategyName: selectedStrategy.name,
+        distributionStrategy, // spot, curve, or bid-ask
         transactionSignature: signature,
         positionType: 'manual',
         automationRules: {
@@ -332,10 +335,61 @@ const AddLiquidityModal = ({
             </Grid>
           </Box>
 
-          {/* Strategy Selection */}
+          {/* Distribution Strategy Selection */}
           <Box>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-              Liquidity Strategy
+              Distribution Strategy
+            </Typography>
+            <FormControl component="fieldset">
+              <RadioGroup
+                row
+                value={distributionStrategy}
+                onChange={(e) => setDistributionStrategy(e.target.value)}
+              >
+                <FormControlLabel
+                  value="spot"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body2">Spot</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Single price point
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="curve"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body2">Curve</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Uniform distribution
+                      </Typography>
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="bid-ask"
+                  control={<Radio />}
+                  label={
+                    <Box>
+                      <Typography variant="body2">Bid-Ask</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Concentrated edges
+                      </Typography>
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+            </FormControl>
+          </Box>
+
+          {/* Price Range Strategy */}
+          <Box>
+            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+              Price Range Strategy
             </Typography>
             <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
               {selectedStrategy
@@ -352,6 +406,9 @@ const AddLiquidityModal = ({
                 </Typography>
                 <Typography variant="caption" display="block">
                   Side: <Chip label={selectedStrategy.side} size="small" color="primary" sx={{ ml: 0.5 }} />
+                </Typography>
+                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                  Distribution: <strong>{distributionStrategy.toUpperCase()}</strong>
                 </Typography>
               </Alert>
             )}
