@@ -5,6 +5,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SettingsModal from '../Settings/SettingsModal';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '../../contexts/WalletContext';
@@ -106,6 +107,20 @@ function Navigation() {
             component={Link}
             to="/capital-rotation"
             icon={<AccountBalanceWalletIcon fontSize="small" />}
+            iconPosition={isMobile ? "top" : "start"}
+            sx={{
+              '& .MuiTab-iconWrapper': {
+                mb: { xs: 0.5, sm: 0 },
+                mr: { xs: 0, sm: 1 }
+              }
+            }}
+          />
+          <Tab
+            label={isMobile ? "Positions" : "My Positions"}
+            value="/positions"
+            component={Link}
+            to="/positions"
+            icon={<AccountBalanceIcon fontSize="small" />}
             iconPosition={isMobile ? "top" : "start"}
             sx={{
               '& .MuiTab-iconWrapper': {

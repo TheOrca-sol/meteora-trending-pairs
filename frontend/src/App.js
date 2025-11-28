@@ -10,6 +10,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import CapitalRotationPage from './pages/CapitalRotationPage';
 import BackofficePage from './pages/BackofficePage';
 import PoolDetailsPage from './pages/PoolDetailsPage';
+import PositionsPage from './pages/PositionsPage';
 import Footer from './components/Footer/Footer';
 import { initGA, logPageView, trackUserInteraction } from './utils/analytics';
 import { lightTheme, darkTheme } from './utils/theme';
@@ -82,6 +83,7 @@ function AppContent({ isDarkMode, handleThemeToggle }) {
           <Route path="/capital-rotation" element={<CapitalRotationPage />} />
           <Route path="/backoffice" element={<BackofficePage />} />
           <Route path="/pool/:address" element={<PoolDetailsPage />} />
+          <Route path="/positions" element={<PositionsPage />} />
         </Routes>
       </Box>
 

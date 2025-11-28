@@ -28,6 +28,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   Add as AddIcon,
   TrendingUp as TrendingUpIcon,
+  CheckCircle as CheckCircleIcon,
+  OpenInNew as OpenInNewIcon,
   TrendingDown as TrendingDownIcon,
   Autorenew as AutorenewIcon,
   Balance as BalanceIcon,
@@ -68,6 +70,7 @@ const AddLiquidityModal = ({
   // UI state
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [balanceTokenX, setBalanceTokenX] = useState(null);
   const [balanceTokenY, setBalanceTokenY] = useState(null);
   const [loadingBalances, setLoadingBalances] = useState(false);
@@ -241,9 +244,17 @@ const AddLiquidityModal = ({
 
       console.log('[Add Liquidity] Position recorded in database');
 
-      // Show success message and close modal
-      alert(`Liquidity added successfully!\n\nTransaction: ${signature}\nPosition: ${positionAddress}`);
-      onClose();
+      // Show success message
+      setSuccess({
+        signature,
+        positionAddress
+      });
+      setError(null);
+
+      // Close modal after 5 seconds
+      setTimeout(() => {
+        onClose();
+      }, 5000);
 
     } catch (err) {
       console.error('[Add Liquidity] Error:', err);
@@ -602,6 +613,42 @@ const AddLiquidityModal = ({
               </Box>
             </AccordionDetails>
           </Accordion>
+
+          {/* Success Display */}
+          {success && (
+            <Alert
+              severity="success"
+              icon={<CheckCircleIcon />}
+              onClose={() => setSuccess(null)}
+              sx={{ mb: 2 }}
+            >
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Liquidity Added Successfully!
+              </Typography>
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" display="block">
+                  Position: {success.positionAddress.slice(0, 8)}...{success.positionAddress.slice(-8)}
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+                  <Button
+                    size="small"
+                    startIcon={<OpenInNewIcon />}
+                    href={`https://solscan.io/tx/${success.signature}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View Transaction
+                  </Button>
+                  <Button
+                    size="small"
+                    onClick={() => window.location.href = '/positions'}
+                  >
+                    Manage Positions
+                  </Button>
+                </Box>
+              </Box>
+            </Alert>
+          )}
 
           {/* Error Display */}
           {error && (
