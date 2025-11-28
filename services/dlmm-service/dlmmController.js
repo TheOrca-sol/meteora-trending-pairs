@@ -690,7 +690,7 @@ async function getAggregatedLiquidityByTokenPair(mintX, mintY) {
 
     // Calculate suggested liquidity ranges based on imbalance
     // Note: For aggregated data, use the first pool's binStep
-    const firstPoolBinStep = poolsData[0]?.pool?.binStep || 25;
+    const firstPoolBinStep = validPools[0]?.pool?.binStep || 25;
     const suggestedRanges = calculateLiquidityRanges(
       marketPrice,
       totalBuyLiquidity,
