@@ -19,7 +19,7 @@ import TopLPsDialog from './TopLPsDialog';
 import AddLiquidityModal from '../LiquidityManagement/AddLiquidityModal';
 import { useNavigate } from 'react-router-dom';
 
-const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools, pairName, mintX, mintY }) => {
+const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrategy, setSelectedStrategy, poolAddress, pools, pairName, mintX, mintY, bins }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [topLPsOpen, setTopLPsOpen] = useState(false);
   const [addLiquidityOpen, setAddLiquidityOpen] = useState(false);
@@ -351,7 +351,11 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
         mintX={mintX}
         mintY={mintY}
         suggestedStrategy={strategy}
-        liquidityStats={suggestedRanges}
+        liquidityStats={{
+          ...suggestedRanges,
+          bins: bins,
+          currentPrice: currentPrice
+        }}
       />
     </Box>
   );

@@ -297,6 +297,7 @@ const LiquidityDistribution = ({ pairAddress, mintX, mintY }) => {
           pairName={data.pools?.[0]?.pairName || null}
           mintX={mintX}
           mintY={mintY}
+          bins={data.bins}
         />
       )}
     </Box>
