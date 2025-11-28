@@ -56,7 +56,7 @@ export async function addLiquidity({
       throw new Error(error.error || 'Failed to create transaction');
     }
 
-    const { transaction: txBase64, positionAddress } = await response.json();
+    const { transaction: txBase64, positionAddress, lastValidBlockHeight } = await response.json();
 
     console.log('[Meteora Service] Transaction created, position:', positionAddress);
 
@@ -67,11 +67,8 @@ export async function addLiquidity({
     // Create connection
     const connection = new Connection(RPC_URL, 'confirmed');
 
-    // Set recent blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
-    transaction.recentBlockhash = blockhash;
-    transaction.lastValidBlockHeight = lastValidBlockHeight;
-    transaction.feePayer = walletPublicKey;
+    // Transaction already has blockhash and fee payer set by the server
+    // Do NOT set a new blockhash here as it will invalidate the position keypair signature
 
     console.log('[Meteora Service] Requesting wallet signature...');
 
@@ -91,7 +88,7 @@ export async function addLiquidity({
     console.log('[Meteora Service] Confirming transaction...');
     const confirmation = await connection.confirmTransaction({
       signature,
-      blockhash,
+      blockhash: transaction.recentBlockhash,
       lastValidBlockHeight
     }, 'confirmed');
 

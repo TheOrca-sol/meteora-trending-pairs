@@ -424,10 +424,13 @@ app.post('/position/create', async (req, res) => {
         const dlmmPool = await DLMM.create(connection, poolPubkey);
 
         // Convert to lamports
-        const decimalsX = dlmmPool.tokenX.decimal;
-        const decimalsY = dlmmPool.tokenY.decimal;
+        const decimalsX = dlmmPool.tokenX.mint.decimals;
+        const decimalsY = dlmmPool.tokenY.mint.decimals;
         const amountXLamports = new BN(Math.floor((amountX || 0) * Math.pow(10, decimalsX)));
         const amountYLamports = new BN(Math.floor((amountY || 0) * Math.pow(10, decimalsY)));
+
+        console.log(`  Decimals: X=${decimalsX}, Y=${decimalsY}`);
+        console.log(`  Lamports: X=${amountXLamports.toString()}, Y=${amountYLamports.toString()}`);
 
         // Map distribution strategy to Meteora strategyType
         // 0 = Spot (uniform), 1 = Curve (bell curve), 2 = Bid-Ask (concentrated at edges)
@@ -467,6 +470,12 @@ app.post('/position/create', async (req, res) => {
         const transaction = Array.isArray(createPositionTx) ? createPositionTx[0] : createPositionTx;
         const positionPubkey = positionKeypair.publicKey;
 
+        // Set blockhash and fee payer BEFORE signing
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = userPubkey;
+
         // Partially sign with position keypair (this keypair is ephemeral, created server-side)
         transaction.partialSign(positionKeypair);
 
@@ -480,7 +489,8 @@ app.post('/position/create', async (req, res) => {
 
         res.json({
             transaction: serializedTx.toString('base64'),
-            positionAddress: positionPubkey.toString()
+            positionAddress: positionPubkey.toString(),
+            lastValidBlockHeight
         });
 
     } catch (error) {

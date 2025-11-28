@@ -132,6 +132,10 @@ def create_position():
         db = get_db()
         try:
             # Create position record
+            # Handle amounts - use 0 if not provided or 0 (not None)
+            amount_x = data.get('amountX', 0) if data.get('amountX') is not None else 0
+            amount_y = data.get('amountY', 0) if data.get('amountY') is not None else 0
+
             position = LiquidityPosition(
                 position_address=data['positionAddress'],
                 wallet_address=data['walletAddress'],
@@ -140,12 +144,12 @@ def create_position():
                 token_y_mint=data['tokenYMint'],
                 token_x_symbol=data.get('tokenXSymbol'),
                 token_y_symbol=data.get('tokenYSymbol'),
-                initial_amount_x=data['amountX'],
-                initial_amount_y=data['amountY'],
-                initial_liquidity_usd=data.get('liquidityUsd'),
-                current_amount_x=data['amountX'],
-                current_amount_y=data['amountY'],
-                current_liquidity_usd=data.get('liquidityUsd'),
+                initial_amount_x=amount_x,
+                initial_amount_y=amount_y,
+                initial_liquidity_usd=data.get('liquidityUsd', 0),
+                current_amount_x=amount_x,
+                current_amount_y=amount_y,
+                current_liquidity_usd=data.get('liquidityUsd', 0),
                 lower_price=data['lowerPrice'],
                 upper_price=data['upperPrice'],
                 lower_bin_id=data['lowerBinId'],
@@ -165,9 +169,9 @@ def create_position():
                 pool_address=data['poolAddress'],
                 position_address=data['positionAddress'],
                 transaction_type='add_liquidity',
-                amount_x=data['amountX'],
-                amount_y=data['amountY'],
-                amount_usd=data.get('liquidityUsd'),
+                amount_x=amount_x,
+                amount_y=amount_y,
+                amount_usd=data.get('liquidityUsd', 0),
                 transaction_signature=data['transactionSignature'],
                 status='confirmed',
                 execution_mode='manual',
