@@ -80,21 +80,11 @@ const BinRangeSelector = ({
       return 0;
     }
 
-    // Filter based on which token has value
-    if (isTokenYPosition) {
-      // Token Y only: show bars below/equal to current price
-      if (price > currentPrice) {
-        return 0;
-      }
-    } else if (isTokenXPosition) {
-      // Token X only: show bars above/equal to current price
-      if (price < currentPrice) {
-        return 0;
-      }
-    }
-    // For both tokens, show all bars in range
+    // For single token positions, show bars in range regardless of current price
+    // The suggested range from the strategy already accounts for which side
+    // Just show all bars in the selected range for the token they're providing
 
-    console.log('[BinRangeSelector] Showing bar at price:', price, 'for token:', isTokenYPosition ? 'Y' : isTokenXPosition ? 'X' : 'Both');
+    console.log('[BinRangeSelector] Showing bar at price:', price, 'currentPrice:', currentPrice, 'for token:', isTokenYPosition ? 'Y' : isTokenXPosition ? 'X' : 'Both');
 
     const rangeStart = bins.findIndex(b => b.price >= selectedRange.min);
     const rangeEnd = bins.findIndex(b => b.price > selectedRange.max);
