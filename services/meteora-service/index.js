@@ -61,78 +61,6 @@ app.get('/health', (req, res) => {
 });
 
 // Get position data
-app.post('/position/data', async (req, res) => {
-    try {
-        const { positionAddress, poolAddress } = req.body;
-
-        if (!positionAddress || !poolAddress) {
-            return res.status(400).json({ error: 'Missing positionAddress or poolAddress' });
-        }
-
-        console.log(`Fetching position data: ${positionAddress}`);
-
-        // Load DLMM pool
-        const poolPubkey = new PublicKey(poolAddress);
-        const dlmmPool = await DLMM.create(connection, poolPubkey);
-
-        // Get position
-        const positionPubkey = new PublicKey(positionAddress);
-        const position = await dlmmPool.getPosition(positionPubkey);
-
-        if (!position || !position.positionData) {
-            return res.status(404).json({ error: 'Position not found' });
-        }
-
-        // Get pool state for active bin
-        const activeBinId = dlmmPool.lbPair.activeId;
-
-        // Calculate token amounts (from lamports to tokens)
-        const decimalsX = dlmmPool.tokenX.decimal;
-        const decimalsY = dlmmPool.tokenY.decimal;
-
-        const amountX = position.positionData.totalXAmount.toNumber() / Math.pow(10, decimalsX);
-        const amountY = position.positionData.totalYAmount.toNumber() / Math.pow(10, decimalsY);
-
-        const feesX = position.positionData.feeX.toNumber() / Math.pow(10, decimalsX);
-        const feesY = position.positionData.feeY.toNumber() / Math.pow(10, decimalsY);
-
-        // Get token prices
-        const mintX = dlmmPool.tokenX.publicKey.toString();
-        const mintY = dlmmPool.tokenY.publicKey.toString();
-        const { priceX, priceY } = await fetchTokenPrices(mintX, mintY);
-
-        // Calculate USD values
-        const valueUSD = (amountX * priceX) + (amountY * priceY);
-        const feesUSD = (feesX * priceX) + (feesY * priceY);
-
-        // Check if in range
-        const lowerBinId = position.positionData.lowerBinId;
-        const upperBinId = position.positionData.upperBinId;
-        const inRange = activeBinId >= lowerBinId && activeBinId <= upperBinId;
-
-        const result = {
-            amountX,
-            amountY,
-            valueUSD,
-            feesX,
-            feesY,
-            feesUSD,
-            profitUSD: feesUSD, // Simplified - doesn't account for IL
-            inRange,
-            activeBinId,
-            lowerBinId,
-            upperBinId
-        };
-
-        console.log(`Position data: $${valueUSD.toFixed(2)} value, $${feesUSD.toFixed(2)} fees, inRange=${inRange}`);
-        res.json(result);
-
-    } catch (error) {
-        console.error('Error fetching position data:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
-
 // Close position (remove all liquidity)
 app.post('/position/close', async (req, res) => {
     try {
@@ -701,6 +629,75 @@ app.post('/position/close', async (req, res) => {
 
     } catch (error) {
         console.error('Error creating close position transaction:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get position data (current balances, fees, etc.)
+app.post('/position/data', async (req, res) => {
+    try {
+        const { positionAddress, poolAddress } = req.body;
+
+        if (!positionAddress || !poolAddress) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log(`[Position Data] Fetching data for position: ${positionAddress}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Get position data
+        const positionPubkey = new PublicKey(positionAddress);
+        const position = await dlmmPool.getPosition(positionPubkey);
+
+        if (!position) {
+            return res.status(404).json({ error: 'Position not found' });
+        }
+
+        // Get decimals
+        const decimalsX = dlmmPool.tokenX.mint.decimals;
+        const decimalsY = dlmmPool.tokenY.mint.decimals;
+
+        // Calculate total amounts using BN
+        const totalXAmountBN = position.positionData.totalXAmount;
+        const totalYAmountBN = position.positionData.totalYAmount;
+
+        // Convert BN to numbers
+        const amountX = Number(totalXAmountBN.toString()) / Math.pow(10, decimalsX);
+        const amountY = Number(totalYAmountBN.toString()) / Math.pow(10, decimalsY);
+
+        // Get fees earned (these are BN as well)
+        const feeXBN = position.positionData.feeX || new BN(0);
+        const feeYBN = position.positionData.feeY || new BN(0);
+
+        const feeXAmount = Number(feeXBN.toString()) / Math.pow(10, decimalsX);
+        const feeYAmount = Number(feeYBN.toString()) / Math.pow(10, decimalsY);
+
+        // Get rewards (if any)
+        const rewardOneBN = position.positionData.rewardOne || new BN(0);
+        const rewardTwoBN = position.positionData.rewardTwo || new BN(0);
+
+        const rewardOne = Number(rewardOneBN.toString());
+        const rewardTwo = Number(rewardTwoBN.toString());
+
+        console.log(`✅ Position data fetched: X=${amountX}, Y=${amountY}, FeeX=${feeXAmount}, FeeY=${feeYAmount}`);
+
+        res.json({
+            positionAddress: positionAddress,
+            currentAmountX: amountX,
+            currentAmountY: amountY,
+            feesEarnedX: feeXAmount,
+            feesEarnedY: feeYAmount,
+            rewardOne: rewardOne,
+            rewardTwo: rewardTwo,
+            lowerBinId: position.positionData.lowerBinId,
+            upperBinId: position.positionData.upperBinId
+        });
+
+    } catch (error) {
+        console.error('Error fetching position data:', error);
         res.status(500).json({ error: error.message });
     }
 });

@@ -11,6 +11,8 @@ from models import (
 from sqlalchemy import desc
 from datetime import datetime
 import logging
+import os
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ liquidity_bp = Blueprint('liquidity', __name__, url_prefix='/api/liquidity')
 
 @liquidity_bp.route('/positions', methods=['GET'])
 def get_positions():
-    """Get all positions for a wallet"""
+    """Get all positions for a wallet with live data from Meteora"""
     try:
         wallet_address = request.args.get('walletAddress')
         if not wallet_address:
@@ -41,8 +43,10 @@ def get_positions():
 
             positions = query.order_by(desc(LiquidityPosition.created_at)).all()
 
-            # Get automation rules for each position
+            # Fetch live data for each position from Meteora service
             result = []
+            meteora_service_url = os.getenv('METEORA_SERVICE_URL', 'http://localhost:3002')
+
             for position in positions:
                 pos_dict = position.to_dict()
 
@@ -50,8 +54,55 @@ def get_positions():
                 rules = db.query(PositionAutomationRules).filter_by(
                     position_address=position.position_address
                 ).first()
-
                 pos_dict['automation_rules'] = rules.to_dict() if rules else None
+
+                # Fetch live position data from Meteora service
+                try:
+                    response = requests.post(
+                        f'{meteora_service_url}/position/data',
+                        json={
+                            'positionAddress': position.position_address,
+                            'poolAddress': position.pool_address
+                        },
+                        timeout=5
+                    )
+
+                    if response.status_code == 200:
+                        live_data = response.json()
+
+                        # Update current amounts
+                        pos_dict['current_amount_x'] = live_data['currentAmountX']
+                        pos_dict['current_amount_y'] = live_data['currentAmountY']
+                        pos_dict['fees_earned_x'] = live_data['feesEarnedX']
+                        pos_dict['fees_earned_y'] = live_data['feesEarnedY']
+
+                        # Fetch token prices from Jupiter
+                        try:
+                            price_response = requests.get(
+                                f'https://api.jup.ag/price/v2?ids={position.token_x_mint},{position.token_y_mint}',
+                                timeout=3
+                            )
+                            if price_response.status_code == 200:
+                                prices = price_response.json().get('data', {})
+                                price_x = prices.get(position.token_x_mint, {}).get('price', 0)
+                                price_y = prices.get(position.token_y_mint, {}).get('price', 0)
+
+                                # Calculate USD values
+                                current_liquidity_usd = (live_data['currentAmountX'] * price_x) + (live_data['currentAmountY'] * price_y)
+                                fees_earned_usd = (live_data['feesEarnedX'] * price_x) + (live_data['feesEarnedY'] * price_y)
+                                initial_liquidity_usd = (position.initial_amount_x * price_x) + (position.initial_amount_y * price_y)
+
+                                pos_dict['current_liquidity_usd'] = current_liquidity_usd
+                                pos_dict['fees_earned_usd'] = fees_earned_usd
+                                pos_dict['unrealized_pnl_usd'] = current_liquidity_usd - initial_liquidity_usd + fees_earned_usd
+
+                        except Exception as price_error:
+                            logger.error(f"Error fetching prices: {str(price_error)}")
+
+                except Exception as meteora_error:
+                    logger.error(f"Error fetching live data for position {position.position_address}: {str(meteora_error)}")
+                    # Keep using database values if live fetch fails
+
                 result.append(pos_dict)
 
             return jsonify({
