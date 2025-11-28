@@ -1696,7 +1696,7 @@ def get_wallet_balance():
 @app.route('/api/wallet/token-balance', methods=['GET'])
 def get_token_balance():
     """
-    Get balance for any SPL token
+    Get balance for any SPL token or native SOL
     """
     try:
         wallet_address = request.args.get('walletAddress')
@@ -1719,6 +1719,26 @@ def get_token_balance():
 
         pubkey = Pubkey.from_string(wallet_address)
         mint_pubkey = Pubkey.from_string(token_mint)
+
+        # Check if this is native SOL (wrapped SOL mint)
+        WRAPPED_SOL_MINT = "So11111111111111111111111111111111111111112"
+
+        if token_mint == WRAPPED_SOL_MINT:
+            # For native SOL, get the wallet's SOL balance
+            balance_response = client.get_balance(pubkey)
+            if balance_response.value is not None:
+                # SOL has 9 decimals
+                token_balance = balance_response.value / 1e9
+                decimals = 9
+
+                return jsonify({
+                    'status': 'success',
+                    'data': {
+                        'balance': token_balance,
+                        'decimals': decimals,
+                        'mint': token_mint
+                    }
+                })
 
         # Get token accounts for this wallet and mint
         response = client.get_token_accounts_by_owner(
