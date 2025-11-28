@@ -30,47 +30,53 @@ const BinRangeSelector = ({
     }
   }, [selectedRange, onRangeChange]);
 
-  // Prepare bin data for chart
+  // Calculate distribution preview based on strategy
+  const getDistributionForBin = (price, index) => {
+    const inRange = price >= selectedRange.min && price <= selectedRange.max;
+    if (!inRange) return 0;
+
+    const rangeStart = bins.findIndex(b => b.price >= selectedRange.min);
+    const rangeEnd = bins.findIndex(b => b.price > selectedRange.max);
+    const rangeSize = Math.max(rangeEnd - rangeStart, 1);
+    const positionInRange = index - rangeStart;
+
+    // Base liquidity value (higher for visibility)
+    const baseValue = 150;
+
+    switch (distributionStrategy) {
+      case 'spot':
+        // Uniform distribution across entire range (flat/spot)
+        return baseValue * 0.9;
+
+      case 'curve':
+        // Bell curve - concentrated at center with gradual falloff
+        const center = Math.floor(rangeSize / 2);
+        const distFromCenter = Math.abs(positionInRange - center);
+        const maxDist = Math.max(rangeSize / 2, 1);
+        const curveFactor = 1 - (distFromCenter / maxDist);
+        return baseValue * (0.3 + curveFactor * 0.7);
+
+      case 'bid-ask':
+        // Concentrated at both edges (bid and ask sides)
+        const distanceFromStart = positionInRange;
+        const distanceFromEnd = rangeSize - positionInRange - 1;
+        const distanceFromEdge = Math.min(distanceFromStart, distanceFromEnd);
+        const edgeFactor = 1 - (distanceFromEdge / Math.max(rangeSize / 2, 1));
+        return baseValue * (0.3 + edgeFactor * 0.7);
+
+      default:
+        return baseValue * 0.5;
+    }
+  };
+
+  // Prepare bin data for chart with distribution preview
   const chartData = bins.slice(0, 50).map((bin, idx) => ({
     price: bin.price,
     liquidity: bin.liquidityUsd || 0,
     index: idx,
-    inRange: bin.price >= selectedRange.min && bin.price <= selectedRange.max
+    inRange: bin.price >= selectedRange.min && bin.price <= selectedRange.max,
+    positionLiquidity: getDistributionForBin(bin.price, idx)
   }));
-
-  // Calculate distribution preview based on strategy
-  const getDistributionHeight = (index, total) => {
-    const rangeStart = chartData.findIndex(b => b.price >= selectedRange.min);
-    const rangeEnd = chartData.findIndex(b => b.price > selectedRange.max);
-    const rangeSize = rangeEnd - rangeStart;
-
-    if (index < rangeStart || index >= rangeEnd) return 0;
-
-    const positionInRange = index - rangeStart;
-    const maxHeight = 100;
-
-    switch (distributionStrategy) {
-      case 'spot':
-        // All liquidity at center
-        const center = Math.floor(rangeSize / 2);
-        return Math.abs(positionInRange - center) === 0 ? maxHeight : maxHeight * 0.3;
-
-      case 'curve':
-        // Uniform distribution
-        return maxHeight * 0.8;
-
-      case 'bid-ask':
-        // Concentrated at edges
-        const distanceFromEdge = Math.min(
-          positionInRange,
-          rangeSize - positionInRange - 1
-        );
-        return maxHeight * (1 - (distanceFromEdge / (rangeSize / 2)) * 0.7);
-
-      default:
-        return maxHeight * 0.5;
-    }
-  };
 
   const formatPrice = (price) => {
     if (!price) return '$0';
@@ -156,31 +162,25 @@ const BinRangeSelector = ({
               fillOpacity={0.2}
             />
 
-            {/* Current liquidity bars */}
-            <Bar dataKey="liquidity" fill="#424242" opacity={0.3} />
+            {/* Current liquidity bars - smaller and gray */}
+            <Bar dataKey="liquidity" fill="#424242" opacity={0.25} barSize={8} />
 
-            {/* Distribution preview bars */}
-            <Bar dataKey="index" fill="#1976d2">
-              {chartData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={entry.inRange ? '#1976d2' : 'transparent'}
-                  opacity={entry.inRange ? 0.7 : 0}
-                />
-              ))}
-            </Bar>
+            {/* Distribution preview bars - bigger and blue with strategy-based heights */}
+            <Bar dataKey="positionLiquidity" fill="#1976d2" opacity={0.85} barSize={20} />
           </BarChart>
         </ResponsiveContainer>
 
         {/* Distribution preview indicators */}
-        <Box sx={{ mt: 2, display: 'flex', gap: 4, justifyContent: 'center' }}>
+        <Box sx={{ mt: 2, display: 'flex', gap: 4, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, bgcolor: '#424242', opacity: 0.3, borderRadius: 0.5 }} />
-            <Typography variant="caption" color="text.secondary">Current Pool</Typography>
+            <Box sx={{ width: 8, height: 16, bgcolor: '#424242', opacity: 0.25, borderRadius: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">Existing Pool Liquidity</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Box sx={{ width: 12, height: 12, bgcolor: '#1976d2', opacity: 0.7, borderRadius: 0.5 }} />
-            <Typography variant="caption" color="text.secondary">Your Position</Typography>
+            <Box sx={{ width: 20, height: 16, bgcolor: '#1976d2', opacity: 0.85, borderRadius: 0.5 }} />
+            <Typography variant="caption" color="text.secondary">
+              Your Position ({distributionStrategy.toUpperCase()})
+            </Typography>
           </Box>
         </Box>
       </Paper>
@@ -238,8 +238,8 @@ const BinRangeSelector = ({
           {distributionStrategy.toUpperCase()} Distribution Preview
         </Typography>
         <Typography variant="caption" display="block" sx={{ color: 'info.dark', mt: 0.5 }}>
-          {distributionStrategy === 'spot' && 'Liquidity concentrated at center price'}
-          {distributionStrategy === 'curve' && 'Liquidity evenly distributed across range'}
+          {distributionStrategy === 'spot' && 'Liquidity evenly distributed across range'}
+          {distributionStrategy === 'curve' && 'Liquidity concentrated at center with gradual falloff'}
           {distributionStrategy === 'bid-ask' && 'Liquidity concentrated at range edges'}
         </Typography>
       </Box>
