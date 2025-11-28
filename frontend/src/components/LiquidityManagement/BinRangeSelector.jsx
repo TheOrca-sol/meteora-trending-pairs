@@ -120,13 +120,28 @@ const BinRangeSelector = ({
     }
   };
 
+  // Calculate how many bins to show based on the selected range
+  // We want to show bins beyond the selected range for context
+  const selectedRangeBins = bins.filter(b => b.price >= selectedRange.min && b.price <= selectedRange.max);
+  const rangeWidth = selectedRange.max - selectedRange.min;
+
+  // Show 3x the range width on each side for context
+  const displayMin = Math.max(0, selectedRange.min - rangeWidth * 1.5);
+  const displayMax = selectedRange.max + rangeWidth * 1.5;
+
+  // Filter bins to display range
+  const displayBins = bins.filter(b => b.price >= displayMin && b.price <= displayMax);
+
+  // Limit to reasonable number for performance (100 bins max)
+  const binsToShow = displayBins.length > 100 ? displayBins.slice(0, 100) : displayBins;
+
   // Prepare bin data for chart with distribution preview
-  const chartData = bins.slice(0, 50).map((bin, idx) => ({
+  const chartData = binsToShow.map((bin, idx) => ({
     price: bin.price,
     liquidity: bin.liquidityUsd || 0,
-    index: idx,
+    index: bins.indexOf(bin),
     inRange: bin.price >= selectedRange.min && bin.price <= selectedRange.max,
-    positionLiquidity: getDistributionForBin(bin.price, idx)
+    positionLiquidity: getDistributionForBin(bin.price, bins.indexOf(bin))
   }));
 
   const formatPrice = (price) => {
@@ -172,7 +187,7 @@ const BinRangeSelector = ({
           borderColor: 'divider'
         }}
       >
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={300}>
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
             <XAxis
