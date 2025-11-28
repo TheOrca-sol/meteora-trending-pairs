@@ -533,6 +533,178 @@ app.post('/pool/calculate-bin-ids', async (req, res) => {
     }
 });
 
+// ============================================
+// USER-SIGNED POSITION MANAGEMENT
+// ============================================
+
+// Remove liquidity (user-signed)
+app.post('/position/remove-liquidity', async (req, res) => {
+    try {
+        const { positionAddress, poolAddress, userPublicKey, bps } = req.body;
+
+        if (!positionAddress || !poolAddress || !userPublicKey) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        const bpsValue = bps || 10000; // Default to 100% if not specified
+
+        console.log(`[Remove Liquidity] Creating transaction for position: ${positionAddress}`);
+        console.log(`  User: ${userPublicKey}, BPS: ${bpsValue}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Get position info
+        const positionPubkey = new PublicKey(positionAddress);
+        const userPubkey = new PublicKey(userPublicKey);
+
+        // Create remove liquidity transaction
+        const removeLiquidityTx = await dlmmPool.removeLiquidity({
+            position: positionPubkey,
+            user: userPubkey,
+            bps: new BN(bpsValue),
+            shouldClaimAndClose: false // Don't close position automatically
+        });
+
+        // Handle array of transactions
+        const transaction = Array.isArray(removeLiquidityTx) ? removeLiquidityTx[0] : removeLiquidityTx;
+
+        // Set blockhash and fee payer
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = userPubkey;
+
+        // Serialize transaction
+        const serializedTx = transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false
+        });
+
+        console.log(`✅ Remove liquidity transaction created`);
+
+        res.json({
+            transaction: serializedTx.toString('base64'),
+            lastValidBlockHeight
+        });
+
+    } catch (error) {
+        console.error('Error creating remove liquidity transaction:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Claim fees (user-signed)
+app.post('/position/claim-fees', async (req, res) => {
+    try {
+        const { positionAddress, poolAddress, userPublicKey } = req.body;
+
+        if (!positionAddress || !poolAddress || !userPublicKey) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log(`[Claim Fees] Creating transaction for position: ${positionAddress}`);
+        console.log(`  User: ${userPublicKey}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Get position
+        const positionPubkey = new PublicKey(positionAddress);
+        const userPubkey = new PublicKey(userPublicKey);
+
+        // Create claim fee transaction
+        const claimFeeTx = await dlmmPool.claimAllRewards({
+            owner: userPubkey,
+            position: positionPubkey
+        });
+
+        // Handle array of transactions
+        const transaction = Array.isArray(claimFeeTx) ? claimFeeTx[0] : claimFeeTx;
+
+        // Set blockhash and fee payer
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = userPubkey;
+
+        // Serialize transaction
+        const serializedTx = transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false
+        });
+
+        console.log(`✅ Claim fees transaction created`);
+
+        res.json({
+            transaction: serializedTx.toString('base64'),
+            lastValidBlockHeight
+        });
+
+    } catch (error) {
+        console.error('Error creating claim fees transaction:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Close position (user-signed)
+app.post('/position/close', async (req, res) => {
+    try {
+        const { positionAddress, poolAddress, userPublicKey } = req.body;
+
+        if (!positionAddress || !poolAddress || !userPublicKey) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log(`[Close Position] Creating transaction for position: ${positionAddress}`);
+        console.log(`  User: ${userPublicKey}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Get position
+        const positionPubkey = new PublicKey(positionAddress);
+        const userPubkey = new PublicKey(userPublicKey);
+
+        // Create remove all liquidity + close transaction (100% = 10000 bps)
+        const removeLiquidityTx = await dlmmPool.removeLiquidity({
+            position: positionPubkey,
+            user: userPubkey,
+            bps: new BN(10000), // 100%
+            shouldClaimAndClose: true // Close position after removing
+        });
+
+        // Handle array of transactions
+        const transaction = Array.isArray(removeLiquidityTx) ? removeLiquidityTx[0] : removeLiquidityTx;
+
+        // Set blockhash and fee payer
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = userPubkey;
+
+        // Serialize transaction
+        const serializedTx = transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false
+        });
+
+        console.log(`✅ Close position transaction created`);
+
+        res.json({
+            transaction: serializedTx.toString('base64'),
+            lastValidBlockHeight
+        });
+
+    } catch (error) {
+        console.error('Error creating close position transaction:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`✅ Meteora microservice running on http://localhost:${PORT}`);

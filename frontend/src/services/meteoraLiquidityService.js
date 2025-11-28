@@ -110,19 +110,230 @@ export async function addLiquidity({
 }
 
 /**
- * Remove liquidity from a position
- * Note: This is handled by automation backend, not directly by frontend
+ * Remove liquidity from a position (partial or full withdrawal)
  */
-export async function removeLiquidity() {
-  throw new Error('Remove liquidity is handled by automation backend');
+export async function removeLiquidity({
+  poolAddress,
+  positionAddress,
+  bps = 10000, // Default 100%
+  wallet,
+  walletPublicKey
+}) {
+  try {
+    console.log('[Meteora Service] Removing liquidity:', { poolAddress, positionAddress, bps });
+
+    // Call Meteora microservice to create transaction
+    const response = await fetch(`${METEORA_SERVICE_URL}/position/remove-liquidity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolAddress,
+        positionAddress,
+        userPublicKey: walletPublicKey.toString(),
+        bps
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create remove liquidity transaction');
+    }
+
+    const { transaction: txBase64, lastValidBlockHeight } = await response.json();
+
+    console.log('[Meteora Service] Transaction created');
+
+    // Deserialize transaction
+    const txBuffer = Buffer.from(txBase64, 'base64');
+    const transaction = Transaction.from(txBuffer);
+
+    // Create connection
+    const connection = new Connection(RPC_URL, 'confirmed');
+
+    console.log('[Meteora Service] Requesting wallet signature...');
+
+    // Sign transaction with user's wallet
+    const signedTx = await wallet.signTransaction(transaction);
+
+    // Send transaction
+    console.log('[Meteora Service] Sending transaction...');
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed'
+    });
+
+    console.log('[Meteora Service] Transaction sent:', signature);
+
+    // Confirm transaction
+    console.log('[Meteora Service] Confirming transaction...');
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: transaction.recentBlockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    console.log('[Meteora Service] Transaction confirmed!');
+
+    return { signature };
+
+  } catch (error) {
+    console.error('[Meteora Service] Error removing liquidity:', error);
+    throw error;
+  }
+}
+
+/**
+ * Close position (remove all liquidity and close the position account)
+ */
+export async function closePosition({
+  poolAddress,
+  positionAddress,
+  wallet,
+  walletPublicKey
+}) {
+  try {
+    console.log('[Meteora Service] Closing position:', { poolAddress, positionAddress });
+
+    // Call Meteora microservice to create transaction
+    const response = await fetch(`${METEORA_SERVICE_URL}/position/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolAddress,
+        positionAddress,
+        userPublicKey: walletPublicKey.toString()
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create close position transaction');
+    }
+
+    const { transaction: txBase64, lastValidBlockHeight } = await response.json();
+
+    console.log('[Meteora Service] Transaction created');
+
+    // Deserialize transaction
+    const txBuffer = Buffer.from(txBase64, 'base64');
+    const transaction = Transaction.from(txBuffer);
+
+    // Create connection
+    const connection = new Connection(RPC_URL, 'confirmed');
+
+    console.log('[Meteora Service] Requesting wallet signature...');
+
+    // Sign transaction with user's wallet
+    const signedTx = await wallet.signTransaction(transaction);
+
+    // Send transaction
+    console.log('[Meteora Service] Sending transaction...');
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed'
+    });
+
+    console.log('[Meteora Service] Transaction sent:', signature);
+
+    // Confirm transaction
+    console.log('[Meteora Service] Confirming transaction...');
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: transaction.recentBlockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    console.log('[Meteora Service] Transaction confirmed!');
+
+    return { signature };
+
+  } catch (error) {
+    console.error('[Meteora Service] Error closing position:', error);
+    throw error;
+  }
 }
 
 /**
  * Claim fees from a position
- * Note: This is handled by automation backend, not directly by frontend
  */
-export async function claimFees() {
-  throw new Error('Claim fees is handled by automation backend');
+export async function claimFees({
+  poolAddress,
+  positionAddress,
+  wallet,
+  walletPublicKey
+}) {
+  try {
+    console.log('[Meteora Service] Claiming fees:', { poolAddress, positionAddress });
+
+    // Call Meteora microservice to create transaction
+    const response = await fetch(`${METEORA_SERVICE_URL}/position/claim-fees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolAddress,
+        positionAddress,
+        userPublicKey: walletPublicKey.toString()
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create claim fees transaction');
+    }
+
+    const { transaction: txBase64, lastValidBlockHeight } = await response.json();
+
+    console.log('[Meteora Service] Transaction created');
+
+    // Deserialize transaction
+    const txBuffer = Buffer.from(txBase64, 'base64');
+    const transaction = Transaction.from(txBuffer);
+
+    // Create connection
+    const connection = new Connection(RPC_URL, 'confirmed');
+
+    console.log('[Meteora Service] Requesting wallet signature...');
+
+    // Sign transaction with user's wallet
+    const signedTx = await wallet.signTransaction(transaction);
+
+    // Send transaction
+    console.log('[Meteora Service] Sending transaction...');
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed'
+    });
+
+    console.log('[Meteora Service] Transaction sent:', signature);
+
+    // Confirm transaction
+    console.log('[Meteora Service] Confirming transaction...');
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: transaction.recentBlockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    console.log('[Meteora Service] Transaction confirmed!');
+
+    return { signature };
+
+  } catch (error) {
+    console.error('[Meteora Service] Error claiming fees:', error);
+    throw error;
+  }
 }
 
 /**

@@ -19,30 +19,45 @@ import {
   Tooltip,
   Grid,
   Card,
-  CardContent
+  CardContent,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
   OpenInNew as OpenInNewIcon,
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
-  AccountBalance as AccountBalanceIcon
+  AccountBalance as AccountBalanceIcon,
+  RemoveCircleOutline as WithdrawIcon,
+  Close as CloseIcon,
+  MonetizationOn as ClaimIcon
 } from '@mui/icons-material';
 import axios from 'axios';
+import { removeLiquidity, closePosition, claimFees } from '../services/meteoraLiquidityService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const PositionsPage = () => {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signTransaction, signAllTransactions } = useWallet();
   const [positions, setPositions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [stats, setStats] = useState({
     totalPositions: 0,
     totalLiquidityUSD: 0,
     totalFeesEarned: 0,
     totalPnL: 0
   });
+
+  // Dialog states
+  const [withdrawDialog, setWithdrawDialog] = useState({ open: false, position: null });
+  const [closeDialog, setCloseDialog] = useState({ open: false, position: null });
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     if (connected && publicKey) {
@@ -85,6 +100,85 @@ const PositionsPage = () => {
       setError(err.message || 'Failed to load positions');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!withdrawDialog.position) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const { signature } = await removeLiquidity({
+        poolAddress: withdrawDialog.position.pool_address,
+        positionAddress: withdrawDialog.position.position_address,
+        bps: 10000, // 100% withdraw
+        wallet: { signTransaction, signAllTransactions },
+        walletPublicKey: publicKey
+      });
+
+      setSuccess(`Liquidity withdrawn successfully! Transaction: ${signature}`);
+      setWithdrawDialog({ open: false, position: null });
+
+      // Refresh positions
+      setTimeout(() => fetchPositions(), 2000);
+    } catch (err) {
+      console.error('Error withdrawing liquidity:', err);
+      setError(err.message || 'Failed to withdraw liquidity');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClosePosition = async () => {
+    if (!closeDialog.position) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const { signature } = await closePosition({
+        poolAddress: closeDialog.position.pool_address,
+        positionAddress: closeDialog.position.position_address,
+        wallet: { signTransaction, signAllTransactions },
+        walletPublicKey: publicKey
+      });
+
+      setSuccess(`Position closed successfully! Transaction: ${signature}`);
+      setCloseDialog({ open: false, position: null });
+
+      // Refresh positions
+      setTimeout(() => fetchPositions(), 2000);
+    } catch (err) {
+      console.error('Error closing position:', err);
+      setError(err.message || 'Failed to close position');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClaimFees = async (position) => {
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const { signature } = await claimFees({
+        poolAddress: position.pool_address,
+        positionAddress: position.position_address,
+        wallet: { signTransaction, signAllTransactions },
+        walletPublicKey: publicKey
+      });
+
+      setSuccess(`Fees claimed successfully! Transaction: ${signature}`);
+
+      // Refresh positions
+      setTimeout(() => fetchPositions(), 2000);
+    } catch (err) {
+      console.error('Error claiming fees:', err);
+      setError(err.message || 'Failed to claim fees');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -318,16 +412,48 @@ const PositionsPage = () => {
                     </TableCell>
 
                     <TableCell align="center">
-                      <Tooltip title="View on Solscan">
-                        <IconButton
-                          size="small"
-                          href={`https://solscan.io/account/${position.position_address}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <OpenInNewIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <Tooltip title="Claim Fees">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleClaimFees(position)}
+                            disabled={actionLoading || position.fees_earned_usd === 0}
+                          >
+                            <ClaimIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Withdraw Liquidity">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => setWithdrawDialog({ open: true, position })}
+                            disabled={actionLoading}
+                          >
+                            <WithdrawIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Withdraw & Close Position">
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => setCloseDialog({ open: true, position })}
+                            disabled={actionLoading}
+                          >
+                            <CloseIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="View on Solscan">
+                          <IconButton
+                            size="small"
+                            href={`https://solscan.io/account/${position.position_address}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <OpenInNewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -335,7 +461,84 @@ const PositionsPage = () => {
             </Table>
           </TableContainer>
         )}
+
+        {/* Success/Error Messages */}
+        {success && (
+          <Alert severity="success" onClose={() => setSuccess(null)} sx={{ mt: 2 }}>
+            {success}
+          </Alert>
+        )}
+        {error && (
+          <Alert severity="error" onClose={() => setError(null)} sx={{ mt: 2 }}>
+            {error}
+          </Alert>
+        )}
       </Box>
+
+      {/* Withdraw Liquidity Dialog */}
+      <Dialog open={withdrawDialog.open} onClose={() => !actionLoading && setWithdrawDialog({ open: false, position: null })}>
+        <DialogTitle>Withdraw Liquidity</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to withdraw all liquidity from this position?
+            {withdrawDialog.position && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Pool:</strong> {withdrawDialog.position.token_x_symbol} / {withdrawDialog.position.token_y_symbol}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Position:</strong> {withdrawDialog.position.position_address.slice(0, 8)}...
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Current Value:</strong> {formatCurrency(withdrawDialog.position.current_liquidity_usd)}
+                </Typography>
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWithdrawDialog({ open: false, position: null })} disabled={actionLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleWithdraw} variant="contained" color="primary" disabled={actionLoading}>
+            {actionLoading ? <CircularProgress size={24} /> : 'Withdraw'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Close Position Dialog */}
+      <Dialog open={closeDialog.open} onClose={() => !actionLoading && setCloseDialog({ open: false, position: null })}>
+        <DialogTitle>Close Position</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to close this position? This will withdraw all liquidity and close the position account.
+            {closeDialog.position && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Pool:</strong> {closeDialog.position.token_x_symbol} / {closeDialog.position.token_y_symbol}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Position:</strong> {closeDialog.position.position_address.slice(0, 8)}...
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Current Value:</strong> {formatCurrency(closeDialog.position.current_liquidity_usd)}
+                </Typography>
+                <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
+                  ⚠️ This action cannot be undone
+                </Typography>
+              </Box>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCloseDialog({ open: false, position: null })} disabled={actionLoading}>
+            Cancel
+          </Button>
+          <Button onClick={handleClosePosition} variant="contained" color="error" disabled={actionLoading}>
+            {actionLoading ? <CircularProgress size={24} /> : 'Close Position'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
