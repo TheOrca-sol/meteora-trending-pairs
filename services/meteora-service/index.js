@@ -60,9 +60,12 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Get position data
-// Close position (remove all liquidity)
-app.post('/position/close', async (req, res) => {
+// ============================================
+// DEGEN WALLET AUTOMATION ENDPOINTS
+// ============================================
+
+// Close position using degen wallet (for automation)
+app.post('/degen/position/close', async (req, res) => {
     try {
         const { positionAddress, poolAddress } = req.body;
 
@@ -74,7 +77,7 @@ app.post('/position/close', async (req, res) => {
             return res.status(400).json({ error: 'Missing positionAddress or poolAddress' });
         }
 
-        console.log(`Closing position: ${positionAddress}`);
+        console.log(`[Degen] Closing position: ${positionAddress}`);
 
         // Load DLMM pool
         const poolPubkey = new PublicKey(poolAddress);
@@ -109,17 +112,17 @@ app.post('/position/close', async (req, res) => {
             throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
         }
 
-        console.log(`✅ Position closed: ${signature}`);
+        console.log(`✅ [Degen] Position closed: ${signature}`);
         res.json({ signature });
 
     } catch (error) {
-        console.error('Error closing position:', error);
+        console.error('[Degen] Error closing position:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Claim fees
-app.post('/position/claim-fees', async (req, res) => {
+// Claim fees using degen wallet (for automation)
+app.post('/degen/position/claim-fees', async (req, res) => {
     try {
         const { positionAddress, poolAddress } = req.body;
 
@@ -131,7 +134,7 @@ app.post('/position/claim-fees', async (req, res) => {
             return res.status(400).json({ error: 'Missing positionAddress or poolAddress' });
         }
 
-        console.log(`Claiming fees: ${positionAddress}`);
+        console.log(`[Degen] Claiming fees: ${positionAddress}`);
 
         // Load DLMM pool
         const poolPubkey = new PublicKey(poolAddress);
@@ -158,17 +161,17 @@ app.post('/position/claim-fees', async (req, res) => {
         // Wait for confirmation
         await connection.confirmTransaction(signature, 'confirmed');
 
-        console.log(`✅ Fees claimed: ${signature}`);
+        console.log(`✅ [Degen] Fees claimed: ${signature}`);
         res.json({ signature });
 
     } catch (error) {
-        console.error('Error claiming fees:', error);
+        console.error('[Degen] Error claiming fees:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Add liquidity (for compounding)
-app.post('/position/add-liquidity', async (req, res) => {
+// Add liquidity using degen wallet (for compounding automation)
+app.post('/degen/position/add-liquidity', async (req, res) => {
     try {
         const { positionAddress, poolAddress, amountX, amountY } = req.body;
 
@@ -180,7 +183,7 @@ app.post('/position/add-liquidity', async (req, res) => {
             return res.status(400).json({ error: 'Missing required parameters' });
         }
 
-        console.log(`Adding liquidity: ${positionAddress} (${amountX} X, ${amountY} Y)`);
+        console.log(`[Degen] Adding liquidity: ${positionAddress} (${amountX} X, ${amountY} Y)`);
 
         // Load DLMM pool
         const poolPubkey = new PublicKey(poolAddress);
@@ -226,17 +229,17 @@ app.post('/position/add-liquidity', async (req, res) => {
         // Wait for confirmation
         await connection.confirmTransaction(signature, 'confirmed');
 
-        console.log(`✅ Liquidity added: ${signature}`);
+        console.log(`✅ [Degen] Liquidity added: ${signature}`);
         res.json({ signature });
 
     } catch (error) {
-        console.error('Error adding liquidity:', error);
+        console.error('[Degen] Error adding liquidity:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Compound fees (claim + add back)
-app.post('/position/compound', async (req, res) => {
+// Compound fees using degen wallet (claim + add back, for automation)
+app.post('/degen/position/compound', async (req, res) => {
     try {
         const { positionAddress, poolAddress } = req.body;
 
@@ -248,7 +251,7 @@ app.post('/position/compound', async (req, res) => {
             return res.status(400).json({ error: 'Missing positionAddress or poolAddress' });
         }
 
-        console.log(`Compounding position: ${positionAddress}`);
+        console.log(`[Degen] Compounding position: ${positionAddress}`);
 
         // Load DLMM pool
         const poolPubkey = new PublicKey(poolAddress);
@@ -301,7 +304,7 @@ app.post('/position/compound', async (req, res) => {
         await connection.confirmTransaction(addSignature, 'confirmed');
         console.log(`  ✅ Fees reinvested: ${addSignature}`);
 
-        console.log(`✅ Compound complete`);
+        console.log(`✅ [Degen] Compound complete`);
         res.json({
             claimSignature,
             addSignature,
@@ -312,10 +315,14 @@ app.post('/position/compound', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error compounding:', error);
+        console.error('[Degen] Error compounding:', error);
         res.status(500).json({ error: error.message });
     }
 });
+
+// ============================================
+// USER-SIGNED TRANSACTION ENDPOINTS
+// ============================================
 
 // Create position (for user adding liquidity)
 app.post('/position/create', async (req, res) => {
@@ -576,16 +583,32 @@ app.post('/position/remove-liquidity', async (req, res) => {
         const positionPubkey = new PublicKey(positionAddress);
         const userPubkey = new PublicKey(userPublicKey);
 
+        // Get the position data to know the bin range
+        const position = await dlmmPool.getPosition(positionPubkey);
+        const lowerBinId = position.positionData.lowerBinId;
+        const upperBinId = position.positionData.upperBinId;
+
+        console.log(`[Remove Liquidity] Position bin range: ${lowerBinId} - ${upperBinId}, BPS: ${bpsValue}`);
+
         // Create remove liquidity transaction
         const removeLiquidityTx = await dlmmPool.removeLiquidity({
             position: positionPubkey,
             user: userPubkey,
+            fromBinId: lowerBinId,
+            toBinId: upperBinId,
             bps: new BN(bpsValue),
             shouldClaimAndClose: false // Don't close position automatically
         });
 
-        // Handle array of transactions
-        const transaction = Array.isArray(removeLiquidityTx) ? removeLiquidityTx[0] : removeLiquidityTx;
+        // The SDK returns either { tx: Transaction } or an array of transactions
+        let transaction;
+        if (Array.isArray(removeLiquidityTx)) {
+            transaction = removeLiquidityTx[0];
+        } else if (removeLiquidityTx.tx) {
+            transaction = removeLiquidityTx.tx;
+        } else {
+            transaction = removeLiquidityTx;
+        }
 
         // Set blockhash and fee payer
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
@@ -638,8 +661,15 @@ app.post('/position/claim-fees', async (req, res) => {
             position: positionPubkey
         });
 
-        // Handle array of transactions
-        const transaction = Array.isArray(claimFeeTx) ? claimFeeTx[0] : claimFeeTx;
+        // The SDK returns either { tx: Transaction } or an array of transactions
+        let transaction;
+        if (Array.isArray(claimFeeTx)) {
+            transaction = claimFeeTx[0];
+        } else if (claimFeeTx.tx) {
+            transaction = claimFeeTx.tx;
+        } else {
+            transaction = claimFeeTx;
+        }
 
         // Set blockhash and fee payer
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
@@ -686,16 +716,59 @@ app.post('/position/close', async (req, res) => {
         const positionPubkey = new PublicKey(positionAddress);
         const userPubkey = new PublicKey(userPublicKey);
 
+        // First, get the position data to know the bin range
+        const position = await dlmmPool.getPosition(positionPubkey);
+        const lowerBinId = position.positionData.lowerBinId;
+        const upperBinId = position.positionData.upperBinId;
+
+        console.log(`[Close Position] Position bin range: ${lowerBinId} - ${upperBinId}`);
+
         // Create remove all liquidity + close transaction (100% = 10000 bps)
         const removeLiquidityTx = await dlmmPool.removeLiquidity({
             position: positionPubkey,
             user: userPubkey,
+            fromBinId: lowerBinId,
+            toBinId: upperBinId,
             bps: new BN(10000), // 100%
             shouldClaimAndClose: true // Close position after removing
         });
 
-        // Handle array of transactions
-        const transaction = Array.isArray(removeLiquidityTx) ? removeLiquidityTx[0] : removeLiquidityTx;
+        console.log('[Close Position] SDK returned:', typeof removeLiquidityTx, Array.isArray(removeLiquidityTx));
+        console.log('[Close Position] SDK response length:', Array.isArray(removeLiquidityTx) ? removeLiquidityTx.length : 'N/A');
+
+        // The SDK returns either { tx: Transaction } or an array of transactions
+        // If the position is already empty, it returns an empty array
+        let transaction;
+        if (Array.isArray(removeLiquidityTx)) {
+            if (removeLiquidityTx.length === 0) {
+                // Position is already empty, need to fetch position data and close it
+                console.log('[Close Position] Position is empty, fetching position data');
+
+                // Get the full position object
+                const position = await dlmmPool.getPosition(positionPubkey);
+
+                console.log('[Close Position] Calling closePosition with position object');
+                const closePositionTx = await dlmmPool.closePosition({
+                    owner: userPubkey,
+                    position: position
+                });
+
+                // closePosition returns a Transaction directly
+                transaction = closePositionTx;
+            } else {
+                transaction = removeLiquidityTx[0];
+            }
+        } else if (removeLiquidityTx && removeLiquidityTx.tx) {
+            transaction = removeLiquidityTx.tx;
+        } else {
+            transaction = removeLiquidityTx;
+        }
+
+        if (!transaction) {
+            throw new Error('Failed to extract transaction from SDK response');
+        }
+
+        console.log('[Close Position] Transaction type:', transaction.constructor?.name || 'Unknown');
 
         // Set blockhash and fee payer
         const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
