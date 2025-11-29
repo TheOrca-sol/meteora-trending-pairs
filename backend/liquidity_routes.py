@@ -76,28 +76,44 @@ def get_positions():
                         pos_dict['fees_earned_x'] = live_data['feesEarnedX']
                         pos_dict['fees_earned_y'] = live_data['feesEarnedY']
 
-                        # Fetch token prices from Jupiter
+                        # Fetch token prices from Jupiter v3
                         try:
+                            logger.info(f"Fetching prices for {position.token_x_mint}, {position.token_y_mint}")
                             price_response = requests.get(
-                                f'https://api.jup.ag/price/v2?ids={position.token_x_mint},{position.token_y_mint}',
+                                f'https://lite-api.jup.ag/price/v3?ids={position.token_x_mint},{position.token_y_mint}',
                                 timeout=3
                             )
-                            if price_response.status_code == 200:
-                                prices = price_response.json().get('data', {})
-                                price_x = prices.get(position.token_x_mint, {}).get('price', 0)
-                                price_y = prices.get(position.token_y_mint, {}).get('price', 0)
+                            logger.info(f"Price API status: {price_response.status_code}")
 
-                                # Calculate USD values
+                            if price_response.status_code == 200:
+                                prices = price_response.json()
+                                logger.info(f"Price response: {prices}")
+                                price_x = prices.get(position.token_x_mint, {}).get('usdPrice', 0)
+                                price_y = prices.get(position.token_y_mint, {}).get('usdPrice', 0)
+                                logger.info(f"Prices: X={price_x}, Y={price_y}")
+
+                                # Calculate USD values (handle null amounts for single-token positions)
                                 current_liquidity_usd = (live_data['currentAmountX'] * price_x) + (live_data['currentAmountY'] * price_y)
                                 fees_earned_usd = (live_data['feesEarnedX'] * price_x) + (live_data['feesEarnedY'] * price_y)
-                                initial_liquidity_usd = (position.initial_amount_x * price_x) + (position.initial_amount_y * price_y)
+
+                                # Convert Decimal to float for calculation
+                                initial_x = float(position.initial_amount_x) if position.initial_amount_x is not None else 0.0
+                                initial_y = float(position.initial_amount_y) if position.initial_amount_y is not None else 0.0
+                                initial_liquidity_usd = (initial_x * price_x) + (initial_y * price_y)
+
+                                # Calculate P&L in both USD and percentage
+                                pnl_usd = current_liquidity_usd - initial_liquidity_usd + fees_earned_usd
+                                pnl_percent = (pnl_usd / initial_liquidity_usd * 100) if initial_liquidity_usd > 0 else 0
+
+                                logger.info(f"Calculated USD: liquidity={current_liquidity_usd}, fees={fees_earned_usd}, pnl_usd={pnl_usd}, pnl_percent={pnl_percent}%")
 
                                 pos_dict['current_liquidity_usd'] = current_liquidity_usd
                                 pos_dict['fees_earned_usd'] = fees_earned_usd
-                                pos_dict['unrealized_pnl_usd'] = current_liquidity_usd - initial_liquidity_usd + fees_earned_usd
+                                pos_dict['unrealized_pnl_usd'] = pnl_usd
+                                pos_dict['unrealized_pnl_percent'] = pnl_percent
 
                         except Exception as price_error:
-                            logger.error(f"Error fetching prices: {str(price_error)}")
+                            logger.error(f"Error fetching prices: {str(price_error)}", exc_info=True)
 
                 except Exception as meteora_error:
                     logger.error(f"Error fetching live data for position {position.position_address}: {str(meteora_error)}")

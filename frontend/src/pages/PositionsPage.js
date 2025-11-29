@@ -403,6 +403,14 @@ const PositionsPage = () => {
                       >
                         {formatCurrency(position.unrealized_pnl_usd)}
                       </Typography>
+                      {position.unrealized_pnl_percent !== undefined && (
+                        <Typography
+                          variant="caption"
+                          color={position.unrealized_pnl_percent >= 0 ? 'success.main' : 'error.main'}
+                        >
+                          ({position.unrealized_pnl_percent >= 0 ? '+' : ''}{position.unrealized_pnl_percent.toFixed(2)}%)
+                        </Typography>
+                      )}
                     </TableCell>
 
                     <TableCell>
