@@ -373,3 +373,37 @@ export async function calculateBinIds({ poolAddress, lowerPrice, upperPrice }) {
     throw error;
   }
 }
+
+/**
+ * Estimate fees for adding liquidity
+ * Returns refundable and non-refundable costs
+ */
+export async function estimateLiquidityFees({ poolAddress, lowerBinId, upperBinId }) {
+  try {
+    console.log('[Meteora Service] Estimating fees:', { poolAddress, lowerBinId, upperBinId });
+
+    const response = await fetch(`${METEORA_SERVICE_URL}/pool/estimate-fees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        poolAddress,
+        lowerBinId,
+        upperBinId
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to estimate fees');
+    }
+
+    const feeEstimate = await response.json();
+    console.log('[Meteora Service] Fee estimate:', feeEstimate);
+
+    return feeEstimate;
+
+  } catch (error) {
+    console.error('[Meteora Service] Error estimating fees:', error);
+    throw error;
+  }
+}

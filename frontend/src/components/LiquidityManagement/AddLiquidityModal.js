@@ -33,10 +33,11 @@ import {
   TrendingDown as TrendingDownIcon,
   Autorenew as AutorenewIcon,
   Balance as BalanceIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { addLiquidity, calculateBinIds } from '../../services/meteoraLiquidityService';
+import { addLiquidity, calculateBinIds, estimateLiquidityFees } from '../../services/meteoraLiquidityService';
 import BinRangeSelector from './BinRangeSelector';
 
 const AddLiquidityModal = ({
@@ -74,6 +75,8 @@ const AddLiquidityModal = ({
   const [balanceTokenX, setBalanceTokenX] = useState(null);
   const [balanceTokenY, setBalanceTokenY] = useState(null);
   const [loadingBalances, setLoadingBalances] = useState(false);
+  const [feeEstimate, setFeeEstimate] = useState(null);
+  const [loadingFees, setLoadingFees] = useState(false);
 
   // Extract token names from pairName (e.g., "SOL - USDC")
   const tokenXName = pairName?.split('-')[0]?.trim() || 'Token X';
@@ -125,6 +128,49 @@ const AddLiquidityModal = ({
       fetchBalances();
     }
   }, [open, publicKey, mintX, mintY]);
+
+  // Fetch fee estimates when bin range changes
+  const fetchFeeEstimate = async () => {
+    if (!poolAddress || !customLowerBound || !customUpperBound) {
+      setFeeEstimate(null);
+      return;
+    }
+
+    try {
+      setLoadingFees(true);
+
+      // Calculate bin IDs from prices
+      const { lowerBinId, upperBinId } = await calculateBinIds({
+        poolAddress,
+        lowerPrice: parseFloat(customLowerBound),
+        upperPrice: parseFloat(customUpperBound)
+      });
+
+      // Get fee estimate
+      const estimate = await estimateLiquidityFees({
+        poolAddress,
+        lowerBinId,
+        upperBinId
+      });
+
+      setFeeEstimate(estimate);
+    } catch (err) {
+      console.error('Error fetching fee estimate:', err);
+      setFeeEstimate(null);
+    } finally {
+      setLoadingFees(false);
+    }
+  };
+
+  useEffect(() => {
+    if (open && poolAddress && customLowerBound && customUpperBound) {
+      const timeoutId = setTimeout(() => {
+        fetchFeeEstimate();
+      }, 500); // Debounce by 500ms
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [open, poolAddress, customLowerBound, customUpperBound]);
 
   const handleAddLiquidity = async () => {
     if (!publicKey || !signTransaction || !signAllTransactions) {
@@ -656,6 +702,67 @@ const AddLiquidityModal = ({
               {error}
             </Alert>
           )}
+
+          {/* Fee Estimate */}
+          {loadingFees ? (
+            <Alert severity="info" icon={<CircularProgress size={20} />} sx={{ mt: 2 }}>
+              <Typography variant="body2">
+                Calculating transaction fees...
+              </Typography>
+            </Alert>
+          ) : feeEstimate ? (
+            <Alert
+              severity={feeEstimate.binArraysToCreate > 0 ? "warning" : "info"}
+              icon={<InfoIcon />}
+              sx={{ mt: 2 }}
+            >
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Estimated Transaction Fees
+              </Typography>
+              <Box sx={{ mt: 1 }}>
+                <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
+                  <strong>Price Range:</strong> {feeEstimate.numBins} bins ({customLowerBound} - {customUpperBound})
+                </Typography>
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="caption" display="block" sx={{ mb: 0.5 }}>
+                  ✅ <strong>Refundable:</strong> {feeEstimate.totalRefundable.toFixed(6)} SOL
+                </Typography>
+                <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2, mb: 0.5 }}>
+                  Position account rent - recovered when you close your position
+                </Typography>
+                {feeEstimate.binArraysToCreate > 0 ? (
+                  <>
+                    <Typography variant="caption" display="block" sx={{ mb: 0.5, color: 'warning.main' }}>
+                      ❌ <strong>Non-Refundable:</strong> {feeEstimate.totalNonRefundable.toFixed(6)} SOL
+                    </Typography>
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2, mb: 0.5 }}>
+                      Creating {feeEstimate.binArraysToCreate} new bin array{feeEstimate.binArraysToCreate > 1 ? 's' : ''} - permanent cost
+                    </Typography>
+                    <Typography variant="caption" display="block" color="warning.main" sx={{ ml: 2, mt: 1, fontWeight: 600 }}>
+                      ⚠️ You're the first LP in this price range. Other LPs won't pay this fee.
+                    </Typography>
+                  </>
+                ) : (
+                  <Typography variant="caption" display="block" sx={{ mb: 0.5, color: 'success.main' }}>
+                    ✅ <strong>No bin array fees:</strong> Price range already initialized by other LPs
+                  </Typography>
+                )}
+                <Divider sx={{ my: 1 }} />
+                <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
+                  Total Cost: {feeEstimate.totalCost.toFixed(6)} SOL
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  (Plus transaction fee: ~{feeEstimate.transactionFee} SOL)
+                </Typography>
+              </Box>
+            </Alert>
+          ) : customLowerBound && customUpperBound ? (
+            <Alert severity="info" icon={<InfoIcon />} sx={{ mt: 2 }}>
+              <Typography variant="caption">
+                Set a price range to see estimated fees
+              </Typography>
+            </Alert>
+          ) : null}
 
         </Box>
       </DialogContent>

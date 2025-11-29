@@ -461,6 +461,95 @@ app.post('/pool/calculate-bin-ids', async (req, res) => {
     }
 });
 
+// Estimate fees for adding liquidity
+app.post('/pool/estimate-fees', async (req, res) => {
+    try {
+        const { poolAddress, lowerBinId, upperBinId } = req.body;
+
+        if (!poolAddress || lowerBinId === undefined || upperBinId === undefined) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        console.log(`[Estimate Fees] Pool: ${poolAddress}, Range: ${lowerBinId} - ${upperBinId}`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Calculate number of bins
+        const numBins = upperBinId - lowerBinId + 1;
+
+        // Position account rent calculation
+        // Base position size + (bins * bin data size)
+        // Meteora Position V2 base: ~172 bytes + (numBins * 32 bytes per bin liquidity data)
+        const POSITION_BASE_SIZE = 172;
+        const PER_BIN_SIZE = 32;
+        const positionAccountSize = POSITION_BASE_SIZE + (numBins * PER_BIN_SIZE);
+        const positionRent = await connection.getMinimumBalanceForRentExemption(positionAccountSize);
+
+        // Check which bin arrays need to be initialized
+        const BIN_ARRAY_SIZE = 69; // Meteora uses 69 bins per array
+        const minArrayIndex = Math.floor(lowerBinId / BIN_ARRAY_SIZE);
+        const maxArrayIndex = Math.floor(upperBinId / BIN_ARRAY_SIZE);
+        const numBinArrays = maxArrayIndex - minArrayIndex + 1;
+
+        // Check which bin arrays already exist
+        let binArraysToCreate = 0;
+        for (let i = minArrayIndex; i <= maxArrayIndex; i++) {
+            try {
+                const [binArrayPubkey] = PublicKey.findProgramAddressSync(
+                    [
+                        Buffer.from('bin_array'),
+                        poolPubkey.toBuffer(),
+                        Buffer.from(new BN(i).toArray('le', 8))
+                    ],
+                    new PublicKey('LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo') // Meteora DLMM program
+                );
+
+                const accountInfo = await connection.getAccountInfo(binArrayPubkey);
+                if (!accountInfo) {
+                    binArraysToCreate++;
+                }
+            } catch (err) {
+                console.error(`Error checking bin array ${i}:`, err);
+                binArraysToCreate++; // Assume needs creation if error
+            }
+        }
+
+        // Bin array rent (fixed size, ~12KB per array)
+        const BIN_ARRAY_ACCOUNT_SIZE = 12296; // Actual Meteora bin array size
+        const binArrayRentPerArray = await connection.getMinimumBalanceForRentExemption(BIN_ARRAY_ACCOUNT_SIZE);
+        const totalBinArrayRent = binArraysToCreate * binArrayRentPerArray;
+
+        // Transaction fee estimate
+        const transactionFee = 0.00001; // Base transaction fee in SOL
+
+        console.log(`[Estimate Fees] Position size: ${positionAccountSize} bytes, ${numBins} bins`);
+        console.log(`[Estimate Fees] Bin arrays: ${numBinArrays} total, ${binArraysToCreate} to create`);
+        console.log(`[Estimate Fees] Position rent: ${positionRent / 1e9} SOL (refundable)`);
+        console.log(`[Estimate Fees] Bin array rent: ${totalBinArrayRent / 1e9} SOL (non-refundable)`);
+
+        res.json({
+            numBins,
+            positionRent: positionRent / 1e9, // Convert to SOL
+            positionRentLamports: positionRent,
+            binArraysTotal: numBinArrays,
+            binArraysToCreate,
+            binArrayRentPerArray: binArrayRentPerArray / 1e9,
+            totalBinArrayRent: totalBinArrayRent / 1e9,
+            totalBinArrayRentLamports: totalBinArrayRent,
+            transactionFee,
+            totalRefundable: positionRent / 1e9,
+            totalNonRefundable: totalBinArrayRent / 1e9,
+            totalCost: (positionRent + totalBinArrayRent) / 1e9 + transactionFee
+        });
+
+    } catch (error) {
+        console.error('Error estimating fees:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ============================================
 // USER-SIGNED POSITION MANAGEMENT
 // ============================================

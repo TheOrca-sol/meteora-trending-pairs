@@ -7,16 +7,20 @@
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
-  "keywords": ["meteora", "dlmm", "solana"],
+  "keywords": [
+    "meteora",
+    "dlmm",
+    "solana"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@meteora-ag/dlmm": "^1.0.58",
-    "@solana/web3.js": "^1.87.6",
+    "@solana/web3.js": "^1.98.4",
     "bn.js": "^5.2.1",
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
