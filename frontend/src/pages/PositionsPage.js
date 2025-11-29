@@ -376,18 +376,36 @@ const PositionsPage = () => {
                     </TableCell>
 
                     <TableCell align="right">
-                      <Typography variant="body2">
-                        {formatAmount(position.current_amount_x)} {position.token_x_symbol}
-                      </Typography>
-                      <Typography variant="body2">
-                        {formatAmount(position.current_amount_y)} {position.token_y_symbol}
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium">
+                          {formatAmount(position.current_amount_x)} {position.token_x_symbol}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Initial: {formatAmount(position.initial_amount_x || 0)}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ mt: 0.5 }}>
+                        <Typography variant="body2" fontWeight="medium">
+                          {formatAmount(position.current_amount_y)} {position.token_y_symbol}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Initial: {formatAmount(position.initial_amount_y || 0)}
+                        </Typography>
+                      </Box>
                     </TableCell>
 
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="medium">
                         {formatCurrency(position.current_liquidity_usd)}
                       </Typography>
+                      {position.price_x && position.price_y && (
+                        <Typography variant="caption" color="text.secondary">
+                          Initial: {formatCurrency(
+                            ((position.initial_amount_x || 0) * position.price_x) +
+                            ((position.initial_amount_y || 0) * position.price_y)
+                          )}
+                        </Typography>
+                      )}
                     </TableCell>
 
                     <TableCell align="right">
