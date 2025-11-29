@@ -1,0 +1,148 @@
+
+> meteora-service@1.0.0 start
+> node index.js
+
+Connected to Solana RPC: https://api.mainnet-beta.solana.com
+DEGEN_WALLET_PRIVATE_KEY not set - execution endpoints will not work
+(node:886517) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+✅ Meteora microservice running on http://localhost:3002
+   Health check: http://localhost:3002/health
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.032327978, Y=0.006152023, FeeX=0.005639768, FeeY=0.0005898
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.030561824, Y=0.006357901, FeeX=0.005639768, FeeY=0.000591934
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.030561824, Y=0.006357901, FeeX=0.005639768, FeeY=0.000591934
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.030561824, Y=0.006357901, FeeX=0.005639768, FeeY=0.000591934
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026032083, Y=0.006891124, FeeX=0.005639768, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026032083, Y=0.006891124, FeeX=0.005639768, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026032083, Y=0.006891124, FeeX=0.005639768, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026950835, Y=0.006782954, FeeX=0.005648922, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026950835, Y=0.006782954, FeeX=0.005648922, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026950835, Y=0.006782954, FeeX=0.005648922, FeeY=0.00059725
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.026551753, Y=0.00682994, FeeX=0.005690868, FeeY=0.000602649
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.025461216, Y=0.006958336, FeeX=0.005718932, FeeY=0.000607196
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.024543894, Y=0.007066336, FeeX=0.005752725, FeeY=0.000612209
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.019138422, Y=0.007706953, FeeX=0.005770036, FeeY=0.000620426
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769834, Y=0, FeeX=0.006503187, FeeY=0.00062049
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.086769835, Y=0, FeeX=0.007290714, FeeY=0.000707623
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.024340404, Y=0.007096262, FeeX=0.007875869, FeeY=0.000846516
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0, Y=0.010015627, FeeX=0.008340237, FeeY=0.000930664
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.029362467, Y=0.006514308, FeeX=0.00867042, FeeY=0.000938029
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.028517524, Y=0.006616159, FeeX=0.008707415, FeeY=0.000941089
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.02621667, Y=0.006887857, FeeX=0.008709821, FeeY=0.000943232
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.024900928, Y=0.007042765, FeeX=0.008713167, FeeY=0.000945113
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.024409574, Y=0.007100615, FeeX=0.008721772, FeeY=0.000946681
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.015720434, Y=0.008136433, FeeX=0.008747731, FeeY=0.000955151
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.015861378, Y=0.008124968, FeeX=0.008839439, FeeY=0.000960651
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.015431979, Y=0.008183555, FeeX=0.008964828, FeeY=0.000968572
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.016449688, Y=0.008062555, FeeX=0.009046914, FeeY=0.000977225
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.038435341, Y=0.005475506, FeeX=0.009307858, FeeY=0.000982638
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.038545096, Y=0.005462724, FeeX=0.009361418, FeeY=0.000988748
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.041073679, Y=0.005170888, FeeX=0.009463316, FeeY=0.000997766
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.036289303, Y=0.005726172, FeeX=0.009500958, FeeY=0.001007013
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.047436389, Y=0.004444988, FeeX=0.00977816, FeeY=0.001019474
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.046940967, Y=0.004501601, FeeX=0.009783626, FeeY=0.001020631
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.046789705, Y=0.004518886, FeeX=0.00981432, FeeY=0.001024336
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.058254697, Y=0.003213017, FeeX=0.009961904, FeeY=0.001028591
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.04830598, Y=0.004345618, FeeX=0.010001269, FeeY=0.001044024
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.047974565, Y=0.004383489, FeeX=0.010007449, FeeY=0.001045093
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.05688349, Y=0.003368775, FeeX=0.01017447, FeeY=0.001054097
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.062842424, Y=0.002694907, FeeX=0.01023247, FeeY=0.001054132
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.062842424, Y=0.002694907, FeeX=0.01023247, FeeY=0.001054132
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.058821533, Y=0.003149504, FeeX=0.01023247, FeeY=0.001058535
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.058821533, Y=0.003149504, FeeX=0.01023247, FeeY=0.001058535
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.061454747, Y=0.00285158, FeeX=0.01025793, FeeY=0.001058535
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.062839138, Y=0.002695275, FeeX=0.010271835, FeeY=0.001058586
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.062839138, Y=0.002695275, FeeX=0.010271835, FeeY=0.001058586
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.061077326, Y=0.002894281, FeeX=0.010274605, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.061077326, Y=0.002894281, FeeX=0.010274605, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.061077326, Y=0.002894281, FeeX=0.010274605, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.062085643, Y=0.0027802, FeeX=0.010284354, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827
+[Position Data] Fetching data for position: 8gHnQyXdhkKnx4j6kZLvRZfbXh44kCLj6WhxtqAwsHEy
+✅ Position data fetched: X=0.087143977, Y=0, FeeX=0.010542238, FeeY=0.001060827

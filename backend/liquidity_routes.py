@@ -111,6 +111,8 @@ def get_positions():
                                 pos_dict['fees_earned_usd'] = fees_earned_usd
                                 pos_dict['unrealized_pnl_usd'] = pnl_usd
                                 pos_dict['unrealized_pnl_percent'] = pnl_percent
+                                pos_dict['price_x'] = price_x
+                                pos_dict['price_y'] = price_y
 
                         except Exception as price_error:
                             logger.error(f"Error fetching prices: {str(price_error)}", exc_info=True)

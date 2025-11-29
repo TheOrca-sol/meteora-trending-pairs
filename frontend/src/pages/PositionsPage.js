@@ -51,7 +51,8 @@ const PositionsPage = () => {
     totalPositions: 0,
     totalLiquidityUSD: 0,
     totalFeesEarned: 0,
-    totalPnL: 0
+    totalPnL: 0,
+    totalPnLPercent: 0
   });
 
   // Dialog states
@@ -88,11 +89,23 @@ const PositionsPage = () => {
         const totalFees = positionsData.reduce((sum, p) => sum + (p.fees_earned_usd || 0), 0);
         const totalPnL = positionsData.reduce((sum, p) => sum + (p.unrealized_pnl_usd || 0), 0);
 
+        // Calculate total initial liquidity to determine P&L percentage
+        const totalInitialLiquidity = positionsData.reduce((sum, p) => {
+          const initialX = (p.initial_amount_x || 0) * (p.price_x || 0);
+          const initialY = (p.initial_amount_y || 0) * (p.price_y || 0);
+          return sum + initialX + initialY;
+        }, 0);
+
+        const totalPnLPercent = totalInitialLiquidity > 0
+          ? (totalPnL / totalInitialLiquidity * 100)
+          : 0;
+
         setStats({
           totalPositions: positionsData.length,
           totalLiquidityUSD: totalLiquidity,
           totalFeesEarned: totalFees,
-          totalPnL: totalPnL
+          totalPnL: totalPnL,
+          totalPnLPercent: totalPnLPercent
         });
       }
     } catch (err) {
@@ -299,6 +312,14 @@ const PositionsPage = () => {
                 >
                   {formatCurrency(stats.totalPnL)}
                 </Typography>
+                {stats.totalPnLPercent !== undefined && (
+                  <Typography
+                    variant="body2"
+                    color={stats.totalPnLPercent >= 0 ? 'success.main' : 'error.main'}
+                  >
+                    ({stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(2)}%)
+                  </Typography>
+                )}
               </CardContent>
             </Card>
           </Grid>
