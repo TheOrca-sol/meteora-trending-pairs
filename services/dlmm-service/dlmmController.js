@@ -407,11 +407,10 @@ async function getLiquidityDistribution(pairAddress) {
         continue;
       }
 
-      // Parse price (already calculated by SDK)
-      // bin.price is the raw ratio that needs decimal adjustment
-      // Adjust for decimal difference: price = rawPrice * 10^(decimalsX - decimalsY)
-      const rawPrice = parseFloat(bin.price);
-      const price = rawPrice * Math.pow(10, decimalsX - decimalsY);
+      // Parse price (already calculated by SDK and decimal-adjusted)
+      // The SDK's bin.price already accounts for token decimals and returns
+      // the price in Token Y per Token X (e.g., SOL per token for SOL pairs)
+      const price = parseFloat(bin.price);
 
       // Calculate USD value properly for any token pair
       // liquidityUsd = (xAmount * priceX in USD) + (yAmount * priceY in USD)
