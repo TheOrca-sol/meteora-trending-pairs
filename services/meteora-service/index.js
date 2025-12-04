@@ -635,6 +635,99 @@ app.post('/position/remove-liquidity', async (req, res) => {
     }
 });
 
+// Add liquidity to existing position (user-signed)
+app.post('/position/add-liquidity', async (req, res) => {
+    try {
+        const { positionAddress, poolAddress, userPublicKey, amountX, amountY } = req.body;
+
+        if (!positionAddress || !poolAddress || !userPublicKey) {
+            return res.status(400).json({ error: 'Missing required parameters' });
+        }
+
+        if (amountX === undefined || amountY === undefined) {
+            return res.status(400).json({ error: 'Missing amountX or amountY' });
+        }
+
+        console.log(`[Add Liquidity] Creating transaction for position: ${positionAddress}`);
+        console.log(`  User: ${userPublicKey}, Amounts: ${amountX} X, ${amountY} Y`);
+
+        // Load DLMM pool
+        const poolPubkey = new PublicKey(poolAddress);
+        const dlmmPool = await DLMM.create(connection, poolPubkey);
+
+        // Get position info
+        const positionPubkey = new PublicKey(positionAddress);
+        const userPubkey = new PublicKey(userPublicKey);
+
+        // Get the position data to know the bin range
+        const position = await dlmmPool.getPosition(positionPubkey);
+
+        if (!position) {
+            return res.status(404).json({ error: 'Position not found' });
+        }
+
+        const lowerBinId = position.positionData.lowerBinId;
+        const upperBinId = position.positionData.upperBinId;
+
+        console.log(`[Add Liquidity] Position bin range: ${lowerBinId} - ${upperBinId}`);
+
+        // Convert amounts to BN (in lamports)
+        const decimalsX = dlmmPool.tokenX.decimal;
+        const decimalsY = dlmmPool.tokenY.decimal;
+
+        const totalXAmount = new BN(Math.floor(amountX * Math.pow(10, decimalsX)));
+        const totalYAmount = new BN(Math.floor(amountY * Math.pow(10, decimalsY)));
+
+        console.log(`[Add Liquidity] Amounts in lamports: X=${totalXAmount.toString()}, Y=${totalYAmount.toString()}`);
+
+        // Create add liquidity transaction
+        const addLiquidityTx = await dlmmPool.addLiquidity({
+            positionPubKey: positionPubkey,
+            user: userPubkey,
+            totalXAmount,
+            totalYAmount,
+            strategy: {
+                maxBinId: upperBinId,
+                minBinId: lowerBinId,
+                strategyType: 1 // Spot - balanced distribution
+            }
+        });
+
+        // The SDK returns either { tx: Transaction } or an array of transactions
+        let transaction;
+        if (Array.isArray(addLiquidityTx)) {
+            transaction = addLiquidityTx[0];
+        } else if (addLiquidityTx.tx) {
+            transaction = addLiquidityTx.tx;
+        } else {
+            transaction = addLiquidityTx;
+        }
+
+        // Set blockhash and fee payer
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('finalized');
+        transaction.recentBlockhash = blockhash;
+        transaction.lastValidBlockHeight = lastValidBlockHeight;
+        transaction.feePayer = userPubkey;
+
+        // Serialize transaction
+        const serializedTx = transaction.serialize({
+            requireAllSignatures: false,
+            verifySignatures: false
+        });
+
+        console.log(`✅ Add liquidity transaction created`);
+
+        res.json({
+            transaction: serializedTx.toString('base64'),
+            lastValidBlockHeight
+        });
+
+    } catch (error) {
+        console.error('Error creating add liquidity transaction:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Claim fees (user-signed)
 app.post('/position/claim-fees', async (req, res) => {
     try {

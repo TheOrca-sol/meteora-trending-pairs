@@ -110,6 +110,95 @@ export async function addLiquidity({
 }
 
 /**
+ * Add more liquidity to an existing position
+ * @param {Object} params
+ * @param {string} params.poolAddress - DLMM pool address
+ * @param {string} params.positionAddress - Existing position address
+ * @param {number} params.amountX - Amount of Token X to add
+ * @param {number} params.amountY - Amount of Token Y to add
+ * @param {Object} params.wallet - Wallet adapter instance with signTransaction
+ * @param {PublicKey} params.walletPublicKey - User's wallet public key
+ * @returns {Promise<{signature: string}>}
+ */
+export async function addLiquidityToPosition({
+  poolAddress,
+  positionAddress,
+  amountX,
+  amountY,
+  wallet,
+  walletPublicKey
+}) {
+  try {
+    const payload = {
+      poolAddress,
+      positionAddress,
+      amountX: parseFloat(amountX) || 0,
+      amountY: parseFloat(amountY) || 0,
+      userPublicKey: walletPublicKey.toString()
+    };
+
+    console.log('[Meteora Service] Adding liquidity to position:', payload);
+
+    // Call backend microservice to create unsigned transaction
+    const response = await fetch(`${METEORA_SERVICE_URL}/position/add-liquidity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create add liquidity transaction');
+    }
+
+    const { transaction: txBase64, lastValidBlockHeight } = await response.json();
+
+    console.log('[Meteora Service] Transaction created');
+
+    // Deserialize transaction
+    const txBuffer = Buffer.from(txBase64, 'base64');
+    const transaction = Transaction.from(txBuffer);
+
+    // Create connection
+    const connection = new Connection(RPC_URL, 'confirmed');
+
+    console.log('[Meteora Service] Requesting wallet signature...');
+
+    // Sign transaction with user's wallet
+    const signedTx = await wallet.signTransaction(transaction);
+
+    // Send transaction
+    console.log('[Meteora Service] Sending transaction...');
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: 'confirmed'
+    });
+
+    console.log('[Meteora Service] Transaction sent:', signature);
+
+    // Confirm transaction
+    console.log('[Meteora Service] Confirming transaction...');
+    const confirmation = await connection.confirmTransaction({
+      signature,
+      blockhash: transaction.recentBlockhash,
+      lastValidBlockHeight
+    }, 'confirmed');
+
+    if (confirmation.value.err) {
+      throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+    }
+
+    console.log('[Meteora Service] Transaction confirmed!');
+
+    return { signature };
+
+  } catch (error) {
+    console.error('[Meteora Service] Error adding liquidity to position:', error);
+    throw error;
+  }
+}
+
+/**
  * Remove liquidity from a position (partial or full withdrawal)
  */
 export async function removeLiquidity({

@@ -26,7 +26,8 @@ import {
   DialogActions,
   DialogContentText,
   ToggleButtonGroup,
-  ToggleButton
+  ToggleButton,
+  TextField
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -36,10 +37,11 @@ import {
   AccountBalance as AccountBalanceIcon,
   RemoveCircleOutline as WithdrawIcon,
   Close as CloseIcon,
-  MonetizationOn as ClaimIcon
+  MonetizationOn as ClaimIcon,
+  Add as AddIcon
 } from '@mui/icons-material';
 import axios from 'axios';
-import { removeLiquidity, closePosition, claimFees } from '../services/meteoraLiquidityService';
+import { removeLiquidity, closePosition, claimFees, addLiquidityToPosition } from '../services/meteoraLiquidityService';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
@@ -61,6 +63,8 @@ const PositionsPage = () => {
   // Dialog states
   const [withdrawDialog, setWithdrawDialog] = useState({ open: false, position: null });
   const [closeDialog, setCloseDialog] = useState({ open: false, position: null });
+  const [addLiquidityDialog, setAddLiquidityDialog] = useState({ open: false, position: null });
+  const [addLiquidityAmounts, setAddLiquidityAmounts] = useState({ amountX: '', amountY: '' });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -193,6 +197,43 @@ const PositionsPage = () => {
     } catch (err) {
       console.error('Error claiming fees:', err);
       setError(err.message || 'Failed to claim fees');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleAddLiquidity = async () => {
+    if (!addLiquidityDialog.position) return;
+
+    const { amountX, amountY } = addLiquidityAmounts;
+
+    if (!amountX || !amountY || parseFloat(amountX) <= 0 || parseFloat(amountY) <= 0) {
+      setError('Please enter valid amounts for both tokens');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const { signature } = await addLiquidityToPosition({
+        poolAddress: addLiquidityDialog.position.pool_address,
+        positionAddress: addLiquidityDialog.position.position_address,
+        amountX: parseFloat(amountX),
+        amountY: parseFloat(amountY),
+        wallet: { signTransaction, signAllTransactions },
+        walletPublicKey: publicKey
+      });
+
+      setSuccess(`Liquidity added successfully! Transaction: ${signature}`);
+      setAddLiquidityDialog({ open: false, position: null });
+      setAddLiquidityAmounts({ amountX: '', amountY: '' });
+
+      // Refresh positions
+      setTimeout(() => fetchPositions(), 2000);
+    } catch (err) {
+      console.error('Error adding liquidity:', err);
+      setError(err.message || 'Failed to add liquidity');
     } finally {
       setActionLoading(false);
     }
@@ -489,7 +530,7 @@ const PositionsPage = () => {
                   <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>P&L</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Strategy</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '9%' }}>Created</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '18%' }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '22%' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -645,6 +686,31 @@ const PositionsPage = () => {
                     {/* Actions */}
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Tooltip title="Add Liquidity" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setAddLiquidityDialog({ open: true, position });
+                              setAddLiquidityAmounts({ amountX: '', amountY: '' });
+                            }}
+                            disabled={actionLoading}
+                            sx={{
+                              bgcolor: 'info.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'info.dark'
+                              },
+                              '&:disabled': {
+                                bgcolor: 'action.disabledBackground',
+                                color: 'action.disabled'
+                              },
+                              width: 32,
+                              height: 32
+                            }}
+                          >
+                            <AddIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Claim Fees" arrow>
                           <span>
                             <IconButton
@@ -785,6 +851,70 @@ const PositionsPage = () => {
           </Button>
           <Button onClick={handleWithdraw} variant="contained" color="primary" disabled={actionLoading}>
             {actionLoading ? <CircularProgress size={24} /> : 'Withdraw'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Liquidity Dialog */}
+      <Dialog
+        open={addLiquidityDialog.open}
+        onClose={() => !actionLoading && setAddLiquidityDialog({ open: false, position: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Add Liquidity to Position</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 3 }}>
+            Add more liquidity to this position. The liquidity will be distributed across the same price range.
+            {addLiquidityDialog.position && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Pool:</strong> {addLiquidityDialog.position.token_x_symbol} / {addLiquidityDialog.position.token_y_symbol}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Current Value:</strong> {formatCurrency(addLiquidityDialog.position.current_liquidity_usd)}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Range:</strong> {addLiquidityDialog.position.lower_price.toFixed(6)} - {addLiquidityDialog.position.upper_price.toFixed(6)}
+                </Typography>
+              </Box>
+            )}
+          </DialogContentText>
+          {addLiquidityDialog.position && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <TextField
+                label={`Amount ${addLiquidityDialog.position.token_x_symbol}`}
+                type="number"
+                value={addLiquidityAmounts.amountX}
+                onChange={(e) => setAddLiquidityAmounts({ ...addLiquidityAmounts, amountX: e.target.value })}
+                fullWidth
+                inputProps={{ step: 'any', min: '0' }}
+                disabled={actionLoading}
+              />
+              <TextField
+                label={`Amount ${addLiquidityDialog.position.token_y_symbol}`}
+                type="number"
+                value={addLiquidityAmounts.amountY}
+                onChange={(e) => setAddLiquidityAmounts({ ...addLiquidityAmounts, amountY: e.target.value })}
+                fullWidth
+                inputProps={{ step: 'any', min: '0' }}
+                disabled={actionLoading}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setAddLiquidityDialog({ open: false, position: null });
+              setAddLiquidityAmounts({ amountX: '', amountY: '' });
+            }}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleAddLiquidity} variant="contained" color="primary" disabled={actionLoading}>
+            {actionLoading ? <CircularProgress size={24} /> : 'Add Liquidity'}
           </Button>
         </DialogActions>
       </Dialog>
