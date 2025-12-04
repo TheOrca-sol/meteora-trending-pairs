@@ -41,12 +41,34 @@ const LiquidityRangeSuggestion = ({ suggestedRanges, currentPrice, selectedStrat
   const { currentImbalance, strategies } = suggestedRanges;
   const strategy = strategies[selectedStrategy];
 
+  // Determine the quote token symbol based on mintY
+  // Prices are in Token Y units (e.g., SOL per token for SOL pairs)
+  const getQuoteSymbol = () => {
+    if (!mintY) return '';
+    // SOL mint address
+    if (mintY === 'So11111111111111111111111111111111111111112') {
+      return ' SOL';
+    }
+    // USDC mint address
+    if (mintY === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') {
+      return ' USDC';
+    }
+    // USDT mint address
+    if (mintY === 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB') {
+      return ' USDT';
+    }
+    // Default to no symbol for unknown tokens
+    return '';
+  };
+
+  const quoteSymbol = getQuoteSymbol();
+
   const formatPrice = (price) => {
-    if (!price || isNaN(price)) return '$0.0000';
+    if (!price || isNaN(price)) return `0.0000${quoteSymbol}`;
     if (price >= 1) {
-      return `$${price.toFixed(4)}`;
+      return `${price.toFixed(4)}${quoteSymbol}`;
     } else {
-      return `$${price.toFixed(8)}`;
+      return `${price.toFixed(8)}${quoteSymbol}`;
     }
   };
 
