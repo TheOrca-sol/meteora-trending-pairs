@@ -474,54 +474,47 @@ const PositionsPage = () => {
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2,
-              overflow: 'hidden'
+              overflow: 'auto'
             }}
           >
-            <Table>
+            <Table sx={{ minWidth: 1200 }}>
               <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Pool</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Position</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Amount</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Value (USD)</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Range</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Strategy</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Fees Earned</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>P&L</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Created</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '15%' }}>Pool</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '12%' }}>Value</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '12%' }}>Range</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Fees</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>P&L</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Strategy</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '23%' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {positions.map((position) => (
                   <TableRow
                     key={position.position_address}
-                    hover
                     sx={{
                       '&:hover': {
-                        bgcolor: 'action.hover',
-                        cursor: 'pointer'
+                        bgcolor: 'action.hover'
                       },
                       borderBottom: '1px solid',
                       borderColor: 'divider'
                     }}
                   >
+                    {/* Pool Info */}
                     <TableCell>
-                      <Typography variant="body2" fontWeight="bold">
-                        {position.token_x_symbol} / {position.token_y_symbol}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {position.pool_address.slice(0, 8)}...
-                      </Typography>
+                      <Box>
+                        <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                          {position.token_x_symbol} / {position.token_y_symbol}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontFamily: 'monospace', display: 'block' }}>
+                          {position.position_address.slice(0, 6)}...{position.position_address.slice(-4)}
+                        </Typography>
+                      </Box>
                     </TableCell>
 
-                    <TableCell>
-                      <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                        {position.position_address.slice(0, 8)}...{position.position_address.slice(-6)}
-                      </Typography>
-                    </TableCell>
-
+                    {/* Status */}
                     <TableCell>
                       <Chip
                         label={position.status || 'active'}
@@ -534,8 +527,8 @@ const PositionsPage = () => {
                         sx={{
                           textTransform: 'capitalize',
                           fontWeight: 600,
-                          fontSize: '0.75rem',
-                          height: 24,
+                          fontSize: '0.7rem',
+                          height: 22,
                           '& .MuiChip-label': {
                             px: 1.5
                           }
@@ -543,51 +536,62 @@ const PositionsPage = () => {
                       />
                     </TableCell>
 
+                    {/* Value */}
                     <TableCell align="right">
-                      <Box>
-                        <Typography variant="body2" fontWeight="medium">
+                      <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                        {formatCurrency(position.current_liquidity_usd)}
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                        <Typography variant="caption" color="text.secondary">
                           {formatAmount(position.current_amount_x)} {position.token_x_symbol}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          Initial: {formatAmount(position.initial_amount_x || 0)}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ mt: 0.5 }}>
-                        <Typography variant="body2" fontWeight="medium">
                           {formatAmount(position.current_amount_y)} {position.token_y_symbol}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Initial: {formatAmount(position.initial_amount_y || 0)}
                         </Typography>
                       </Box>
                     </TableCell>
 
+                    {/* Price Range */}
                     <TableCell align="right">
-                      <Typography variant="body2" fontWeight="medium">
-                        {formatCurrency(position.current_liquidity_usd)}
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Low: {position.lower_price.toFixed(6)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          High: {position.upper_price.toFixed(6)}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+
+                    {/* Fees Earned */}
+                    <TableCell align="right">
+                      <Typography variant="body2" color="success.main" fontWeight="bold">
+                        {formatCurrency(position.fees_earned_usd)}
                       </Typography>
-                      {position.price_x && position.price_y && (
-                        <Typography variant="caption" color="text.secondary">
-                          Initial: {formatCurrency(
-                            ((position.initial_amount_x || 0) * position.price_x) +
-                            ((position.initial_amount_y || 0) * position.price_y)
-                          )}
+                    </TableCell>
+
+                    {/* P&L */}
+                    <TableCell align="right">
+                      <Typography
+                        variant="body2"
+                        fontWeight="bold"
+                        color={position.unrealized_pnl_usd >= 0 ? 'success.main' : 'error.main'}
+                        sx={{ mb: 0.5 }}
+                      >
+                        {formatCurrency(position.unrealized_pnl_usd)}
+                      </Typography>
+                      {position.unrealized_pnl_percent !== undefined && (
+                        <Typography
+                          variant="caption"
+                          color={position.unrealized_pnl_percent >= 0 ? 'success.main' : 'error.main'}
+                          fontWeight={600}
+                        >
+                          {position.unrealized_pnl_percent >= 0 ? '+' : ''}{position.unrealized_pnl_percent.toFixed(2)}%
                         </Typography>
                       )}
                     </TableCell>
 
-                    <TableCell align="right">
-                      <Typography variant="caption" display="block">
-                        {position.lower_price.toFixed(6)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        to
-                      </Typography>
-                      <Typography variant="caption" display="block">
-                        {position.upper_price.toFixed(6)}
-                      </Typography>
-                    </TableCell>
-
+                    {/* Strategy */}
                     <TableCell>
                       <Chip
                         label={position.strategy_name || 'Manual'}
@@ -597,7 +601,7 @@ const PositionsPage = () => {
                         sx={{
                           fontWeight: 600,
                           fontSize: '0.7rem',
-                          height: 24,
+                          height: 22,
                           '& .MuiChip-label': {
                             px: 1.5
                           }
@@ -605,38 +609,9 @@ const PositionsPage = () => {
                       />
                     </TableCell>
 
-                    <TableCell align="right">
-                      <Typography variant="body2" color="success.main" fontWeight="medium">
-                        {formatCurrency(position.fees_earned_usd)}
-                      </Typography>
-                    </TableCell>
-
-                    <TableCell align="right">
-                      <Typography
-                        variant="body2"
-                        fontWeight="medium"
-                        color={position.unrealized_pnl_usd >= 0 ? 'success.main' : 'error.main'}
-                      >
-                        {formatCurrency(position.unrealized_pnl_usd)}
-                      </Typography>
-                      {position.unrealized_pnl_percent !== undefined && (
-                        <Typography
-                          variant="caption"
-                          color={position.unrealized_pnl_percent >= 0 ? 'success.main' : 'error.main'}
-                        >
-                          ({position.unrealized_pnl_percent >= 0 ? '+' : ''}{position.unrealized_pnl_percent.toFixed(2)}%)
-                        </Typography>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      <Typography variant="caption">
-                        {formatDate(position.created_at)}
-                      </Typography>
-                    </TableCell>
-
+                    {/* Actions */}
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
                         <Tooltip title="Claim Fees" arrow>
                           <span>
                             <IconButton
@@ -657,11 +632,11 @@ const PositionsPage = () => {
                                 height: 32
                               }}
                             >
-                              <ClaimIcon sx={{ fontSize: 18 }} />
+                              <ClaimIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="Withdraw Liquidity" arrow>
+                        <Tooltip title="Withdraw" arrow>
                           <span>
                             <IconButton
                               size="small"
@@ -681,11 +656,11 @@ const PositionsPage = () => {
                                 height: 32
                               }}
                             >
-                              <WithdrawIcon sx={{ fontSize: 18 }} />
+                              <WithdrawIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="Close Position" arrow>
+                        <Tooltip title="Close" arrow>
                           <span>
                             <IconButton
                               size="small"
@@ -705,11 +680,11 @@ const PositionsPage = () => {
                                 height: 32
                               }}
                             >
-                              <CloseIcon sx={{ fontSize: 18 }} />
+                              <CloseIcon sx={{ fontSize: 16 }} />
                             </IconButton>
                           </span>
                         </Tooltip>
-                        <Tooltip title="View on Solscan" arrow>
+                        <Tooltip title="View" arrow>
                           <IconButton
                             size="small"
                             href={`https://solscan.io/account/${position.position_address}`}
@@ -725,7 +700,7 @@ const PositionsPage = () => {
                               height: 32
                             }}
                           >
-                            <OpenInNewIcon sx={{ fontSize: 18 }} />
+                            <OpenInNewIcon sx={{ fontSize: 16 }} />
                           </IconButton>
                         </Tooltip>
                       </Box>
