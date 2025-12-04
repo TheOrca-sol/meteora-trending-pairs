@@ -24,7 +24,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  DialogContentText
+  DialogContentText,
+  ToggleButtonGroup,
+  ToggleButton
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -47,6 +49,7 @@ const PositionsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('active'); // 'active', 'closed', 'all'
   const [stats, setStats] = useState({
     totalPositions: 0,
     totalLiquidityUSD: 0,
@@ -64,7 +67,7 @@ const PositionsPage = () => {
     if (connected && publicKey) {
       fetchPositions();
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, statusFilter]);
 
   const fetchPositions = async () => {
     if (!publicKey) return;
@@ -76,7 +79,7 @@ const PositionsPage = () => {
       const response = await axios.get(`${API_URL}/liquidity/positions`, {
         params: {
           walletAddress: publicKey.toString(),
-          status: 'active'
+          status: statusFilter
         }
       });
 
@@ -228,18 +231,30 @@ const PositionsPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
           <Typography variant="h4" fontWeight="bold">
             My Liquidity Positions
           </Typography>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={fetchPositions}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <ToggleButtonGroup
+              value={statusFilter}
+              exclusive
+              onChange={(e, newValue) => newValue && setStatusFilter(newValue)}
+              size="small"
+            >
+              <ToggleButton value="active">Active</ToggleButton>
+              <ToggleButton value="closed">Closed</ToggleButton>
+              <ToggleButton value="all">All</ToggleButton>
+            </ToggleButtonGroup>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={fetchPositions}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+          </Box>
         </Box>
 
         {/* Stats Cards */}
@@ -337,7 +352,11 @@ const PositionsPage = () => {
         ) : positions.length === 0 ? (
           <Paper sx={{ p: 4, textAlign: 'center' }}>
             <Typography variant="body1" color="text.secondary">
-              No active positions found. Add liquidity to a pool to get started!
+              {statusFilter === 'active'
+                ? 'No active positions found. Add liquidity to a pool to get started!'
+                : statusFilter === 'closed'
+                ? 'No closed positions found.'
+                : 'No positions found. Add liquidity to a pool to get started!'}
             </Typography>
           </Paper>
         ) : (
@@ -347,6 +366,7 @@ const PositionsPage = () => {
                 <TableRow>
                   <TableCell>Pool</TableCell>
                   <TableCell>Position</TableCell>
+                  <TableCell>Status</TableCell>
                   <TableCell align="right">Amount</TableCell>
                   <TableCell align="right">Value (USD)</TableCell>
                   <TableCell align="right">Range</TableCell>
@@ -373,6 +393,19 @@ const PositionsPage = () => {
                       <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
                         {position.position_address.slice(0, 8)}...{position.position_address.slice(-6)}
                       </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        label={position.status || 'active'}
+                        size="small"
+                        color={
+                          position.status === 'active' ? 'success' :
+                          position.status === 'closed' ? 'default' :
+                          'error'
+                        }
+                        sx={{ textTransform: 'capitalize' }}
+                      />
                     </TableCell>
 
                     <TableCell align="right">
