@@ -474,20 +474,22 @@ const PositionsPage = () => {
               border: '1px solid',
               borderColor: 'divider',
               borderRadius: 2,
-              overflow: 'auto'
+              width: '100%'
             }}
           >
-            <Table sx={{ minWidth: 1200 }}>
+            <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
               <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '15%' }}>Pool</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Status</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '12%' }}>Value</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '12%' }}>Range</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Fees</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>P&L</TableCell>
-                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Strategy</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '23%' }}>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Pool</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '7%' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '11%' }}>Current Value</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '11%' }}>Initial Value</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '10%' }}>Range</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Fees</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>P&L</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Strategy</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '9%' }}>Created</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '18%' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -536,7 +538,7 @@ const PositionsPage = () => {
                       />
                     </TableCell>
 
-                    {/* Value */}
+                    {/* Current Value */}
                     <TableCell align="right">
                       <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
                         {formatCurrency(position.current_liquidity_usd)}
@@ -549,6 +551,30 @@ const PositionsPage = () => {
                           {formatAmount(position.current_amount_y)} {position.token_y_symbol}
                         </Typography>
                       </Box>
+                    </TableCell>
+
+                    {/* Initial Value */}
+                    <TableCell align="right">
+                      {position.price_x && position.price_y ? (
+                        <>
+                          <Typography variant="body2" fontWeight="bold" sx={{ mb: 0.5 }}>
+                            {formatCurrency(
+                              ((position.initial_amount_x || 0) * position.price_x) +
+                              ((position.initial_amount_y || 0) * position.price_y)
+                            )}
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatAmount(position.initial_amount_x || 0)} {position.token_x_symbol}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatAmount(position.initial_amount_y || 0)} {position.token_y_symbol}
+                            </Typography>
+                          </Box>
+                        </>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary">-</Typography>
+                      )}
                     </TableCell>
 
                     {/* Price Range */}
@@ -607,6 +633,13 @@ const PositionsPage = () => {
                           }
                         }}
                       />
+                    </TableCell>
+
+                    {/* Created Date */}
+                    <TableCell>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(position.created_at)}
+                      </Typography>
                     </TableCell>
 
                     {/* Actions */}
