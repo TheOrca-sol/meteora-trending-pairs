@@ -26,3 +26,13 @@ yarn-error.log*
 /venv
 /.venv
 /backend/venv
+
+# Service logs
+*.log
+services/**/*.log
+
+# ESLint cache
+.eslintcache
+
+# Environment files (except .env.example)
+.env
