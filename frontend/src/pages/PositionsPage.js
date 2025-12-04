@@ -260,81 +260,188 @@ const PositionsPage = () => {
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <AccountBalanceIcon color="primary" />
-                  <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  borderColor: 'primary.main'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Total Positions
                   </Typography>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: 'primary.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <AccountBalanceIcon sx={{ fontSize: 20, color: 'white' }} />
+                  </Box>
                 </Box>
-                <Typography variant="h5" fontWeight="bold">
+                <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
                   {stats.totalPositions}
                 </Typography>
+                <Typography variant="caption" color="text.disabled">
+                  Active liquidity pools
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <AccountBalanceIcon color="primary" />
-                  <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(59, 130, 246, 0.02) 100%)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  borderColor: 'info.main'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Total Liquidity
                   </Typography>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: 'info.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <AccountBalanceIcon sx={{ fontSize: 20, color: 'white' }} />
+                  </Box>
                 </Box>
-                <Typography variant="h5" fontWeight="bold">
+                <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5 }}>
                   {formatCurrency(stats.totalLiquidityUSD)}
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <TrendingUpIcon color="success" />
-                  <Typography variant="body2" color="text.secondary">
-                    Fees Earned
-                  </Typography>
-                </Box>
-                <Typography variant="h5" fontWeight="bold" color="success.main">
-                  {formatCurrency(stats.totalFeesEarned)}
+                <Typography variant="caption" color="text.disabled">
+                  Total value locked
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  {stats.totalPnL >= 0 ? (
-                    <TrendingUpIcon color="success" />
-                  ) : (
-                    <TrendingDownIcon color="error" />
-                  )}
-                  <Typography variant="body2" color="text.secondary">
+            <Card
+              elevation={0}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  borderColor: 'success.main'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Fees Earned
+                  </Typography>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: 'success.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <TrendingUpIcon sx={{ fontSize: 20, color: 'white' }} />
+                  </Box>
+                </Box>
+                <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ mb: 0.5 }}>
+                  {formatCurrency(stats.totalFeesEarned)}
+                </Typography>
+                <Typography variant="caption" color="text.disabled">
+                  Accumulated rewards
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <Card
+              elevation={0}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                background: stats.totalPnL >= 0
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%)'
+                  : 'linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, rgba(239, 68, 68, 0.02) 100%)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                  borderColor: stats.totalPnL >= 0 ? 'success.main' : 'error.main'
+                }
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Total P&L
                   </Typography>
+                  <Box
+                    sx={{
+                      p: 1,
+                      borderRadius: 2,
+                      bgcolor: stats.totalPnL >= 0 ? 'success.main' : 'error.main',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {stats.totalPnL >= 0 ? (
+                      <TrendingUpIcon sx={{ fontSize: 20, color: 'white' }} />
+                    ) : (
+                      <TrendingDownIcon sx={{ fontSize: 20, color: 'white' }} />
+                    )}
+                  </Box>
                 </Box>
                 <Typography
-                  variant="h5"
+                  variant="h4"
                   fontWeight="bold"
                   color={stats.totalPnL >= 0 ? 'success.main' : 'error.main'}
+                  sx={{ mb: 0.5 }}
                 >
                   {formatCurrency(stats.totalPnL)}
                 </Typography>
-                {stats.totalPnLPercent !== undefined && (
-                  <Typography
-                    variant="body2"
-                    color={stats.totalPnLPercent >= 0 ? 'success.main' : 'error.main'}
-                  >
-                    ({stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(2)}%)
-                  </Typography>
-                )}
+                <Typography
+                  variant="caption"
+                  color={stats.totalPnL >= 0 ? 'success.main' : 'error.main'}
+                  fontWeight={600}
+                >
+                  {stats.totalPnLPercent >= 0 ? '+' : ''}{stats.totalPnLPercent.toFixed(2)}% overall
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -360,26 +467,46 @@ const PositionsPage = () => {
             </Typography>
           </Paper>
         ) : (
-          <TableContainer component={Paper}>
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2,
+              overflow: 'hidden'
+            }}
+          >
             <Table>
-              <TableHead>
+              <TableHead sx={{ bgcolor: 'grey.50' }}>
                 <TableRow>
-                  <TableCell>Pool</TableCell>
-                  <TableCell>Position</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Amount</TableCell>
-                  <TableCell align="right">Value (USD)</TableCell>
-                  <TableCell align="right">Range</TableCell>
-                  <TableCell>Strategy</TableCell>
-                  <TableCell align="right">Fees Earned</TableCell>
-                  <TableCell align="right">P&L</TableCell>
-                  <TableCell>Created</TableCell>
-                  <TableCell align="center">Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Pool</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Position</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Status</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Amount</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Value (USD)</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Range</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Strategy</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Fees Earned</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>P&L</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Created</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {positions.map((position) => (
-                  <TableRow key={position.position_address} hover>
+                  <TableRow
+                    key={position.position_address}
+                    hover
+                    sx={{
+                      '&:hover': {
+                        bgcolor: 'action.hover',
+                        cursor: 'pointer'
+                      },
+                      borderBottom: '1px solid',
+                      borderColor: 'divider'
+                    }}
+                  >
                     <TableCell>
                       <Typography variant="body2" fontWeight="bold">
                         {position.token_x_symbol} / {position.token_y_symbol}
@@ -404,7 +531,15 @@ const PositionsPage = () => {
                           position.status === 'closed' ? 'default' :
                           'error'
                         }
-                        sx={{ textTransform: 'capitalize' }}
+                        sx={{
+                          textTransform: 'capitalize',
+                          fontWeight: 600,
+                          fontSize: '0.75rem',
+                          height: 24,
+                          '& .MuiChip-label': {
+                            px: 1.5
+                          }
+                        }}
                       />
                     </TableCell>
 
@@ -458,6 +593,15 @@ const PositionsPage = () => {
                         label={position.strategy_name || 'Manual'}
                         size="small"
                         color={position.position_type === 'automated' ? 'primary' : 'default'}
+                        variant={position.position_type === 'automated' ? 'filled' : 'outlined'}
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          height: 24,
+                          '& .MuiChip-label': {
+                            px: 1.5
+                          }
+                        }}
                       />
                     </TableCell>
 
@@ -492,45 +636,96 @@ const PositionsPage = () => {
                     </TableCell>
 
                     <TableCell align="center">
-                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <Tooltip title="Claim Fees">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleClaimFees(position)}
-                            disabled={actionLoading || position.fees_earned_usd === 0}
-                          >
-                            <ClaimIcon fontSize="small" />
-                          </IconButton>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <Tooltip title="Claim Fees" arrow>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleClaimFees(position)}
+                              disabled={actionLoading || position.fees_earned_usd === 0}
+                              sx={{
+                                bgcolor: 'success.main',
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: 'success.dark'
+                                },
+                                '&:disabled': {
+                                  bgcolor: 'action.disabledBackground',
+                                  color: 'action.disabled'
+                                },
+                                width: 32,
+                                height: 32
+                              }}
+                            >
+                              <ClaimIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </span>
                         </Tooltip>
-                        <Tooltip title="Withdraw Liquidity">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => setWithdrawDialog({ open: true, position })}
-                            disabled={actionLoading}
-                          >
-                            <WithdrawIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title="Withdraw Liquidity" arrow>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => setWithdrawDialog({ open: true, position })}
+                              disabled={actionLoading}
+                              sx={{
+                                bgcolor: 'primary.main',
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: 'primary.dark'
+                                },
+                                '&:disabled': {
+                                  bgcolor: 'action.disabledBackground',
+                                  color: 'action.disabled'
+                                },
+                                width: 32,
+                                height: 32
+                              }}
+                            >
+                              <WithdrawIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </span>
                         </Tooltip>
-                        <Tooltip title="Withdraw & Close Position">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => setCloseDialog({ open: true, position })}
-                            disabled={actionLoading}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
+                        <Tooltip title="Close Position" arrow>
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => setCloseDialog({ open: true, position })}
+                              disabled={actionLoading}
+                              sx={{
+                                bgcolor: 'error.main',
+                                color: 'white',
+                                '&:hover': {
+                                  bgcolor: 'error.dark'
+                                },
+                                '&:disabled': {
+                                  bgcolor: 'action.disabledBackground',
+                                  color: 'action.disabled'
+                                },
+                                width: 32,
+                                height: 32
+                              }}
+                            >
+                              <CloseIcon sx={{ fontSize: 18 }} />
+                            </IconButton>
+                          </span>
                         </Tooltip>
-                        <Tooltip title="View on Solscan">
+                        <Tooltip title="View on Solscan" arrow>
                           <IconButton
                             size="small"
                             href={`https://solscan.io/account/${position.position_address}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            sx={{
+                              bgcolor: 'grey.200',
+                              color: 'grey.700',
+                              '&:hover': {
+                                bgcolor: 'grey.300'
+                              },
+                              width: 32,
+                              height: 32
+                            }}
                           >
-                            <OpenInNewIcon fontSize="small" />
+                            <OpenInNewIcon sx={{ fontSize: 18 }} />
                           </IconButton>
                         </Tooltip>
                       </Box>
