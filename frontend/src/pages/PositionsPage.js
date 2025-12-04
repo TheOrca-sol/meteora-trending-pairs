@@ -27,7 +27,14 @@ import {
   DialogContentText,
   ToggleButtonGroup,
   ToggleButton,
-  TextField
+  TextField,
+  Switch,
+  FormControlLabel,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Divider
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -38,7 +45,8 @@ import {
   RemoveCircleOutline as WithdrawIcon,
   Close as CloseIcon,
   MonetizationOn as ClaimIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import axios from 'axios';
 import { removeLiquidity, closePosition, claimFees, addLiquidityToPosition } from '../services/meteoraLiquidityService';
@@ -65,6 +73,15 @@ const PositionsPage = () => {
   const [closeDialog, setCloseDialog] = useState({ open: false, position: null });
   const [addLiquidityDialog, setAddLiquidityDialog] = useState({ open: false, position: null });
   const [addLiquidityAmounts, setAddLiquidityAmounts] = useState({ amountX: '', amountY: '' });
+  const [automationDialog, setAutomationDialog] = useState({ open: false, position: null });
+  const [automationSettings, setAutomationSettings] = useState({
+    takeProfitEnabled: false,
+    takeProfitType: 'percentage',
+    takeProfitValue: '',
+    stopLossEnabled: false,
+    stopLossType: 'percentage',
+    stopLossValue: ''
+  });
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
@@ -234,6 +251,40 @@ const PositionsPage = () => {
     } catch (err) {
       console.error('Error adding liquidity:', err);
       setError(err.message || 'Failed to add liquidity');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveAutomation = async () => {
+    if (!automationDialog.position) return;
+
+    try {
+      setActionLoading(true);
+      setError(null);
+
+      const response = await axios.put(
+        `${API_URL}/liquidity/positions/${automationDialog.position.position_address}/automation`,
+        {
+          takeProfitEnabled: automationSettings.takeProfitEnabled,
+          takeProfitType: automationSettings.takeProfitType,
+          takeProfitValue: automationSettings.takeProfitValue ? parseFloat(automationSettings.takeProfitValue) : null,
+          stopLossEnabled: automationSettings.stopLossEnabled,
+          stopLossType: automationSettings.stopLossType,
+          stopLossValue: automationSettings.stopLossValue ? parseFloat(automationSettings.stopLossValue) : null
+        }
+      );
+
+      if (response.data.success) {
+        setSuccess('Automation settings saved successfully!');
+        setAutomationDialog({ open: false, position: null });
+
+        // Refresh positions
+        setTimeout(() => fetchPositions(), 1000);
+      }
+    } catch (err) {
+      console.error('Error saving automation:', err);
+      setError(err.response?.data?.error || 'Failed to save automation settings');
     } finally {
       setActionLoading(false);
     }
@@ -530,7 +581,7 @@ const PositionsPage = () => {
                   <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>P&L</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '8%' }}>Strategy</TableCell>
                   <TableCell sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '9%' }}>Created</TableCell>
-                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '22%' }}>Actions</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: 0.5, color: 'text.secondary', width: '26%' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -686,6 +737,39 @@ const PositionsPage = () => {
                     {/* Actions */}
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                        <Tooltip title="Automation" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              const rules = position.automation_rules || {};
+                              setAutomationSettings({
+                                takeProfitEnabled: rules.take_profit_enabled || false,
+                                takeProfitType: rules.take_profit_type || 'percentage',
+                                takeProfitValue: rules.take_profit_value || '',
+                                stopLossEnabled: rules.stop_loss_enabled || false,
+                                stopLossType: rules.stop_loss_type || 'percentage',
+                                stopLossValue: rules.stop_loss_value || ''
+                              });
+                              setAutomationDialog({ open: true, position });
+                            }}
+                            disabled={actionLoading}
+                            sx={{
+                              bgcolor: 'warning.main',
+                              color: 'white',
+                              '&:hover': {
+                                bgcolor: 'warning.dark'
+                              },
+                              '&:disabled': {
+                                bgcolor: 'action.disabledBackground',
+                                color: 'action.disabled'
+                              },
+                              width: 32,
+                              height: 32
+                            }}
+                          >
+                            <SettingsIcon sx={{ fontSize: 16 }} />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Add Liquidity" arrow>
                           <IconButton
                             size="small"
@@ -915,6 +999,124 @@ const PositionsPage = () => {
           </Button>
           <Button onClick={handleAddLiquidity} variant="contained" color="primary" disabled={actionLoading}>
             {actionLoading ? <CircularProgress size={24} /> : 'Add Liquidity'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Automation Settings Dialog */}
+      <Dialog
+        open={automationDialog.open}
+        onClose={() => !actionLoading && setAutomationDialog({ open: false, position: null })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Configure Position Automation</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 3 }}>
+            Set up automated take profit and stop loss rules for this position.
+            {automationDialog.position && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Pool:</strong> {automationDialog.position.token_x_symbol} / {automationDialog.position.token_y_symbol}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Current Value:</strong> {formatCurrency(automationDialog.position.current_liquidity_usd)}
+                </Typography>
+              </Box>
+            )}
+          </DialogContentText>
+
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Take Profit Section */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={automationSettings.takeProfitEnabled}
+                    onChange={(e) => setAutomationSettings({ ...automationSettings, takeProfitEnabled: e.target.checked })}
+                    disabled={actionLoading}
+                  />
+                }
+                label={<Typography variant="h6">Take Profit</Typography>}
+              />
+              {automationSettings.takeProfitEnabled && (
+                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={automationSettings.takeProfitType}
+                      label="Type"
+                      onChange={(e) => setAutomationSettings({ ...automationSettings, takeProfitType: e.target.value })}
+                      disabled={actionLoading}
+                    >
+                      <MenuItem value="percentage">Percentage (%)</MenuItem>
+                      <MenuItem value="usd_amount">USD Amount ($)</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label={automationSettings.takeProfitType === 'percentage' ? 'Profit %' : 'Profit Amount ($)'}
+                    type="number"
+                    value={automationSettings.takeProfitValue}
+                    onChange={(e) => setAutomationSettings({ ...automationSettings, takeProfitValue: e.target.value })}
+                    fullWidth
+                    inputProps={{ step: 'any', min: '0' }}
+                    disabled={actionLoading}
+                  />
+                </Box>
+              )}
+            </Box>
+
+            <Divider />
+
+            {/* Stop Loss Section */}
+            <Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={automationSettings.stopLossEnabled}
+                    onChange={(e) => setAutomationSettings({ ...automationSettings, stopLossEnabled: e.target.checked })}
+                    disabled={actionLoading}
+                  />
+                }
+                label={<Typography variant="h6">Stop Loss</Typography>}
+              />
+              {automationSettings.stopLossEnabled && (
+                <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
+                  <FormControl fullWidth>
+                    <InputLabel>Type</InputLabel>
+                    <Select
+                      value={automationSettings.stopLossType}
+                      label="Type"
+                      onChange={(e) => setAutomationSettings({ ...automationSettings, stopLossType: e.target.value })}
+                      disabled={actionLoading}
+                    >
+                      <MenuItem value="percentage">Percentage (%)</MenuItem>
+                      <MenuItem value="usd_amount">USD Amount ($)</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <TextField
+                    label={automationSettings.stopLossType === 'percentage' ? 'Loss %' : 'Loss Amount ($)'}
+                    type="number"
+                    value={automationSettings.stopLossValue}
+                    onChange={(e) => setAutomationSettings({ ...automationSettings, stopLossValue: e.target.value })}
+                    fullWidth
+                    inputProps={{ step: 'any', min: '0' }}
+                    disabled={actionLoading}
+                  />
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setAutomationDialog({ open: false, position: null })}
+            disabled={actionLoading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSaveAutomation} variant="contained" color="primary" disabled={actionLoading}>
+            {actionLoading ? <CircularProgress size={24} /> : 'Save Settings'}
           </Button>
         </DialogActions>
       </Dialog>
