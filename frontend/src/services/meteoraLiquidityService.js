@@ -342,6 +342,20 @@ export async function closePosition({
 
     console.log('[Meteora Service] Transaction confirmed!');
 
+    // Update position status in backend database
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+      await fetch(`${API_URL}/liquidity/positions/${positionAddress}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'closed' })
+      });
+      console.log('[Meteora Service] Position status updated to closed');
+    } catch (statusError) {
+      console.error('[Meteora Service] Failed to update position status:', statusError);
+      // Don't throw - transaction succeeded, just status update failed
+    }
+
     return { signature };
 
   } catch (error) {

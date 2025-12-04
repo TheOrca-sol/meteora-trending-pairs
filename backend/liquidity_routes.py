@@ -292,6 +292,58 @@ def create_position():
 
 
 # ============================================
+# POSITION STATUS ENDPOINTS
+# ============================================
+
+@liquidity_bp.route('/positions/<position_address>/status', methods=['PUT'])
+def update_position_status(position_address):
+    """Update position status (e.g., mark as closed)"""
+    try:
+        data = request.json
+        new_status = data.get('status')
+
+        if not new_status:
+            return jsonify({'error': 'Status is required'}), 400
+
+        if new_status not in ['active', 'closed', 'failed']:
+            return jsonify({'error': 'Invalid status'}), 400
+
+        db = get_db()
+        try:
+            position = db.query(LiquidityPosition).filter_by(
+                position_address=position_address
+            ).first()
+
+            if not position:
+                return jsonify({'error': 'Position not found'}), 404
+
+            # Update status
+            position.status = new_status
+
+            if new_status == 'closed':
+                position.closed_at = datetime.utcnow()
+
+            db.commit()
+
+            logger.info(f"Position {position_address} status updated to {new_status}")
+
+            return jsonify({
+                'success': True,
+                'position': position.to_dict()
+            })
+
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            db.close()
+
+    except Exception as e:
+        logger.error(f"Error updating position status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ============================================
 # AUTOMATION RULES ENDPOINTS
 # ============================================
 
