@@ -5,6 +5,7 @@ Handles user authentication and commands
 
 import os
 import logging
+import asyncio
 import fcntl
 from datetime import datetime
 from telegram import Update, Bot
@@ -514,23 +515,40 @@ class TelegramBotHandler:
         """Stop the bot polling"""
         self.running = False
 
-    async def send_notification(self, chat_id: int, message: str):
-        """Send a notification message to a user"""
-        try:
-            await self.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode='HTML',
-                disable_web_page_preview=True
-            )
-            logger.info(f"Sent notification to chat {chat_id}")
-            return True
-        except TelegramError as e:
-            logger.error(f"Telegram error sending to {chat_id}: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error sending notification to {chat_id}: {e}")
-            return False
+    async def send_notification(self, chat_id: int, message: str, reply_markup=None):
+        """Send a notification message to a user with optional inline keyboard"""
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                await self.bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode='HTML',
+                    disable_web_page_preview=True,
+                    reply_markup=reply_markup
+                )
+                logger.info(f"Sent notification to chat {chat_id}")
+                return True
+            except TelegramError as e:
+                logger.error(f"Telegram error sending to {chat_id}: {e}")
+                if "Pool timeout" in str(e) and retry_count < max_retries - 1:
+                    retry_count += 1
+                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(1)  # Wait 1 second before retry
+                    continue
+                return False
+            except Exception as e:
+                logger.error(f"Error sending notification to {chat_id}: {e}")
+                if retry_count < max_retries - 1:
+                    retry_count += 1
+                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(1)
+                    continue
+                return False
+
+        return False
 
 
 # Global instance
