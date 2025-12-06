@@ -5,10 +5,12 @@ Handles user authentication and commands
 
 import os
 import logging
+import asyncio
 from datetime import datetime
 from telegram import Update, Bot, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.error import TelegramError
+from telegram.request import HTTPXRequest
 from dotenv import load_dotenv
 from models import get_db, User, TelegramAuthCode, MonitoringConfig, DegenConfig
 
@@ -26,7 +28,15 @@ if not TELEGRAM_BOT_TOKEN:
 class TelegramBotHandler:
     def __init__(self):
         self.application = None
-        self.bot = Bot(token=TELEGRAM_BOT_TOKEN)
+        # Configure HTTPXRequest with larger pool and proper timeout settings
+        request = HTTPXRequest(
+            connection_pool_size=20,  # Increased from default 8
+            connect_timeout=10.0,
+            read_timeout=10.0,
+            write_timeout=10.0,
+            pool_timeout=10.0
+        )
+        self.bot = Bot(token=TELEGRAM_BOT_TOKEN, request=request)
         self.running = False
 
     def initialize(self):
@@ -483,22 +493,38 @@ class TelegramBotHandler:
 
     async def send_notification(self, chat_id: int, message: str, reply_markup=None):
         """Send a notification message to a user with optional inline keyboard"""
-        try:
-            await self.bot.send_message(
-                chat_id=chat_id,
-                text=message,
-                parse_mode='HTML',
-                disable_web_page_preview=True,
-                reply_markup=reply_markup
-            )
-            logger.info(f"Sent notification to chat {chat_id}")
-            return True
-        except TelegramError as e:
-            logger.error(f"Telegram error sending to {chat_id}: {e}")
-            return False
-        except Exception as e:
-            logger.error(f"Error sending notification to {chat_id}: {e}")
-            return False
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                await self.bot.send_message(
+                    chat_id=chat_id,
+                    text=message,
+                    parse_mode='HTML',
+                    disable_web_page_preview=True,
+                    reply_markup=reply_markup
+                )
+                logger.info(f"Sent notification to chat {chat_id}")
+                return True
+            except TelegramError as e:
+                logger.error(f"Telegram error sending to {chat_id}: {e}")
+                if "Pool timeout" in str(e) and retry_count < max_retries - 1:
+                    retry_count += 1
+                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(1)  # Wait 1 second before retry
+                    continue
+                return False
+            except Exception as e:
+                logger.error(f"Error sending notification to {chat_id}: {e}")
+                if retry_count < max_retries - 1:
+                    retry_count += 1
+                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(1)
+                    continue
+                return False
+
+        return False
 
 
 # Global instance
