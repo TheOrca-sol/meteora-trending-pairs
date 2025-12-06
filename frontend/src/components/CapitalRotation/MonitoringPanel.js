@@ -32,7 +32,7 @@ import InfoIcon from '@mui/icons-material/Info';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import monitoringService from '../../services/monitoringService';
 
-function MonitoringPanel({ walletAddress, whitelist, quotePreferences, minFees30min }) {
+function MonitoringPanel({ walletAddress, whitelist, setWhitelist, quotePreferences, setQuotePreferences, minFees30min, setMinFees30min }) {
   const [expanded, setExpanded] = useState(false);
   const [enabled, setEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -129,6 +129,38 @@ function MonitoringPanel({ walletAddress, whitelist, quotePreferences, minFees30
           ...prev,
           intervalMinutes: result.monitoring.interval_minutes
         }));
+      }
+
+      // Sync config to parent if it exists in the response
+      if (result.monitoring?.config) {
+        const dbConfig = result.monitoring.config;
+
+        // Sync whitelist from database if it exists
+        if (dbConfig.whitelist && Array.isArray(dbConfig.whitelist) && dbConfig.whitelist.length > 0) {
+          const currentWhitelist = whitelist || [];
+          const mergedWhitelist = [...new Set([...currentWhitelist, ...dbConfig.whitelist])];
+
+          if (JSON.stringify(currentWhitelist.sort()) !== JSON.stringify(mergedWhitelist.sort())) {
+            console.log('[MonitoringPanel] Syncing whitelist from database:', dbConfig.whitelist);
+            if (setWhitelist) {
+              setWhitelist(mergedWhitelist);
+            }
+            localStorage.setItem('tokenWhitelist', JSON.stringify(mergedWhitelist));
+          }
+        }
+
+        // Sync quote preferences from database if they exist
+        if (dbConfig.quote_preferences && setQuotePreferences) {
+          setQuotePreferences(dbConfig.quote_preferences);
+          localStorage.setItem('quotePreferences', JSON.stringify(dbConfig.quote_preferences));
+        }
+
+        // Sync min fees from database if it exists
+        if (dbConfig.min_fees_30min && setMinFees30min) {
+          const dbMinFees = parseFloat(dbConfig.min_fees_30min);
+          setMinFees30min(dbMinFees);
+          localStorage.setItem('minFees30min', dbMinFees.toString());
+        }
       }
     }
     setStatusLoading(false);

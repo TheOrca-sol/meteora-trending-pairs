@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Box, Typography, Paper, Grid, Divider } from '@mui/material';
 import { useWallet as useSolanaWallet } from '@solana/wallet-adapter-react';
 import { useWallet } from '../contexts/WalletContext';
@@ -8,6 +8,7 @@ import PreferencesPanel from '../components/CapitalRotation/PreferencesPanel';
 import MonitoringPanel from '../components/CapitalRotation/MonitoringPanel';
 import PositionsTable from '../components/CapitalRotation/PositionsTable';
 import OpportunitiesTable from '../components/CapitalRotation/OpportunitiesTable';
+import monitoringService from '../services/monitoringService';
 
 function CapitalRotationPage() {
   const { publicKey } = useSolanaWallet();
@@ -35,6 +36,51 @@ function CapitalRotationPage() {
     const saved = localStorage.getItem('minFees30min');
     return saved ? Number(saved) : 100;
   });
+
+  // Load whitelist and preferences from database when wallet is connected
+  useEffect(() => {
+    const loadConfigFromDatabase = async () => {
+      if (!activeAddress) return;
+
+      try {
+        const result = await monitoringService.getStatus(activeAddress);
+        if (result.success && result.monitoring?.config) {
+          const dbConfig = result.monitoring.config;
+
+          // Sync whitelist from database if it exists and is different
+          if (dbConfig.whitelist && Array.isArray(dbConfig.whitelist) && dbConfig.whitelist.length > 0) {
+            // Merge localStorage and database whitelists (union of both)
+            const localWhitelist = whitelist;
+            const mergedWhitelist = [...new Set([...localWhitelist, ...dbConfig.whitelist])];
+
+            if (JSON.stringify(localWhitelist.sort()) !== JSON.stringify(mergedWhitelist.sort())) {
+              console.log('[CapitalRotation] Syncing whitelist from database:', dbConfig.whitelist);
+              setWhitelist(mergedWhitelist);
+              localStorage.setItem('tokenWhitelist', JSON.stringify(mergedWhitelist));
+            }
+          }
+
+          // Sync quote preferences if they exist
+          if (dbConfig.quote_preferences) {
+            setQuotePreferences(dbConfig.quote_preferences);
+            localStorage.setItem('quotePreferences', JSON.stringify(dbConfig.quote_preferences));
+          }
+
+          // Sync min fees threshold if it exists
+          if (dbConfig.min_fees_30min) {
+            const dbMinFees = parseFloat(dbConfig.min_fees_30min);
+            setMinFees30min(dbMinFees);
+            localStorage.setItem('minFees30min', dbMinFees.toString());
+          }
+        }
+      } catch (error) {
+        console.error('[CapitalRotation] Error loading config from database:', error);
+        // Continue with localStorage values on error
+      }
+    };
+
+    loadConfigFromDatabase();
+  }, [activeAddress]);
 
   return (
     <Container
@@ -130,8 +176,11 @@ function CapitalRotationPage() {
             <MonitoringPanel
               walletAddress={activeAddress}
               whitelist={whitelist}
+              setWhitelist={setWhitelist}
               quotePreferences={quotePreferences}
+              setQuotePreferences={setQuotePreferences}
               minFees30min={minFees30min}
+              setMinFees30min={setMinFees30min}
             />
           </Box>
 
