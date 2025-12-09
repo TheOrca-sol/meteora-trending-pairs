@@ -32,6 +32,7 @@
   },
   "scripts": {
     "start": "craco start",
+    "prebuild": "rm -f public/docs/Imded_FUN_Presentation.html && cp ../docs/Imded_FUN_Presentation.html public/docs/Imded_FUN_Presentation.html",
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject"
