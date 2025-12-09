@@ -10,6 +10,7 @@
             --primary-magenta: #E4007C;
             --primary-purple: #7C2483;
             --gold: #FFD700;
+            --grey: grey;
             --purple-gradient: linear-gradient(135deg, #E4007C 0%, #7C2483 100%);
             --light-bg: #f8f9fc;
             --card-bg: #ffffff;
@@ -206,6 +207,10 @@
             border-top: 5px solid var(--gold);
         }
 
+        .card-grey {
+            border-top: 5px solid var(--grey);
+        }
+
         .card-title {
             font-size: 1.2rem;
             font-weight: 700;
@@ -224,7 +229,7 @@
         /* Grid Layouts */
         .grid-2 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
         }
 
@@ -474,7 +479,7 @@
             left: 0;
             right: 0;
             height: 6px;
-            background: var(--gold);
+            background: var(--grey);
             border-radius: 24px 24px 0 0;
         }
 
@@ -569,7 +574,7 @@
         /* Differentiator Grid */
         .diff-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
         }
 
@@ -612,7 +617,7 @@
         /* Market Opportunity */
         .opportunity-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 25px;
         }
 
@@ -641,7 +646,7 @@
         /* Contact Section */
         .contact-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
         }
 
@@ -738,7 +743,7 @@
             .hero-stat { padding: 20px 25px; }
             .main-content { padding: 40px 20px; }
             .process-container { padding: 30px 20px; }
-            .grid-2, .diff-grid, .opportunity-grid { grid-template-columns: 1fr; }
+            .grid-2, .diff-grid, .opportunity-grid, .contact-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -811,7 +816,7 @@
         
         <div class="alert alert-purple">
             <div class="alert-title">🚀 A Single Platform for Complete DLMM Intelligence with Aggregated Liquidity</div>
-            <p>We aggregate data and liquidity from 7+ sources, combining fragmented pools into unified trading opportunities with real-time alerts</p>
+            <p>We aggregate data and liquidity from 5 sources, combining fragmented pools into unified trading opportunities with real-time alerts</p>
         </div>
 
         <div class="stats-grid">
@@ -821,7 +826,7 @@
                 <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Security-checked Meteora DLMM pools</p>
             </div>
             <div class="stat-card">
-                <div class="stat-value">7+</div>
+                <div class="stat-value">5</div>
                 <div class="stat-label">Data Sources</div>
                 <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Meteora, DexScreener, Jupiter...</p>
             </div>
@@ -932,34 +937,48 @@
     <!-- Section 5: Technology Stack -->
     <section class="section">
         <h2 class="section-title"><span class="icon">🛠️</span> Technology Stack</h2>
-        
-        <h3 class="subsection-title">Frontend</h3>
-        <div class="tech-grid">
-            <div class="tech-item">React 18</div>
-            <div class="tech-item">Material-UI</div>
-            <div class="tech-item">TypeScript</div>
+
+        <div class="alert alert-purple">
+            <div class="alert-title">⚡ Modern & Reliable Tech Stack</div>
+            <p>Built with proven technologies for a fast, secure, and maintainable platform</p>
         </div>
 
-        <h3 class="subsection-title">Backend</h3>
-        <div class="tech-grid">
-            <div class="tech-item">Flask</div>
-            <div class="tech-item">Node.js</div>
-            <div class="tech-item">APScheduler</div>
+        <div class="grid-2">
+            <div class="card card-purple">
+                <div class="card-title">🎨 Modern Frontend</div>
+                <div class="card-description">React 18 with Material-UI for a responsive, intuitive interface. Fast load times and smooth interactions across desktop and mobile devices.</div>
+            </div>
+            <div class="card card-purple">
+                <div class="card-title">⚡ Scalable Backend</div>
+                <div class="card-description">Python Flask and Node.js services handling real-time data processing. Efficient caching and batch updates for thousands of pools.</div>
+            </div>
+            <div class="card card-purple">
+                <div class="card-title">🔐 Secure Architecture</div>
+                <div class="card-description">Industry-standard encryption and secure API practices. Read-only blockchain interactions ensure your funds stay in your wallet.</div>
+            </div>
+            <div class="card card-purple">
+                <div class="card-title">🌐 Multiple Data Sources</div>
+                <div class="card-description">Direct integration with Meteora, DexScreener, Jupiter, RugCheck, and Solana RPC for comprehensive pool analysis.</div>
+            </div>
         </div>
 
-        <h3 class="subsection-title">Database & Infrastructure</h3>
-        <div class="tech-grid">
-            <div class="tech-item">PostgreSQL</div>
-            <div class="tech-item">Supabase</div>
-            <div class="tech-item">Solana Web3.js</div>
-        </div>
-
-        <h3 class="subsection-title">Integrations</h3>
-        <div class="tech-grid">
-            <div class="tech-item">Telegram Bot</div>
-            <div class="tech-item">DexScreener</div>
-            <div class="tech-item">Jupiter</div>
-            <div class="tech-item">RugCheck</div>
+        <div class="stats-grid" style="margin-top: 30px;">
+            <div class="stat-card">
+                <div class="stat-value">React 18</div>
+                <div class="stat-label">Frontend Framework</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Flask + Node</div>
+                <div class="stat-label">Backend Services</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">PostgreSQL</div>
+                <div class="stat-label">Database</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Solana Web3</div>
+                <div class="stat-label">Blockchain</div>
+            </div>
         </div>
     </section>
 
@@ -1007,21 +1026,21 @@
         
         <div class="roadmap-container">
             <div class="roadmap-card">
-                <div class="roadmap-quarter">Q1 2025</div>
+                <div class="roadmap-quarter">Q1 2026</div>
                 <div class="roadmap-item">• Automated trading integration</div>
                 <div class="roadmap-item">• Portfolio tracking dashboard</div>
                 <div class="roadmap-item">• Historical backtesting</div>
                 <div class="roadmap-item">• Watchlist management</div>
             </div>
             <div class="roadmap-card">
-                <div class="roadmap-quarter">Q2 2025</div>
+                <div class="roadmap-quarter">Q2 2026</div>
                 <div class="roadmap-item">• Custom alert conditions</div>
                 <div class="roadmap-item">• Multi-DEX support</div>
                 <div class="roadmap-item">• Mobile applications</div>
                 <div class="roadmap-item">• API access for developers</div>
             </div>
             <div class="roadmap-card">
-                <div class="roadmap-quarter">Q3 2025</div>
+                <div class="roadmap-quarter">Q3 2026</div>
                 <div class="roadmap-item">• Social trading features</div>
                 <div class="roadmap-item">• AI-powered pool scoring</div>
                 <div class="roadmap-item">• Cross-chain expansion</div>
@@ -1035,29 +1054,30 @@
         <h2 class="section-title"><span class="icon">💰</span> Business Model</h2>
         
         <div class="pricing-container">
-            <div class="pricing-card">
+            <div class="pricing-card featured">
                 <div class="pricing-tier">Free</div>
-                <div class="pricing-price">Always free</div>
+                <div class="pricing-price">Free for 3 months</div>
                 <div class="pricing-feature">Core analytics dashboard</div>
                 <div class="pricing-feature">Basic pool monitoring</div>
                 <div class="pricing-feature">Security analysis</div>
                 <div class="pricing-feature">Community access</div>
             </div>
-            <div class="pricing-card featured">
-                <div class="pricing-tier">Premium</div>
-                <div class="pricing-price">$29/month</div>
+            <div class="pricing-card">
+                <div class="pricing-tier" style="color: var(--grey);">Premium</div>
+                <div class="pricing-feature">To be determined</div><!-- <div class="pricing-price">Custom pricing</div>
+                <!-- <div class="pricing-price">$29/month</div>
                 <div class="pricing-feature">1-minute monitoring</div>
                 <div class="pricing-feature">Unlimited Telegram alerts</div>
                 <div class="pricing-feature">Advanced filters</div>
-                <div class="pricing-feature">API access</div>
+                <div class="pricing-feature">API access</div> -->
             </div>
             <div class="pricing-card">
-                <div class="pricing-tier">Enterprise</div>
-                <div class="pricing-price">Custom pricing</div>
+                <div class="pricing-tier" style="color: var(--grey);">Golden</div>
+                <div class="pricing-feature">To be determined</div><!-- <div class="pricing-price">Custom pricing</div>
                 <div class="pricing-feature">White-label solution</div>
                 <div class="pricing-feature">Dedicated infrastructure</div>
                 <div class="pricing-feature">SLA guarantees</div>
-                <div class="pricing-feature">Priority support</div>
+                <div class="pricing-feature">Priority support</div> -->
             </div>
         </div>
     </section>
