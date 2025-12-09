@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteora Trending Pairs - Platform Presentation</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/white.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #E4007C;
+            --secondary: #7C2483;
+            --gradient: linear-gradient(135deg, #E4007C 0%, #B8206C 50%, #7C2483 100%);
+            --white: #FFFFFF;
+            --dark: #1a1a2e;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            color: var(--dark);
+            overflow-x: hidden;
+            background: #fafafa;
+        }
+
+        .reveal {
+            font-family: 'Poppins', sans-serif;
+            color: var(--dark);
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* ========== HERO SLIDE ========== */
+        .reveal .slides section.hero-slide {
+            min-height: 100vh;
+            background: var(--gradient);
+            position: relative;
+            overflow: hidden;
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 60px !important;
+        }
+
+        .hero-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .shape1 {
+            width: 400px;
+            height: 400px;
+            top: -100px;
+            right: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .shape2 {
+            width: 300px;
+            height: 300px;
+            bottom: -50px;
+            left: -50px;
+            animation: float 8s ease-in-out infinite;
+            animation-delay: 1s;
+        }
+
+        .shape3 {
+            width: 200px;
+            height: 200px;
+            top: 50%;
+            right: 10%;
+            animation: float 7s ease-in-out infinite;
+            animation-delay: 2s;
+        }
+
+        .hero-content {
+            text-align: center;
+            color: var(--white);
+            z-index: 10;
+            max-width: 1000px;
+            position: relative;
+        }
+
+        .proposition-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #FFD700 0%, #FFC700 100%);
+            color: #1a1a2e;
+            padding: 12px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+            animation: fadeInUp 0.8s ease-out, pulse 2s ease-in-out infinite;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            position: relative;
+        }
+
+        .proposition-badge::before {
+            content: '✨';
+            position: absolute;
+            left: 15px;
+            font-size: 16px;
+        }
+
+        .proposition-badge::after {
+            content: '✨';
+            position: absolute;
+            right: 15px;
+            font-size: 16px;
+        }
+
+        .hero-logo {
+            font-size: 80px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            letter-spacing: -2px;
+            animation: fadeInUp 1s ease-out;
+            color: white;
+        }
+
+        .hero-subtitle {
+            font-size: 32px;
+            font-weight: 300;
+            margin-bottom: 30px;
+            opacity: 0.95;
+            animation: fadeInUp 1s ease-out 0.2s both;
+            color: white;
+        }
+
+        .hero-tagline {
+            font-size: 20px;
+            padding: 20px 40px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            display: inline-block;
+            animation: fadeInUp 1s ease-out 0.4s both;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .hero-icons {
+            margin-top: 60px;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            animation: fadeInUp 1s ease-out 0.6s both;
+            flex-wrap: wrap;
+        }
+
+        .icon-box {
+            padding: 25px 30px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            cursor: pointer;
+            color: white;
+        }
+
+        .icon-box:hover {
+            transform: translateY(-10px) scale(1.05);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon-box .stat-number {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 8px;
+        }
+
+        .icon-box .stat-label {
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        /* ========== CONTENT SLIDES ========== */
+        .reveal .slides section:not(.hero-slide) {
+            min-height: 100vh;
+            padding: 70px 60px !important;
+            background: #fafafa;
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide-title {
+            font-size: 56px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 0.8s ease-out;
+            text-align: left;
+        }
+
+        .slide-underline {
+            width: 120px;
+            height: 6px;
+            background: var(--gradient);
+            border-radius: 3px;
+            margin-bottom: 50px;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        /* Grid moderne */
+        .modern-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: white;
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.6s ease-out both;
+            text-align: left;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0s; }
+        .feature-card:nth-child(2) { animation-delay: 0.1s; }
+        .feature-card:nth-child(3) { animation-delay: 0.2s; }
+        .feature-card:nth-child(4) { animation-delay: 0.3s; }
+        .feature-card:nth-child(5) { animation-delay: 0.4s; }
+        .feature-card:nth-child(6) { animation-delay: 0.5s; }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--gradient);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.4s ease;
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-15px);
+            box-shadow: 0 20px 60px rgba(228, 0, 124, 0.2);
+        }
+
+        .card-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, rgba(228, 0, 124, 0.15), rgba(124, 36, 131, 0.15));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 36px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover .card-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .card-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+
+        .card-description {
+            font-size: 15px;
+            color: #666;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        /* Gradient Box */
+        .gradient-box {
+            background: var(--gradient);
+            color: white;
+            border-radius: 30px;
+            padding: 45px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(228, 0, 124, 0.3);
+            animation: fadeInUp 0.8s ease-out;
+            margin-bottom: 40px;
+        }
+
+        .gradient-box h3 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 18px;
+            color: white;
+        }
+
+        .gradient-box p {
+            font-size: 18px;
+            opacity: 0.95;
+            line-height: 1.8;
+            margin: 0;
+            color: white;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 35px;
+            margin: 50px 0;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 45px 35px;
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            animation: fadeInUp 0.8s ease-out both;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient);
+        }
+
+        .stat-card:nth-child(1) { animation-delay: 0s; }
+        .stat-card:nth-child(2) { animation-delay: 0.2s; }
+        .stat-card:nth-child(3) { animation-delay: 0.4s; }
+
+        .stat-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 50px rgba(228, 0, 124, 0.15);
+        }
+
+        .stat-number {
+            font-size: 52px;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        /* Timeline */
+        .timeline {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .timeline-item {
+            background: white;
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            animation: fadeInUp 0.8s ease-out both;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: var(--gradient);
+        }
+
+        .timeline-item:hover {
+            transform: translateY(-12px);
+            box-shadow: 0 20px 50px rgba(228, 0, 124, 0.15);
+        }
+
+        .timeline-item h4 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 18px;
+            margin-top: 10px;
+        }
+
+        .timeline-item ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .timeline-item li {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.8;
+            padding-left: 25px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .timeline-item li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        /* Three Column Layout */
+        .three-col {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .col-card {
+            background: white;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            animation: fadeInUp 0.8s ease-out both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .col-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient);
+        }
+
+        .col-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(228, 0, 124, 0.15);
+        }
+
+        .col-card .number {
+            font-size: 50px;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 15px;
+            line-height: 1;
+        }
+
+        .col-card h4 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .col-card p {
+            font-size: 14px;
+            color: #666;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        /* Tech Grid */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-top: 40px;
+        }
+
+        .tech-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark);
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tech-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--gradient);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .tech-item:hover::before {
+            transform: scaleX(1);
+        }
+
+        .tech-item:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(228, 0, 124, 0.15);
+        }
+
+        /* Contact Cards */
+        .contact-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .contact-card {
+            background: white;
+            border-radius: 24px;
+            padding: 35px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--gradient);
+        }
+
+        .contact-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 50px rgba(228, 0, 124, 0.15);
+        }
+
+        .contact-card h4 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 12px;
+        }
+
+        .contact-card p {
+            font-size: 16px;
+            color: var(--primary);
+            font-weight: 600;
+            margin: 0;
+        }
+
+        /* CTA Button */
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #FFD700 0%, #FFC700 100%);
+            color: #1a1a2e;
+            padding: 20px 50px;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.4s ease;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.4);
+            margin-top: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 215, 0, 0.5);
+        }
+
+        /* Progress bar */
+        .reveal .progress {
+            background: #e0e0e0;
+            height: 4px;
+        }
+
+        .reveal .progress span {
+            background: var(--gradient);
+        }
+
+        /* Controls */
+        .reveal .controls {
+            color: var(--primary);
+        }
+
+        .reveal .controls button {
+            color: var(--primary);
+        }
+
+        .reveal .controls button:hover {
+            color: var(--secondary);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-logo { font-size: 60px; }
+            .hero-subtitle { font-size: 24px; }
+            .slide-title { font-size: 42px; }
+            .modern-grid { grid-template-columns: 1fr; }
+            .three-col { grid-template-columns: 1fr; }
+            .stats-section { grid-template-columns: 1fr; }
+            .tech-grid { grid-template-columns: repeat(2, 1fr); }
+            .timeline { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .hero-logo { font-size: 48px; }
+            .hero-subtitle { font-size: 20px; }
+            .hero-tagline { font-size: 16px; padding: 15px 30px; }
+            .slide-title { font-size: 36px; }
+            .hero-icons { gap: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: HERO -->
+            <section class="hero-slide">
+                <div class="hero-shapes">
+                    <div class="shape shape1"></div>
+                    <div class="shape shape2"></div>
+                    <div class="shape shape3"></div>
+                </div>
+
+                <div class="hero-content">
+                    <div class="proposition-badge">Revolutionary Platform</div>
+                    <h1 class="hero-logo">Meteora Trending Pairs</h1>
+                    <p class="hero-subtitle">Real-Time DLMM Analytics Platform</p>
+                    <p class="hero-tagline">Track 4,000+ pools • Built-in security • Automated alerts</p>
+
+                    <div class="hero-icons">
+                        <div class="icon-box">
+                            <div class="stat-number">4K+</div>
+                            <div class="stat-label">Pools Monitored</div>
+                        </div>
+                        <div class="icon-box">
+                            <div class="stat-number">60s</div>
+                            <div class="stat-label">Refresh Rate</div>
+                        </div>
+                        <div class="icon-box">
+                            <div class="stat-number">24/7</div>
+                            <div class="stat-label">Automated Alerts</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: The Challenge -->
+            <section>
+                <h2 class="slide-title">The Challenge</h2>
+                <div class="slide-underline"></div>
+
+                <div class="gradient-box">
+                    <h3>Traders & LPs Face Critical Obstacles</h3>
+                    <p>Finding profitable opportunities in 4,000+ Meteora DLMM pools is overwhelming</p>
+                </div>
+
+                <div class="modern-grid">
+                    <div class="feature-card">
+                        <div class="card-icon">1</div>
+                        <h3 class="card-title">Information Overload</h3>
+                        <p class="card-description">Too many pools, not enough context. Manual research takes hours across multiple platforms.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">2</div>
+                        <h3 class="card-title">Security Risks</h3>
+                        <p class="card-description">Rug pulls and scams are rampant. No unified security analysis before trading.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">3</div>
+                        <h3 class="card-title">Missed Opportunities</h3>
+                        <p class="card-description">High-APR pools trend for minutes. By the time you notice, it's too late.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">4</div>
+                        <h3 class="card-title">Data Fragmentation</h3>
+                        <p class="card-description">Information scattered across 7+ sources. No single dashboard for complete analysis.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: Our Solution -->
+            <section>
+                <h2 class="slide-title">Our Solution</h2>
+                <div class="slide-underline"></div>
+
+                <div class="gradient-box">
+                    <h3>A Single Platform for Complete DLMM Intelligence</h3>
+                    <p>We aggregate data from 7+ sources, analyze security, and deliver real-time alerts — all in one beautiful dashboard.</p>
+                </div>
+
+                <div class="three-col">
+                    <div class="col-card">
+                        <div class="number">4K+</div>
+                        <h4>Pools Monitored</h4>
+                        <p>Every Meteora DLMM pool, updated every 60 seconds</p>
+                    </div>
+                    <div class="col-card">
+                        <div class="number">7+</div>
+                        <h4>Data Sources</h4>
+                        <p>Meteora, DexScreener, Jupiter, RugCheck, Helius & more</p>
+                    </div>
+                    <div class="col-card">
+                        <div class="number">24/7</div>
+                        <h4>Automated Alerts</h4>
+                        <p>Telegram notifications for trending opportunities</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: Core Features -->
+            <section>
+                <h2 class="slide-title">Core Features</h2>
+                <div class="slide-underline"></div>
+
+                <div class="modern-grid">
+                    <div class="feature-card">
+                        <div class="card-icon">📊</div>
+                        <h3 class="card-title">Real-Time Analytics</h3>
+                        <p class="card-description">Monitor 30m fee rates, 24h volume, APR, TVL, and transaction flow across all pools with auto-refresh.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">🔍</div>
+                        <h3 class="card-title">Advanced Filtering</h3>
+                        <p class="card-description">Find exactly what you need with filters for APR, volume, TVL, fees, and custom search queries.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">🛡️</div>
+                        <h3 class="card-title">Security Analysis</h3>
+                        <p class="card-description">Integrated RugCheck scans, holder distribution, authority checks, and blacklist detection.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">📱</div>
+                        <h3 class="card-title">Telegram Alerts</h3>
+                        <p class="card-description">Get instant notifications when pools match your criteria. Never miss an opportunity again.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">⚡</div>
+                        <h3 class="card-title">Degen Mode</h3>
+                        <p class="card-description">High-frequency monitoring (1-60 min intervals) for active traders hunting early trends.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">📈</div>
+                        <h3 class="card-title">Deep Analytics</h3>
+                        <p class="card-description">Expandable rows reveal complete pool data: holder info, BubbleMaps, volume trends, and more.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: How It Works -->
+            <section>
+                <h2 class="slide-title">How It Works</h2>
+                <div class="slide-underline"></div>
+
+                <div class="modern-grid">
+                    <div class="feature-card">
+                        <div class="card-icon">1</div>
+                        <h3 class="card-title">Data Aggregation</h3>
+                        <p class="card-description">We continuously fetch pool data from Meteora's API, DexScreener, Jupiter, and other sources — updated every minute.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">2</div>
+                        <h3 class="card-title">Smart Analysis</h3>
+                        <p class="card-description">Our backend processes 4,000+ pools, calculates metrics, and runs security checks (RugCheck, holder analysis).</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">3</div>
+                        <h3 class="card-title">Intelligent Filtering</h3>
+                        <p class="card-description">Set your criteria (minimum APR, volume, TVL) and we instantly show matching opportunities.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">4</div>
+                        <h3 class="card-title">Real-Time Alerts</h3>
+                        <p class="card-description">When a pool meets your thresholds, get a Telegram notification with all details and direct trading links.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: Tech Stack -->
+            <section>
+                <h2 class="slide-title">Technology Stack</h2>
+                <div class="slide-underline"></div>
+
+                <div class="tech-grid">
+                    <div class="tech-item">React 18</div>
+                    <div class="tech-item">Material-UI 6</div>
+                    <div class="tech-item">Flask + Python</div>
+                    <div class="tech-item">Node.js</div>
+                    <div class="tech-item">PostgreSQL</div>
+                    <div class="tech-item">Supabase</div>
+                    <div class="tech-item">Solana Web3.js</div>
+                    <div class="tech-item">APScheduler</div>
+                    <div class="tech-item">Telegram Bot API</div>
+                    <div class="tech-item">DexScreener API</div>
+                    <div class="tech-item">Jupiter API</div>
+                    <div class="tech-item">RugCheck API</div>
+                    <div class="tech-item">Helius RPC</div>
+                    <div class="tech-item">BubbleMaps</div>
+                    <div class="tech-item">Meteora DLMM</div>
+                    <div class="tech-item">Redis Cache</div>
+                </div>
+            </section>
+
+            <!-- Slide 7: Competitive Advantages -->
+            <section>
+                <h2 class="slide-title">Why We're Different</h2>
+                <div class="slide-underline"></div>
+
+                <div class="modern-grid">
+                    <div class="feature-card">
+                        <div class="card-icon">🎯</div>
+                        <h3 class="card-title">100% DLMM Focused</h3>
+                        <p class="card-description">Not a generic DEX tool. Built exclusively for Meteora's Dynamic Liquidity Market Maker pools.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">🔒</div>
+                        <h3 class="card-title">Security-First</h3>
+                        <p class="card-description">Integrated security analysis from multiple sources. Check risks before you trade.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">📲</div>
+                        <h3 class="card-title">Mobile-First Alerts</h3>
+                        <p class="card-description">Telegram integration means you're always connected. Get opportunities on your phone instantly.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">⚙️</div>
+                        <h3 class="card-title">Highly Customizable</h3>
+                        <p class="card-description">Set your own thresholds, intervals, and filters. The platform adapts to your strategy.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 8: Roadmap -->
+            <section>
+                <h2 class="slide-title">Product Roadmap</h2>
+                <div class="slide-underline"></div>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <h4>Q1 2025</h4>
+                        <ul>
+                            <li>Automated trading execution</li>
+                            <li>Portfolio tracking & P&L</li>
+                            <li>Historical backtesting</li>
+                            <li>Watchlist functionality</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item">
+                        <h4>Q2 2025</h4>
+                        <ul>
+                            <li>Custom alert conditions</li>
+                            <li>Multi-DEX support (Orca, Raydium)</li>
+                            <li>Mobile apps (iOS/Android)</li>
+                            <li>API access for developers</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item">
+                        <h4>Q3 2025</h4>
+                        <ul>
+                            <li>Social features & leaderboards</li>
+                            <li>AI-powered pool scoring</li>
+                            <li>Cross-chain expansion</li>
+                            <li>Enterprise partnerships</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 9: Business Model -->
+            <section>
+                <h2 class="slide-title">Business Model</h2>
+                <div class="slide-underline"></div>
+
+                <div class="three-col">
+                    <div class="col-card">
+                        <h4>Free Tier</h4>
+                        <p style="margin-top: 15px;">Core analytics dashboard<br>Basic monitoring (5-60 min)<br>Standard Telegram alerts<br>Security analysis<br><strong>Always free</strong></p>
+                    </div>
+                    <div class="col-card">
+                        <h4>Premium Tier</h4>
+                        <p style="margin-top: 15px;"><strong>$29/month</strong><br>1-minute monitoring<br>Unlimited alerts<br>Historical data access<br>Priority support<br>API access</p>
+                    </div>
+                    <div class="col-card">
+                        <h4>Enterprise</h4>
+                        <p style="margin-top: 15px;"><strong>Custom pricing</strong><br>White-label solutions<br>Dedicated infrastructure<br>Custom integrations<br>SLA guarantees</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 10: Market Opportunity -->
+            <section>
+                <h2 class="slide-title">Market Opportunity</h2>
+                <div class="slide-underline"></div>
+
+                <div class="modern-grid">
+                    <div class="feature-card">
+                        <div class="card-icon">💰</div>
+                        <h3 class="card-title">Growing DeFi Market</h3>
+                        <p class="card-description">Solana DeFi TVL exceeds $8B. Meteora is a top-5 DEX with $1B+ in liquidity.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">👥</div>
+                        <h3 class="card-title">Target Audience</h3>
+                        <p class="card-description">Active traders, liquidity providers, DeFi protocols, market makers, and trading firms.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">📈</div>
+                        <h3 class="card-title">Scalable Model</h3>
+                        <p class="card-description">Start with Meteora, expand to all Solana DEXs, then multi-chain. TAM in billions.</p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="card-icon">🚀</div>
+                        <h3 class="card-title">First-Mover Advantage</h3>
+                        <p class="card-description">No dedicated DLMM analytics platform exists. We're defining the category.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 11: Current Traction -->
+            <section>
+                <h2 class="slide-title">Current Traction</h2>
+                <div class="slide-underline"></div>
+
+                <div class="stats-section">
+                    <div class="stat-card">
+                        <div class="stat-number">100%</div>
+                        <div class="stat-label">Feature Complete</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">4K+</div>
+                        <div class="stat-label">Pools Tracked</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">60s</div>
+                        <div class="stat-label">Refresh Rate</div>
+                    </div>
+                </div>
+
+                <div class="gradient-box">
+                    <h3>Ready to Launch</h3>
+                    <p>Platform is fully functional and tested. We're ready to onboard users at scale and begin capturing market share in the DLMM analytics space.</p>
+                </div>
+            </section>
+
+            <!-- Slide 12: Live Demo -->
+            <section>
+                <h2 class="slide-title">Live Demo</h2>
+                <div class="slide-underline"></div>
+
+                <div class="gradient-box" style="padding: 60px;">
+                    <h3 style="font-size: 38px; margin-bottom: 25px;">Experience the Platform Live</h3>
+                    <p style="font-size: 20px; margin-bottom: 35px;">See real-time data from 4,000+ pools with advanced filtering and security analysis</p>
+                    <a href="http://localhost:3000" class="cta-button" target="_blank">Open Dashboard →</a>
+                </div>
+            </section>
+
+            <!-- Slide 13: Contact -->
+            <section>
+                <h2 class="slide-title">Let's Connect</h2>
+                <div class="slide-underline"></div>
+
+                <div class="contact-info">
+                    <div class="contact-card">
+                        <h4>🌐 Live Platform</h4>
+                        <p>[Your URL Here]</p>
+                    </div>
+                    <div class="contact-card">
+                        <h4>📧 Email</h4>
+                        <p>[Your Email]</p>
+                    </div>
+                    <div class="contact-card">
+                        <h4>🐦 Twitter</h4>
+                        <p>[@YourHandle]</p>
+                    </div>
+                    <div class="contact-card">
+                        <h4>💬 Telegram</h4>
+                        <p>[Your Channel]</p>
+                    </div>
+                </div>
+
+                <div class="gradient-box" style="margin-top: 40px;">
+                    <h3>We're Seeking</h3>
+                    <p>Strategic Partners • Advisors • Beta Users • Feedback</p>
+                </div>
+            </section>
+
+            <!-- Slide 14: CLOSING HERO -->
+            <section class="hero-slide">
+                <div class="hero-shapes">
+                    <div class="shape shape1"></div>
+                    <div class="shape shape2"></div>
+                    <div class="shape shape3"></div>
+                </div>
+
+                <div class="hero-content">
+                    <div class="proposition-badge">The Future of DLMM Trading</div>
+                    <h1 class="hero-logo" style="font-size: 90px;">Ready to Trade<br>Smarter?</h1>
+                    <p class="hero-subtitle">Join us in revolutionizing DLMM analytics on Solana</p>
+                    <a href="http://localhost:3000" class="cta-button" target="_blank" style="font-size: 22px; padding: 22px 60px;">
+                        Try the Platform Now
+                    </a>
+                    <p class="hero-tagline" style="margin-top: 60px; font-size: 22px;">
+                        <strong>Thank you for your time!</strong><br><br>
+                        Questions? Let's discuss how we can work together.
+                    </p>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            controls: true,
+            progress: true,
+            center: false,
+            transition: 'slide',
+            transitionSpeed: 'default',
+            backgroundTransition: 'fade',
+            width: 1280,
+            height: 720,
+            margin: 0.04,
+            minScale: 0.2,
+            maxScale: 2.0,
+            keyboard: {
+                39: 'next',
+                37: 'prev',
+                27: () => { Reveal.toggleOverview(); }
+            },
+            slideNumber: 'c/t',
+            showNotes: false,
+            autoSlide: 0,
+            mouseWheel: false,
+            hideInactiveCursor: true,
+            hideCursorTime: 3000
+        });
+    </script>
+</body>
+</html>

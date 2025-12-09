@@ -88,9 +88,9 @@ function Navigation() {
         >
           <Tab
             label={isMobile ? "Analytics" : "Analytics"}
-            value="/"
+            value="/dashboard"
             component={Link}
-            to="/"
+            to="/dashboard"
             icon={<ShowChartIcon fontSize="small" />}
             iconPosition={isMobile ? "top" : "start"}
             sx={{
