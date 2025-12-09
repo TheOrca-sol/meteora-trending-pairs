@@ -29,15 +29,15 @@ if not TELEGRAM_BOT_TOKEN:
 class TelegramBotHandler:
     def __init__(self):
         self.application = None
-        # Configure HTTPXRequest with larger connection pool to handle multiple simultaneous notifications
-        # Default pool size is typically 10, increasing to 50 to handle bursts of notifications
+        # Configure HTTPXRequest with VERY LARGE connection pool for high-frequency notifications
+        # With 5+ users sending notifications every minute, we need massive pool size
         # This prevents "Pool timeout: All connections in the connection pool are occupied" errors
         request = HTTPXRequest(
-            connection_pool_size=50,  # Maximum number of connections in the pool
-            connect_timeout=10.0,     # Connection timeout in seconds
-            read_timeout=10.0,        # Read timeout in seconds
-            write_timeout=10.0,       # Write timeout in seconds
-            pool_timeout=10.0         # Pool timeout in seconds
+            connection_pool_size=100,  # Massively increased to handle 5+ concurrent users
+            connect_timeout=15.0,      # Longer timeout for busy periods
+            read_timeout=15.0,
+            write_timeout=15.0,
+            pool_timeout=20.0          # Allow waiting for connection availability
         )
         self.bot = Bot(token=TELEGRAM_BOT_TOKEN, request=request)
         self.running = False
@@ -47,11 +47,11 @@ class TelegramBotHandler:
         # Use the same HTTPXRequest configuration for the Application
         # to ensure consistent connection pool settings across all bot operations
         request = HTTPXRequest(
-            connection_pool_size=50,
-            connect_timeout=10.0,
-            read_timeout=10.0,
-            write_timeout=10.0,
-            pool_timeout=10.0
+            connection_pool_size=100,
+            connect_timeout=15.0,
+            read_timeout=15.0,
+            write_timeout=15.0,
+            pool_timeout=20.0
         )
         self.application = Application.builder().token(TELEGRAM_BOT_TOKEN).request(request).build()
 
@@ -517,7 +517,7 @@ class TelegramBotHandler:
 
     async def send_notification(self, chat_id: int, message: str, reply_markup=None):
         """Send a notification message to a user with optional inline keyboard"""
-        max_retries = 3
+        max_retries = 5  # Increased from 3 to handle high-frequency notifications
         retry_count = 0
 
         while retry_count < max_retries:
@@ -532,19 +532,25 @@ class TelegramBotHandler:
                 logger.info(f"Sent notification to chat {chat_id}")
                 return True
             except TelegramError as e:
+                error_str = str(e)
                 logger.error(f"Telegram error sending to {chat_id}: {e}")
-                if "Pool timeout" in str(e) and retry_count < max_retries - 1:
+
+                # Retry on pool timeout or connection errors
+                if ("Pool timeout" in error_str or "Connection" in error_str) and retry_count < max_retries - 1:
                     retry_count += 1
-                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
-                    await asyncio.sleep(1)  # Wait 1 second before retry
+                    # Exponential backoff: 2, 4, 8, 16 seconds
+                    wait_time = 2 ** retry_count
+                    logger.info(f"Retrying in {wait_time}s... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
                     continue
                 return False
             except Exception as e:
                 logger.error(f"Error sending notification to {chat_id}: {e}")
                 if retry_count < max_retries - 1:
                     retry_count += 1
-                    logger.info(f"Retrying... (attempt {retry_count + 1}/{max_retries})")
-                    await asyncio.sleep(1)
+                    wait_time = 2 ** retry_count
+                    logger.info(f"Retrying in {wait_time}s... (attempt {retry_count + 1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
                     continue
                 return False
 
