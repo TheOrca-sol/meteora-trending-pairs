@@ -21,16 +21,24 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set")
 
 # Configure connection pool for Supabase Transaction mode
-# Transaction mode supports more concurrent connections than Session mode
+# MASSIVE pool for high-frequency monitoring with 5+ concurrent users
+# With degen monitoring running every 1 minute, we need large pools to handle bursts
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,        # Verify connections before using
-    pool_size=3,                # Keep pool small - Transaction mode handles short-lived connections better
-    max_overflow=7,             # Allow burst to 10 total connections
-    pool_recycle=300,           # Recycle connections after 5 minutes to prevent stale connections
-    pool_timeout=30,            # Wait up to 30 seconds for a connection
+    pool_size=20,               # INCREASED: Base pool for concurrent monitoring jobs
+    max_overflow=30,            # INCREASED: Allow burst to 50 total connections for high-frequency checks
+    pool_recycle=180,           # REDUCED: Recycle faster (3 min) to prevent SSL timeout issues
+    pool_timeout=45,            # INCREASED: More patience for connection availability
     pool_reset_on_return='rollback',  # Important for Transaction mode - reset state on return
-    echo_pool=False             # Set to True for connection pool debugging
+    echo_pool=False,            # Set to True for connection pool debugging
+    connect_args={
+        'connect_timeout': 10,  # Connection establishment timeout
+        'keepalives': 1,        # Enable TCP keepalives
+        'keepalives_idle': 30,  # Start keepalives after 30s idle
+        'keepalives_interval': 10,  # Keepalive probe interval
+        'keepalives_count': 5   # Number of keepalive probes
+    }
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
