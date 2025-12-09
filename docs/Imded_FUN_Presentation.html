@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imded.FUN - Real-Time DLMM Analytics Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-magenta: #E4007C;
+            --primary-purple: #7C2483;
+            --gold: #FFD700;
+            --purple-gradient: linear-gradient(135deg, #E4007C 0%, #7C2483 100%);
+            --light-bg: #f8f9fc;
+            --card-bg: #ffffff;
+            --text-dark: #1a1a2e;
+            --text-light: #666666;
+            --border-color: #e2e8f0;
+            --success-green: #10b981;
+            --warning-yellow: #f59e0b;
+            --error-red: #ef4444;
+            --info-blue: #3b82f6;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--light-bg);
+            color: var(--text-dark);
+            line-height: 1.7;
+            font-size: 15px;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: var(--purple-gradient);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 60px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: var(--primary-purple);
+            border-radius: 50%;
+            opacity: 0.5;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -15%;
+            left: -10%;
+            width: 400px;
+            height: 400px;
+            background: #FFB6DA;
+            border-radius: 50%;
+            opacity: 0.4;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 900px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--gold);
+            padding: 12px 28px;
+            border-radius: 50px;
+            color: var(--text-dark);
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 30px;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.3);
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            color: rgba(255,255,255,0.95);
+            font-weight: 300;
+            margin-bottom: 15px;
+        }
+
+        .hero-description {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.8);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+            margin-top: 40px;
+        }
+
+        .hero-stat {
+            background: white;
+            border-radius: 16px;
+            padding: 25px 40px;
+            text-align: center;
+            min-width: 140px;
+        }
+
+        .hero-stat-value {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-magenta);
+        }
+
+        .hero-stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Main Content */
+        .main-content {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        /* Section Styling */
+        .section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--primary-magenta);
+            margin-bottom: 40px;
+            padding-bottom: 15px;
+            border-bottom: 4px solid var(--primary-magenta);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-title .icon {
+            width: 50px;
+            height: 50px;
+            background: var(--purple-gradient);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .subsection-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--primary-purple);
+            margin: 40px 0 25px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+            margin-bottom: 25px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-highlight {
+            border-top: 5px solid var(--primary-magenta);
+        }
+
+        .card-purple {
+            border-top: 5px solid var(--primary-purple);
+        }
+
+        .card-gold {
+            border-top: 5px solid var(--gold);
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-description {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Grid Layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* Challenge Cards */
+        .challenge-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            position: relative;
+            transition: transform 0.3s;
+        }
+
+        .challenge-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .challenge-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--primary-magenta);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .challenge-number {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-magenta);
+            margin-bottom: 15px;
+        }
+
+        .challenge-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+        }
+
+        .challenge-desc {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        /* Feature Cards */
+        .feature-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-left: 5px solid var(--primary-purple);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            box-shadow: 0 8px 35px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .feature-title {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .feature-desc {
+            color: var(--text-light);
+            font-size: 13px;
+        }
+
+        /* Process Flow */
+        .process-container {
+            background: linear-gradient(135deg, #fdf4ff 0%, #f0f9ff 100%);
+            border-radius: 24px;
+            padding: 50px;
+            margin: 40px 0;
+        }
+
+        .process-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 25px;
+            margin-bottom: 35px;
+            position: relative;
+        }
+
+        .process-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 30px;
+            top: 70px;
+            width: 4px;
+            height: calc(100% - 30px);
+            background: linear-gradient(to bottom, var(--primary-magenta), var(--primary-purple));
+            border-radius: 2px;
+        }
+
+        .process-number {
+            width: 65px;
+            height: 65px;
+            min-width: 65px;
+            background: var(--purple-gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 24px;
+            z-index: 1;
+        }
+
+        .process-content {
+            flex: 1;
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        .process-title {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .process-desc {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .tech-item {
+            background: white;
+            border: 2px solid var(--primary-magenta);
+            border-radius: 12px;
+            padding: 18px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-dark);
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .tech-item:hover {
+            background: var(--primary-magenta);
+            color: white;
+            transform: scale(1.05);
+        }
+
+        /* Roadmap */
+        .roadmap-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .roadmap-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+            position: relative;
+        }
+
+        .roadmap-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: var(--primary-purple);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .roadmap-quarter {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary-magenta);
+            margin-bottom: 20px;
+        }
+
+        .roadmap-item {
+            padding: 8px 0;
+            color: var(--text-light);
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .roadmap-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Pricing Cards */
+        .pricing-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 24px;
+            padding: 35px;
+            box-shadow: 0 8px 35px rgba(0,0,0,0.08);
+            text-align: center;
+            position: relative;
+            transition: transform 0.3s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .pricing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: var(--gold);
+            border-radius: 24px 24px 0 0;
+        }
+
+        .pricing-card.featured::before {
+            background: var(--primary-magenta);
+        }
+
+        .pricing-tier {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--primary-magenta);
+            margin-bottom: 10px;
+        }
+
+        .pricing-price {
+            font-size: 1rem;
+            color: var(--text-light);
+            margin-bottom: 25px;
+        }
+
+        .pricing-feature {
+            padding: 12px 0;
+            color: var(--text-light);
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .pricing-feature:last-child {
+            border-bottom: none;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-top: 5px solid var(--primary-magenta);
+        }
+
+        .stat-value {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: var(--primary-magenta);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 600;
+        }
+
+        /* Alert Boxes */
+        .alert {
+            padding: 25px;
+            border-radius: 16px;
+            margin: 25px 0;
+        }
+
+        .alert-magenta {
+            background: linear-gradient(135deg, #fdf4ff 0%, #fff0f7 100%);
+            border-left: 5px solid var(--primary-magenta);
+        }
+
+        .alert-gold {
+            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+            border-left: 5px solid var(--gold);
+        }
+
+        .alert-purple {
+            background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+            border-left: 5px solid var(--primary-purple);
+        }
+
+        .alert-title {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Differentiator Grid */
+        .diff-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .diff-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.06);
+            position: relative;
+        }
+
+        .diff-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--primary-magenta);
+            border-radius: 20px 20px 0 0;
+        }
+
+        .diff-icon {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .diff-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin-bottom: 10px;
+        }
+
+        .diff-desc {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Market Opportunity */
+        .opportunity-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .opportunity-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-top: 5px solid var(--primary-purple);
+        }
+
+        .opportunity-title {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .opportunity-desc {
+            color: var(--text-light);
+            font-size: 14px;
+        }
+
+        /* Contact Section */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        .contact-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+            border-top: 4px solid var(--gold);
+        }
+
+        .contact-icon {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .contact-label {
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 5px;
+        }
+
+        .contact-value {
+            color: var(--primary-magenta);
+            font-size: 14px;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: var(--purple-gradient);
+            border-radius: 24px;
+            padding: 50px;
+            text-align: center;
+            color: white;
+            margin: 50px 0;
+        }
+
+        .cta-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+
+        .cta-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background: var(--gold);
+            color: var(--text-dark);
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: transform 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: scale(1.05);
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--text-dark);
+            color: white;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+        }
+
+        .footer-logo span {
+            color: var(--primary-magenta);
+        }
+
+        .footer-tagline {
+            opacity: 0.7;
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero-stats { gap: 15px; }
+            .hero-stat { padding: 20px 25px; }
+            .main-content { padding: 40px 20px; }
+            .process-container { padding: 30px 20px; }
+            .grid-2, .diff-grid, .opportunity-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Hero Section -->
+<section class="hero">
+    <div class="hero-content">
+        <div class="hero-badge">✨ REVOLUTIONARY PLATFORM ✨</div>
+        <h1>Imded.FUN</h1>
+        <p class="hero-subtitle">Real-Time DLMM Analytics Platform</p>
+        <p class="hero-description">Track 4,000+ verified pools • Aggregated Liquidity • Automated alerts</p>
+        
+        <div class="hero-stats">
+            <div class="hero-stat">
+                <div class="hero-stat-value">4K+</div>
+                <div class="hero-stat-label">Verified Pools</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">60s</div>
+                <div class="hero-stat-label">Refresh</div>
+            </div>
+            <div class="hero-stat">
+                <div class="hero-stat-value">24/7</div>
+                <div class="hero-stat-label">Alerts</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Main Content -->
+<main class="main-content">
+
+    <!-- Section 1: The Challenge -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">⚠️</span> The Challenge</h2>
+        
+        <div class="alert alert-magenta">
+            <div class="alert-title">🎯 Traders & LPs Face Critical Obstacles</div>
+            <p>Finding profitable opportunities in 4,000+ Meteora DLMM pools is overwhelming</p>
+        </div>
+
+        <div class="grid-2">
+            <div class="challenge-card">
+                <div class="challenge-number">1</div>
+                <div class="challenge-title">Information Overload</div>
+                <div class="challenge-desc">Too many pools, not enough context to make informed decisions quickly</div>
+            </div>
+            <div class="challenge-card">
+                <div class="challenge-number">2</div>
+                <div class="challenge-title">Security Risks</div>
+                <div class="challenge-desc">Rug pulls and scams are rampant in the DeFi ecosystem</div>
+            </div>
+            <div class="challenge-card">
+                <div class="challenge-number">3</div>
+                <div class="challenge-title">Fragmented Liquidity</div>
+                <div class="challenge-desc">Liquidity scattered across multiple pools makes optimal trading difficult</div>
+            </div>
+            <div class="challenge-card">
+                <div class="challenge-number">4</div>
+                <div class="challenge-title">Data Fragmentation</div>
+                <div class="challenge-desc">Information scattered across different sources</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: Our Solution -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">💡</span> Our Solution</h2>
+        
+        <div class="alert alert-purple">
+            <div class="alert-title">🚀 A Single Platform for Complete DLMM Intelligence with Aggregated Liquidity</div>
+            <p>We aggregate data and liquidity from 7+ sources, combining fragmented pools into unified trading opportunities with real-time alerts</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">4K+</div>
+                <div class="stat-label">Verified Pools</div>
+                <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Security-checked Meteora DLMM pools</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">7+</div>
+                <div class="stat-label">Data Sources</div>
+                <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Meteora, DexScreener, Jupiter...</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">∞</div>
+                <div class="stat-label">Aggregated Liquidity</div>
+                <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Unified liquidity across pools</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">24/7</div>
+                <div class="stat-label">Automated Alerts</div>
+                <p style="font-size: 12px; color: var(--text-light); margin-top: 5px;">Telegram notifications</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 3: Core Features -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">⚡</span> Core Features</h2>
+        
+        <div class="grid-3">
+            <div class="feature-card">
+                <div class="feature-icon">🌊</div>
+                <div class="feature-title">Aggregated Liquidity</div>
+                <div class="feature-desc">Combine liquidity from multiple pools for optimal trade execution and reduced slippage across all verified DLMM pools</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <div class="feature-title">Capital Rotation</div>
+                <div class="feature-desc">Automatically identify and rotate capital to the highest-yielding pools, maximizing returns while minimizing manual intervention</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <div class="feature-title">Real-Time Analytics</div>
+                <div class="feature-desc">Monitor 30m fees, 24h volume, APR, TVL and more metrics in real-time</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <div class="feature-title">Advanced Filtering</div>
+                <div class="feature-desc">Find pools with custom filters tailored to your trading strategy</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <div class="feature-title">Security Analysis</div>
+                <div class="feature-desc">RugCheck integration, holder distribution analysis on all verified pools</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📱</div>
+                <div class="feature-title">Telegram Alerts</div>
+                <div class="feature-desc">Instant notifications for trending opportunities</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <div class="feature-title">Degen Mode</div>
+                <div class="feature-desc">High-frequency monitoring for aggressive traders</div>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📈</div>
+                <div class="feature-title">Deep Analytics</div>
+                <div class="feature-desc">Complete pool data & historical trends</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 4: How It Works -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🔄</span> How It Works</h2>
+        
+        <div class="process-container">
+            <div class="process-step">
+                <div class="process-number">1</div>
+                <div class="process-content">
+                    <div class="process-title">Data Aggregation</div>
+                    <div class="process-desc">We fetch data from 7+ sources including Meteora API, DexScreener, Jupiter, RugCheck, and more</div>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="process-number">2</div>
+                <div class="process-content">
+                    <div class="process-title">Smart Analysis & Verification</div>
+                    <div class="process-desc">Process 4,000+ verified pools with security checks, volume analysis, and APR calculations</div>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="process-number">3</div>
+                <div class="process-content">
+                    <div class="process-title">Liquidity Aggregation</div>
+                    <div class="process-desc">Combine fragmented liquidity across multiple pools to provide unified, deeper liquidity for optimal trade execution</div>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="process-number">4</div>
+                <div class="process-content">
+                    <div class="process-title">Intelligent Filtering</div>
+                    <div class="process-desc">Surface the best opportunities based on your custom criteria and risk tolerance</div>
+                </div>
+            </div>
+            <div class="process-step">
+                <div class="process-number">5</div>
+                <div class="process-content">
+                    <div class="process-title">Real-Time Alerts & Capital Rotation</div>
+                    <div class="process-desc">Instant Telegram notifications and automated capital rotation suggestions to maximize yields</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Technology Stack -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🛠️</span> Technology Stack</h2>
+        
+        <h3 class="subsection-title">Frontend</h3>
+        <div class="tech-grid">
+            <div class="tech-item">React 18</div>
+            <div class="tech-item">Material-UI</div>
+            <div class="tech-item">TypeScript</div>
+        </div>
+
+        <h3 class="subsection-title">Backend</h3>
+        <div class="tech-grid">
+            <div class="tech-item">Flask</div>
+            <div class="tech-item">Node.js</div>
+            <div class="tech-item">APScheduler</div>
+        </div>
+
+        <h3 class="subsection-title">Database & Infrastructure</h3>
+        <div class="tech-grid">
+            <div class="tech-item">PostgreSQL</div>
+            <div class="tech-item">Supabase</div>
+            <div class="tech-item">Solana Web3.js</div>
+        </div>
+
+        <h3 class="subsection-title">Integrations</h3>
+        <div class="tech-grid">
+            <div class="tech-item">Telegram Bot</div>
+            <div class="tech-item">DexScreener</div>
+            <div class="tech-item">Jupiter</div>
+            <div class="tech-item">RugCheck</div>
+        </div>
+    </section>
+
+    <!-- Section 6: Why We're Different -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🏆</span> Why We're Different</h2>
+        
+        <div class="diff-grid">
+            <div class="diff-card">
+                <div class="diff-icon">🌊</div>
+                <div class="diff-title">Aggregated Liquidity</div>
+                <div class="diff-desc">Unified liquidity from 4K+ verified pools for deeper markets and better execution prices</div>
+            </div>
+            <div class="diff-card">
+                <div class="diff-icon">🎯</div>
+                <div class="diff-title">100% DLMM Focused</div>
+                <div class="diff-desc">Built exclusively for Meteora's Dynamic Liquidity Market Maker pools</div>
+            </div>
+            <div class="diff-card">
+                <div class="diff-icon">🔄</div>
+                <div class="diff-title">Smart Capital Rotation</div>
+                <div class="diff-desc">Automatically identify optimal yield opportunities and rotate capital efficiently</div>
+            </div>
+            <div class="diff-card">
+                <div class="diff-icon">🔒</div>
+                <div class="diff-title">Security-First</div>
+                <div class="diff-desc">All 4K+ pools are verified with RugCheck and holder distribution analysis</div>
+            </div>
+            <div class="diff-card">
+                <div class="diff-icon">📲</div>
+                <div class="diff-title">Mobile-First Alerts</div>
+                <div class="diff-desc">Stay connected 24/7 via Telegram notifications wherever you are</div>
+            </div>
+            <div class="diff-card">
+                <div class="diff-icon">⚙️</div>
+                <div class="diff-title">Highly Customizable</div>
+                <div class="diff-desc">Adapts to your trading strategy with flexible filters and thresholds</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 7: Product Roadmap -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🗺️</span> Product Roadmap</h2>
+        
+        <div class="roadmap-container">
+            <div class="roadmap-card">
+                <div class="roadmap-quarter">Q1 2025</div>
+                <div class="roadmap-item">• Automated trading integration</div>
+                <div class="roadmap-item">• Portfolio tracking dashboard</div>
+                <div class="roadmap-item">• Historical backtesting</div>
+                <div class="roadmap-item">• Watchlist management</div>
+            </div>
+            <div class="roadmap-card">
+                <div class="roadmap-quarter">Q2 2025</div>
+                <div class="roadmap-item">• Custom alert conditions</div>
+                <div class="roadmap-item">• Multi-DEX support</div>
+                <div class="roadmap-item">• Mobile applications</div>
+                <div class="roadmap-item">• API access for developers</div>
+            </div>
+            <div class="roadmap-card">
+                <div class="roadmap-quarter">Q3 2025</div>
+                <div class="roadmap-item">• Social trading features</div>
+                <div class="roadmap-item">• AI-powered pool scoring</div>
+                <div class="roadmap-item">• Cross-chain expansion</div>
+                <div class="roadmap-item">• Enterprise solutions</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 8: Business Model -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">💰</span> Business Model</h2>
+        
+        <div class="pricing-container">
+            <div class="pricing-card">
+                <div class="pricing-tier">Free</div>
+                <div class="pricing-price">Always free</div>
+                <div class="pricing-feature">Core analytics dashboard</div>
+                <div class="pricing-feature">Basic pool monitoring</div>
+                <div class="pricing-feature">Security analysis</div>
+                <div class="pricing-feature">Community access</div>
+            </div>
+            <div class="pricing-card featured">
+                <div class="pricing-tier">Premium</div>
+                <div class="pricing-price">$29/month</div>
+                <div class="pricing-feature">1-minute monitoring</div>
+                <div class="pricing-feature">Unlimited Telegram alerts</div>
+                <div class="pricing-feature">Advanced filters</div>
+                <div class="pricing-feature">API access</div>
+            </div>
+            <div class="pricing-card">
+                <div class="pricing-tier">Enterprise</div>
+                <div class="pricing-price">Custom pricing</div>
+                <div class="pricing-feature">White-label solution</div>
+                <div class="pricing-feature">Dedicated infrastructure</div>
+                <div class="pricing-feature">SLA guarantees</div>
+                <div class="pricing-feature">Priority support</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 9: Market Opportunity -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">📈</span> Market Opportunity</h2>
+        
+        <div class="opportunity-grid">
+            <div class="opportunity-card">
+                <div class="opportunity-title">💰 Growing DeFi Market</div>
+                <div class="opportunity-desc">Solana DeFi TVL exceeds $8B with continued growth trajectory</div>
+            </div>
+            <div class="opportunity-card">
+                <div class="opportunity-title">👥 Target Audience</div>
+                <div class="opportunity-desc">Traders, LPs, protocols, and institutional funds seeking alpha</div>
+            </div>
+            <div class="opportunity-card">
+                <div class="opportunity-title">📈 Scalable Model</div>
+                <div class="opportunity-desc">Start with Meteora, expand to multi-chain and multi-DEX</div>
+            </div>
+            <div class="opportunity-card">
+                <div class="opportunity-title">🚀 First-Mover Advantage</div>
+                <div class="opportunity-desc">No dedicated DLMM analytics platform exists in the market</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 10: Current Traction -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🎯</span> Current Traction</h2>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">100%</div>
+                <div class="stat-label">Feature Complete</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">4K+</div>
+                <div class="stat-label">Verified Pools</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">60s</div>
+                <div class="stat-label">Refresh Rate</div>
+            </div>
+        </div>
+
+        <div class="cta-section">
+            <div class="cta-title">🚀 Ready to Launch</div>
+            <div class="cta-subtitle">Platform is fully functional and tested with Aggregated Liquidity</div>
+            <a href="#" class="cta-button">Open Dashboard →</a>
+        </div>
+    </section>
+
+    <!-- Section 11: Let's Connect -->
+    <section class="section">
+        <h2 class="section-title"><span class="icon">🤝</span> Let's Connect</h2>
+        
+        <div class="contact-grid">
+            <div class="contact-card">
+                <div class="contact-icon">🌐</div>
+                <div class="contact-label">Live Platform</div>
+                <div class="contact-value">[Your URL]</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">📧</div>
+                <div class="contact-label">Email</div>
+                <div class="contact-value">[Your Email]</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">🐦</div>
+                <div class="contact-label">Twitter</div>
+                <div class="contact-value">[Your Handle]</div>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">💬</div>
+                <div class="contact-label">Telegram</div>
+                <div class="contact-value">[Your Channel]</div>
+            </div>
+        </div>
+
+        <div class="alert alert-magenta" style="margin-top: 30px;">
+            <div class="alert-title">🎯 We're Seeking</div>
+            <p>Strategic Partners • Advisors • Beta Users • Feedback</p>
+        </div>
+    </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="footer-logo">Imded<span>.FUN</span></div>
+    <p class="footer-tagline">The Future of DLMM Trading on Solana • Aggregated Liquidity • Verified Pools</p>
+    <p style="margin-top: 20px; opacity: 0.5; font-size: 13px;">Thank you for your time! Questions? Let's discuss how we can work together.</p>
+</footer>
+
+</body>
+</html>

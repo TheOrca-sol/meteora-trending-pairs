@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import {
   Box,
   ThemeProvider,
   CssBaseline,
 } from '@mui/material';
 import Navigation from './components/Navigation/Navigation';
+import LandingPage from './pages/LandingPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import CapitalRotationPage from './pages/CapitalRotationPage';
 import BackofficePage from './pages/BackofficePage';
@@ -49,6 +50,9 @@ function App() {
 }
 
 function AppContent({ isDarkMode, handleThemeToggle }) {
+  const location = useLocation();
+  const isLandingPage = location.pathname === '/';
+
   return (
     <Box
       sx={{
@@ -59,34 +63,37 @@ function AppContent({ isDarkMode, handleThemeToggle }) {
         color: 'text.primary'
       }}
     >
-      {/* Header with Theme Toggle - More compact on mobile */}
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          px: { xs: 1, sm: 2, md: 3 },
-          pt: { xs: 1, sm: 1.5, md: 2 },
-          pb: { xs: 0.5, sm: 0.75, md: 1 }
-        }}
-      >
-        <ThemeToggle isDarkMode={isDarkMode} onToggle={handleThemeToggle} />
-      </Box>
+      {/* Header with Theme Toggle - More compact on mobile - Hidden on landing page */}
+      {!isLandingPage && (
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            px: { xs: 1, sm: 2, md: 3 },
+            pt: { xs: 1, sm: 1.5, md: 2 },
+            pb: { xs: 0.5, sm: 0.75, md: 1 }
+          }}
+        >
+          <ThemeToggle isDarkMode={isDarkMode} onToggle={handleThemeToggle} />
+        </Box>
+      )}
 
-      {/* Navigation */}
-      <Navigation />
+      {/* Navigation - Hidden on landing page */}
+      {!isLandingPage && <Navigation />}
 
       {/* Routes */}
       <Box sx={{ flex: 1 }}>
         <Routes>
-          <Route path="/" element={<AnalyticsPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/dashboard" element={<AnalyticsPage />} />
           <Route path="/capital-rotation" element={<CapitalRotationPage />} />
           <Route path="/backoffice" element={<BackofficePage />} />
           <Route path="/pool/:address" element={<PoolDetailsPage />} />
         </Routes>
       </Box>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer - Hidden on landing page (has its own footer) */}
+      {!isLandingPage && <Footer />}
     </Box>
   );
 }
